@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "FlightBookingApp",
+    "slug": "FlightBookingApp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0064D2"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.flightbooking.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0064D2"
+      },
+      "package": "com.flightbooking.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": []
+  }
+}
