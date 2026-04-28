@@ -1,0 +1,230 @@
+.seatmap-container {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  padding: 20px;
+}
+
+.seatmap {
+  background: linear-gradient(#f6f8fb, #fff);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  width: 720px;
+}
+
+.cabin-top,
+.cabin-bottom {
+  height: 18px;
+  background: #eef2ff;
+  border-radius: 8px;
+  margin: 8px 0;
+}
+
+.seat-row-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.row-number {
+  width: 28px;
+  text-align: center;
+  color: #475569;
+  font-weight: 600;
+}
+
+.seat-row {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(250,250,250,0.6));
+  border-radius: 6px;
+}
+
+.seat {
+  height: 48px;
+  width: 48px;
+  border-radius: 6px;
+  border: 1px solid rgba(2,6,23,0.06);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  position: relative;
+  cursor: pointer;
+  background: white;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.seat.available:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 14px rgba(2,6,23,0.08);
+}
+
+.seat.booked {
+  background: #e6e9ee;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.seat.selected {
+  background: #0b61ff;
+  color: white;
+}
+
+.seat.business {
+  height: 56px;
+  width: 56px;
+  border-radius: 8px;
+}
+
+.seat.extra {
+  box-shadow: inset 0 0 0 3px rgba(4,120,87,0.06);
+}
+
+.aisle {
+  width: 28px;
+}
+
+.seat-id {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* seat icon */
+.seat-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  color: inherit;
+}
+
+/* tooltip */
+.seat-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  background: #0b1220;
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px rgba(2,6,23,0.18);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+  z-index: 40;
+}
+
+.seat-tooltip:after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background: #0b1220;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+/* show tooltip on hover/focus */
+.seat:hover .seat-tooltip,
+.seat:focus .seat-tooltip,
+.seat:focus-visible .seat-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+/* cabin labels */
+.cabin-section {
+  padding: 6px 0;
+}
+
+.cabin-label {
+  text-align: center;
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.cabin-divider {
+  height: 12px;
+  margin: 8px 0;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(2,6,23,0.04), rgba(2,6,23,0.02));
+}
+
+/* icon color per state */
+.seat.available { color: #0b61ff; }
+.seat.booked { color: #94a3b8; }
+.seat.selected { color: #fff; }
+
+/* focus ring */
+.seat:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 6px rgba(14,165,233,0.12);
+  transform: translateY(-3px);
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 240px;
+}
+
+.legend-row {
+  display: flex;
+  gap: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+}
+
+.swatch {
+  display: inline-block;
+  width: 18px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(2,6,23,0.06);
+}
+
+.swatch.available {
+  background: #f8fafc;
+  box-shadow: inset 0 0 0 1px rgba(99,102,241,0.06);
+}
+
+.swatch.booked {
+  background: #e6e9ee;
+}
+
+.swatch.selected {
+  background: #0b61ff;
+}
+
+.swatch.business {
+  background: linear-gradient(90deg,#fff1f0,#fff7ed);
+}
+
+.swatch.economy {
+  background: linear-gradient(90deg,#f8fafc,#eff6ff);
+}
+
+.swatch.extra {
+  background: linear-gradient(90deg,#ecfdf5,#f0f9ff);
+}

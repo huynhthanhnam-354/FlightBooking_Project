@@ -3,16 +3,31 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import BookingForm from '../components/BookingForm'
 import BookingSummary from '../components/BookingSummary'
 import FlightCard from '../components/FlightCard'
+import { MOCK_FLIGHTS } from '../data/mockFlights'
+import SeatMap from '../components/SeatMap'
 
 export default function BookingPage() {
   const location = useLocation()
   const navigate = useNavigate()
-  const flight = location.state?.flight || null
+  const query = new URLSearchParams(location.search)
+  const idFromQuery = query.get('id')
+  const flightFromQuery = idFromQuery ? MOCK_FLIGHTS.find(f => f.id === idFromQuery) : null
+  const flight = location.state?.flight || flightFromQuery || null
   const [passengers, setPassengers] = useState(location.state?.passengers || 1)
 
   function handleSubmit(booking) {
     const ref = 'BK' + Math.random().toString(36).slice(2, 9).toUpperCase()
     const confirmation = { ...booking, ref, createdAt: new Date().toISOString() }
+
+    // persist booking history to localStorage (most recent first)
+    try {
+      const prev = JSON.parse(localStorage.getItem('fb_bookings') || '[]')
+      prev.unshift(confirmation)
+      localStorage.setItem('fb_bookings', JSON.stringify(prev))
+    } catch (err) {
+      console.error('Failed to persist booking', err)
+    }
+
     navigate('/booking/confirmation', { state: { confirmation } })
   }
 
@@ -24,6 +39,11 @@ export default function BookingPage() {
             <h2 className="text-2xl font-semibold mb-4">Đặt vé</h2>
 
             <FlightCard flight={flight} onOpenDetails={() => {}} />
+
+            <div className="mt-6">
+              <h3 className="text-lg font-medium mb-3">Chọn chỗ ngồi</h3>
+              <SeatMap />
+            </div>
 
             <div className="mt-6">
               <BookingForm

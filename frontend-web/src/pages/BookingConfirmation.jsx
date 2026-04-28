@@ -15,7 +15,7 @@ export default function BookingConfirmation() {
     )
   }
 
-  const { ref, passenger, flight, passengers } = confirmation
+  const { ref, passenger, flight, passengers, contact, priceBreakdown } = confirmation
 
   return (
     <div className="max-w-3xl mx-auto p-8 bg-white rounded shadow">
@@ -27,6 +27,22 @@ export default function BookingConfirmation() {
         <div><strong>Số hành khách:</strong> {passengers}</div>
         <div><strong>Chuyến:</strong> {flight?.airline} ({flight?.flightNumber})</div>
         <div><strong>Hành trình:</strong> {flight?.depart} → {flight?.arrive}</div>
+        {contact && (
+          <>
+            <div><strong>Email:</strong> {contact.email}</div>
+            <div><strong>Điện thoại:</strong> {contact.phone}</div>
+          </>
+        )}
+
+        {priceBreakdown && (
+          <div className="mt-3 p-3 bg-slate-50 rounded">
+            <div className="flex justify-between text-sm"><span>Giá mỗi khách</span><span>{priceBreakdown.pricePer.toLocaleString()}₫</span></div>
+            <div className="flex justify-between text-sm"><span>Thành tiền</span><span>{priceBreakdown.subtotal.toLocaleString()}₫</span></div>
+            <div className="flex justify-between text-sm"><span>Thuế</span><span>{priceBreakdown.tax.toLocaleString()}₫</span></div>
+            <div className="flex justify-between text-sm"><span>Phí dịch vụ</span><span>{priceBreakdown.serviceFee.toLocaleString()}₫</span></div>
+            <div className="flex justify-between text-base font-bold mt-2"><span>Tổng</span><span>{priceBreakdown.total.toLocaleString()}₫</span></div>
+          </div>
+        )}
       </div>
 
       <div className="mt-6 flex gap-3">
