@@ -12,6 +12,8 @@ import HomeScreen     from './src/screens/HomeScreen';
 import SearchScreen   from './src/screens/SearchScreen';
 import BookingScreen  from './src/screens/BookingScreen';
 import ProfileScreen  from './src/screens/ProfileScreen';
+import AgentScreen    from './src/screens/AgentScreen';
+import FlightTrackingScreen from './src/screens/FlightTrackingScreen';
 import LoginScreen    from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import EticketScreen from './src/screens/EticketScreen';
@@ -20,7 +22,7 @@ const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
 
 const TAB_ICONS: Record<string, AppIconName> = {
-  Home: 'home', Flights: 'airplane', Bookings: 'ticket', Profile: 'profile',
+  Home: 'home', Flights: 'airplane', Bookings: 'ticket', Assistant: 'support', Profile: 'profile',
 };
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
@@ -50,6 +52,7 @@ function MainTabs() {
       <Tab.Screen name="Home"     component={HomeScreen}    options={{ title: t('tab_home') }} />
       <Tab.Screen name="Flights"  component={SearchScreen}  options={{ title: t('tab_flights') }} />
       <Tab.Screen name="Bookings" component={BookingScreen} options={{ title: t('tab_bookings') }} />
+      <Tab.Screen name="Assistant" component={AgentScreen}  options={{ title: 'AI' }} />
       <Tab.Screen name="Profile"  component={ProfileScreen} options={{ title: t('tab_profile') }} />
     </Tab.Navigator>
   );
@@ -63,6 +66,7 @@ function AppNavigator() {
         <Stack.Screen name="Login"    component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="Eticket" component={EticketScreen} />
+        <Stack.Screen name="FlightTracking" component={FlightTrackingScreen} />
         <Stack.Screen name="Main"     component={MainTabs} />
       </Stack.Navigator>
     </NavigationContainer>

@@ -25,12 +25,12 @@ export default function HomeScreen() {
   const [tripType, setTripType] = useState<'oneWay' | 'roundTrip'>('oneWay');
 
   const CATEGORIES = [
-    { iconName: 'airplane'     as const, label: t('cat_book_flight') },
-    { iconName: 'flightStatus' as const, label: t('cat_flight_status') },
-    { iconName: 'ticket'       as const, label: t('cat_my_tickets') },
-    { iconName: 'luggage'      as const, label: t('cat_baggage') },
-    { iconName: 'checkin'      as const, label: t('cat_checkin') },
-    { iconName: 'support'      as const, label: t('cat_support') },
+    { key: 'book', iconName: 'airplane'     as const, label: t('cat_book_flight') },
+    { key: 'status', iconName: 'flightStatus' as const, label: t('cat_flight_status') },
+    { key: 'tickets', iconName: 'ticket'       as const, label: t('cat_my_tickets') },
+    { key: 'baggage', iconName: 'luggage'      as const, label: t('cat_baggage') },
+    { key: 'checkin', iconName: 'checkin'      as const, label: t('cat_checkin') },
+    { key: 'support', iconName: 'support'      as const, label: t('cat_support') },
   ];
 
   return (
@@ -43,7 +43,6 @@ export default function HomeScreen() {
           <View>
             <View style={styles.greetingRow}>
               <Text style={styles.greeting}>{t('greeting')}</Text>
-              <AppIcon name="wave" size={16} color="rgba(255,255,255,0.9)" />
             </View>
             <Text style={styles.headerTitle}>{t('home_title')}</Text>
           </View>
@@ -110,7 +109,14 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>{t('quick_access')}</Text>
           <View style={styles.catGrid}>
             {CATEGORIES.map(c => (
-              <TouchableOpacity key={c.label} style={styles.catItem}>
+              <TouchableOpacity
+                key={c.key}
+                style={styles.catItem}
+                onPress={() => {
+                  if (c.key === 'book') navigation.navigate('Flights');
+                  if (c.key === 'status') navigation.navigate('FlightTracking');
+                }}
+              >
                 <View style={styles.catIcon}>
                   <AppIcon name={c.iconName} size={26} color="#0064D2" />
                 </View>
