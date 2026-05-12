@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
 import AppIcon from '../components/AppIcon';
 import { AppIconName } from '../theme/icons';
+import { registerAccount, formatAuthError } from '../services/authApi';
+import { useAuth } from '../context/AuthContext';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Field = {
   key: string;
@@ -25,9 +29,39 @@ const FIELDS: Field[] = [
 export default function RegisterScreen() {
   const navigation = useNavigation<any>();
   const { t } = useLanguage();
+  const { signIn } = useAuth();
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', password: '', confirm: '' });
   const [showPass, setShowPass] = useState(false);
+  const [showPassConfirm, setShowPassConfirm] = useState(false);
   const [agreed, setAgreed]    = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleRegister = async () => {
+    if (!agreed) return;
+    const email = form.email.trim();
+    const fullName = form.fullName.trim();
+    if (!fullName || !EMAIL_RE.test(email) || form.password.length < 6 || form.password !== form.confirm) {
+      Alert.alert(t('register_title'), t('register_fill_all'));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await registerAccount({
+        email,
+        password: form.password,
+        fullName,
+        phone: form.phone.trim() || undefined,
+      });
+      await signIn(res);
+      Alert.alert(t('register_success'), email, [
+        { text: t('confirm'), onPress: () => navigation.navigate('Main') },
+      ]);
+    } catch (e) {
+      Alert.alert(t('register_failed_title'), `${t('register_failed_hint')}\n${formatAuthError(e)}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -53,7 +87,7 @@ export default function RegisterScreen() {
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
                   placeholder={t(f.placeholderKey)}
-                  secureTextEntry={f.secure && !showPass}
+                  secureTextEntry={f.secure && !(f.key === 'password' ? showPass : f.key === 'confirm' ? showPassConfirm : false)}
                   value={(form as any)[f.key]}
                   onChangeText={v => setForm({ ...form, [f.key]: v })}
                   placeholderTextColor="#9CA3AF"
@@ -63,6 +97,11 @@ export default function RegisterScreen() {
                 {f.secure && f.key === 'password' && (
                   <TouchableOpacity onPress={() => setShowPass(!showPass)} style={styles.eyeBtn}>
                     <AppIcon name={showPass ? 'eye' : 'eyeOff'} size={18} color="#9CA3AF" />
+                  </TouchableOpacity>
+                )}
+                {f.secure && f.key === 'confirm' && (
+                  <TouchableOpacity onPress={() => setShowPassConfirm(!showPassConfirm)} style={styles.eyeBtn}>
+                    <AppIcon name={showPassConfirm ? 'eye' : 'eyeOff'} size={18} color="#9CA3AF" />
                   </TouchableOpacity>
                 )}
               </View>
@@ -83,12 +122,18 @@ export default function RegisterScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.registerBtn, !agreed && styles.registerBtnDisabled]}
-            onPress={() => agreed && navigation.navigate('Main')}
-            disabled={!agreed}
+            style={[styles.registerBtn, (!agreed || submitting) && styles.registerBtnDisabled]}
+            onPress={handleRegister}
+            disabled={!agreed || submitting}
           >
-            <AppIcon name="register" size={18} color="#fff" />
-            <Text style={styles.registerBtnText}>  {t('register_btn')}</Text>
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <AppIcon name="register" size={18} color="#fff" />
+                <Text style={styles.registerBtnText}>  {t('register_btn')}</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
 

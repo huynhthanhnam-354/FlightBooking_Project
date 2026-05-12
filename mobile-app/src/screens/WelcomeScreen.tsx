@@ -21,7 +21,6 @@ export default function WelcomeScreen() {
     setLangLabel(label);
     setLanguage(LANGUAGE_LABELS[label]);
     setShowLanguage(false);
-    // currency tự động gợi ý qua context, không cần reset thêm
   };
 
   const canContinue = currency.code !== '' && langLabel !== '';
@@ -32,7 +31,7 @@ export default function WelcomeScreen() {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#0064D2" />
 
-      {/* Header sóng */}
+      {}
       <View style={styles.header}>
         <View style={styles.logoCircle}>
           <Text style={styles.logoIcon}>✈</Text>
