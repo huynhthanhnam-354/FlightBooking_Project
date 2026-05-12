@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth, userInitial } from '../context/AuthContext';
+import { useSearch } from '../context/SearchContext';
+import { airportName } from '../data/airports';
 import { formatPrice } from '../utils/price';
 import AppIcon from '../components/AppIcon';
+import { searchFlightsApi } from '../services/flightApi';
 
 import { AppIconName } from '../theme/icons';
 
@@ -13,16 +17,85 @@ const PROMOS: { id: string; color: string; titleKey: 'todays_deals' | 'popular_f
   { id: '3', color: '#0891B2', titleKey: 'cat_flight_status', iconName: 'flightStatus' },
 ];
 
-const POPULAR = [
-  { id: '1', from: 'HAN', to: 'SGN', airline: 'Vietnam Airlines', priceVND: 899000,  time: '2h 10m' },
-  { id: '2', from: 'SGN', to: 'DAD', airline: 'VietJet Air',      priceVND: 650000,  time: '1h 20m' },
-  { id: '3', from: 'HAN', to: 'DAD', airline: 'Bamboo Airways',   priceVND: 750000,  time: '1h 30m' },
+type PopularRow = {
+  id: string;
+  from: string;
+  to: string;
+  airline: string;
+  priceVND: number;
+  time: string;
+  hasResult: boolean;
+};
+
+const POPULAR_ROUTES = [
+  { id: '1', from: 'HAN', to: 'SGN' },
+  { id: '2', from: 'SGN', to: 'DAD' },
+  { id: '3', from: 'HAN', to: 'DAD' },
+  { id: '4', from: 'SGN', to: 'SIN' },
+  { id: '5', from: 'HAN', to: 'ICN' },
+  { id: '6', from: 'SGN', to: 'BKK' },
 ];
+
+/** Màn trên root stack (cùng cấp Main tabs), từ tab con cần lên stack cha. */
+function navigateRootStack(navigation: { getParent?: () => any }, screen: string) {
+  const tabNav = navigation.getParent?.();
+  const stackNav = tabNav?.getParent?.();
+  if (stackNav?.navigate) stackNav.navigate(screen);
+  else if (tabNav?.navigate) tabNav.navigate(screen);
+}
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
-  const { t, currency } = useLanguage();
-  const [tripType, setTripType] = useState<'oneWay' | 'roundTrip'>('oneWay');
+  const { t, currency, language } = useLanguage();
+  const { user } = useAuth();
+  const search = useSearch();
+  const [popularRows, setPopularRows] = useState<PopularRow[]>([]);
+  const [popularLoading, setPopularLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setPopularLoading(true);
+      try {
+        const rows: PopularRow[] = await Promise.all(
+          POPULAR_ROUTES.map(async (r) => {
+            const list = await searchFlightsApi(r.from, r.to);
+            const cheapest =
+              list.length > 0 ? [...list].sort((a, b) => a.priceVND - b.priceVND)[0] : null;
+            return {
+              id: r.id,
+              from: r.from,
+              to: r.to,
+              airline: cheapest?.airline ?? '—',
+              priceVND: cheapest?.priceVND ?? 0,
+              time: cheapest?.duration ?? '—',
+              hasResult: !!cheapest,
+            };
+          }),
+        );
+        if (!cancelled) setPopularRows(rows);
+      } catch {
+        if (!cancelled) {
+          setPopularRows(
+            POPULAR_ROUTES.map((r) => ({
+              id: r.id,
+              from: r.from,
+              to: r.to,
+              airline: '—',
+              priceVND: 0,
+              time: '—',
+              hasResult: false,
+            })),
+          );
+        }
+      } finally {
+        if (!cancelled) setPopularLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const CATEGORIES = [
     { key: 'book', iconName: 'airplane'     as const, label: t('cat_book_flight') },
@@ -47,7 +120,7 @@ export default function HomeScreen() {
             <Text style={styles.headerTitle}>{t('home_title')}</Text>
           </View>
           <TouchableOpacity style={styles.avatarBtn}>
-            <Text style={styles.avatarText}>N</Text>
+            <Text style={styles.avatarText}>{userInitial(user)}</Text>
           </TouchableOpacity>
         </View>
 
@@ -55,8 +128,12 @@ export default function HomeScreen() {
         <View style={styles.searchCard}>
           <View style={styles.tripToggle}>
             {(['oneWay', 'roundTrip'] as const).map(tp => (
-              <TouchableOpacity key={tp} style={[styles.toggleBtn, tripType === tp && styles.toggleActive]} onPress={() => setTripType(tp)}>
-                <Text style={[styles.toggleText, tripType === tp && styles.toggleTextActive]}>
+              <TouchableOpacity
+                key={tp}
+                style={[styles.toggleBtn, search.tripType === tp && styles.toggleActive]}
+                onPress={() => search.setTripType(tp)}
+              >
+                <Text style={[styles.toggleText, search.tripType === tp && styles.toggleTextActive]}>
                   {tp === 'oneWay' ? t('one_way') : t('round_trip')}
                 </Text>
               </TouchableOpacity>
@@ -64,39 +141,87 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.routeRow}>
-            <View style={styles.routeBox}>
+            <TouchableOpacity
+              style={[styles.routeBox, styles.routeTap]}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('EditSearch')}
+            >
               <Text style={styles.routeLabel}>{t('from')}</Text>
-              <Text style={styles.routeCode}>HAN</Text>
-              <Text style={styles.routeCity}>Hà Nội</Text>
-            </View>
-            <TouchableOpacity style={styles.swapBtn}>
+              <Text style={styles.routeCode}>{search.fromCode}</Text>
+              <Text style={styles.routeCity}>{airportName(search.fromCode, language)}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.swapBtn} onPress={search.swapRoute}>
               <AppIcon name="airplane" size={18} color="#0064D2" />
             </TouchableOpacity>
-            <View style={[styles.routeBox, { alignItems: 'flex-end' }]}>
+            <TouchableOpacity
+              style={[styles.routeBox, { alignItems: 'flex-end' }, styles.routeTap]}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('EditSearch')}
+            >
               <Text style={styles.routeLabel}>{t('to')}</Text>
-              <Text style={styles.routeCode}>SGN</Text>
-              <Text style={styles.routeCity}>TP. Hồ Chí Minh</Text>
-            </View>
+              <Text style={styles.routeCode}>{search.toCode}</Text>
+              <Text style={styles.routeCity}>{airportName(search.toCode, language)}</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.divider} />
 
-          <View style={styles.detailRow}>
+          <TouchableOpacity
+            style={styles.detailRow}
+            activeOpacity={0.75}
+            onPress={() => navigation.navigate('EditSearch')}
+          >
             <View style={styles.detailBox}>
               <View style={styles.detailLabelRow}>
                 <AppIcon name="calendar" size={13} color="#9CA3AF" />
                 <Text style={styles.detailLabel}> {t('departure_date')}</Text>
               </View>
-              <Text style={styles.detailValue}>25/04/2025</Text>
+              <Text style={styles.detailValue}>{search.departureDate}</Text>
             </View>
-            <View style={[styles.detailBox, { borderLeftWidth: 1, borderLeftColor: '#E5E7EB', paddingLeft: 16 }]}>
-              <View style={styles.detailLabelRow}>
-                <AppIcon name="passengers" size={13} color="#9CA3AF" />
-                <Text style={styles.detailLabel}> {t('passengers')}</Text>
+            {search.tripType === 'roundTrip' ? (
+              <View style={[styles.detailBox, { borderLeftWidth: 1, borderLeftColor: '#E5E7EB', paddingLeft: 16 }]}>
+                <View style={styles.detailLabelRow}>
+                  <AppIcon name="calendar" size={13} color="#9CA3AF" />
+                  <Text style={styles.detailLabel}> {t('return_date')}</Text>
+                </View>
+                <Text style={styles.detailValue}>{search.returnDate}</Text>
               </View>
-              <Text style={styles.detailValue}>1 {t('adult')}</Text>
+            ) : (
+              <View style={[styles.detailBox, { borderLeftWidth: 1, borderLeftColor: '#E5E7EB', paddingLeft: 16 }]}>
+                <View style={styles.detailLabelRow}>
+                  <AppIcon name="passengers" size={13} color="#9CA3AF" />
+                  <Text style={styles.detailLabel}> {t('passengers')}</Text>
+                </View>
+                <Text style={styles.detailValue}>
+                  {search.adults} {search.adults > 1 ? t('passengers').toLowerCase() : t('adult')}
+                </Text>
+              </View>
+            )}
+            <View style={styles.detailEditHint}>
+              <AppIcon name="edit" size={14} color="#0064D2" />
             </View>
-          </View>
+          </TouchableOpacity>
+
+          {search.tripType === 'roundTrip' ? (
+            <TouchableOpacity
+              style={[styles.detailRow, { marginTop: -4 }]}
+              activeOpacity={0.75}
+              onPress={() => navigation.navigate('EditSearch')}
+            >
+              <View style={styles.detailBox}>
+                <View style={styles.detailLabelRow}>
+                  <AppIcon name="passengers" size={13} color="#9CA3AF" />
+                  <Text style={styles.detailLabel}> {t('passengers')}</Text>
+                </View>
+                <Text style={styles.detailValue}>
+                  {search.adults} {search.adults > 1 ? t('passengers').toLowerCase() : t('adult')}
+                </Text>
+              </View>
+              <View style={styles.detailEditHint}>
+                <AppIcon name="edit" size={14} color="#0064D2" />
+              </View>
+            </TouchableOpacity>
+          ) : null}
 
           <TouchableOpacity style={styles.searchBtn} onPress={() => navigation.navigate('Flights')}>
             <AppIcon name="search" size={16} color="#fff" />
@@ -114,7 +239,11 @@ export default function HomeScreen() {
                 style={styles.catItem}
                 onPress={() => {
                   if (c.key === 'book') navigation.navigate('Flights');
-                  if (c.key === 'status') navigation.navigate('FlightTracking');
+                  if (c.key === 'status') navigateRootStack(navigation, 'FlightTracking');
+                  if (c.key === 'tickets') navigation.navigate('Profile', { initialTab: 'bookings' });
+                  if (c.key === 'baggage') navigation.navigate('HelpTopic', { topic: 'baggage' });
+                  if (c.key === 'checkin') navigation.navigate('HelpTopic', { topic: 'checkin' });
+                  if (c.key === 'support') navigation.navigate('HelpTopic', { topic: 'support' });
                 }}
               >
                 <View style={styles.catIcon}>
@@ -130,11 +259,17 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>{t('todays_deals')}</Text>
-            <TouchableOpacity><Text style={styles.seeAll}>{t('see_all')}</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Flights')}>
+              <Text style={styles.seeAll}>{t('see_all')}</Text>
+            </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginLeft: 16 }}>
             {PROMOS.map(p => (
-              <TouchableOpacity key={p.id} style={[styles.promoCard, { backgroundColor: p.color }]}>
+              <TouchableOpacity
+                key={p.id}
+                style={[styles.promoCard, { backgroundColor: p.color }]}
+                onPress={() => navigation.navigate('Flights')}
+              >
                 <View style={styles.promoIconWrap}>
                   <AppIcon name={p.iconName} size={32} color="rgba(255,255,255,0.9)" />
                 </View>
@@ -149,24 +284,45 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>{t('popular_flights')}</Text>
-            <TouchableOpacity><Text style={styles.seeAll}>{t('see_all')}</Text></TouchableOpacity>
-          </View>
-          {POPULAR.map(f => (
-            <TouchableOpacity key={f.id} style={styles.flightCard} onPress={() => navigation.navigate('Flights')}>
-              <View style={styles.flightLeft}>
-                <Text style={styles.flightCode}>{f.from} → {f.to}</Text>
-                <Text style={styles.flightAirline}>{f.airline}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                  <AppIcon name="clock" size={12} color="#9CA3AF" />
-                  <Text style={styles.flightTime}> {f.time}</Text>
-                </View>
-              </View>
-              <View style={styles.flightRight}>
-                <Text style={styles.flightFrom}>{t('from').toLowerCase()}</Text>
-                <Text style={styles.flightPrice}>{formatPrice(f.priceVND, currency)}</Text>
-              </View>
+            <TouchableOpacity onPress={() => navigation.navigate('Flights')}>
+              <Text style={styles.seeAll}>{t('see_all')}</Text>
             </TouchableOpacity>
-          ))}
+          </View>
+          {popularLoading ? (
+            <View style={styles.popularLoading}>
+              <ActivityIndicator color="#0064D2" />
+              <Text style={styles.popularLoadingText}>{t('popular_loading')}</Text>
+            </View>
+          ) : (
+            popularRows.map((f) => (
+              <TouchableOpacity
+                key={f.id}
+                style={styles.flightCard}
+                onPress={() => {
+                  search.setFromCode(f.from);
+                  search.setToCode(f.to);
+                  navigation.navigate('Flights');
+                }}
+              >
+                <View style={styles.flightLeft}>
+                  <Text style={styles.flightCode}>
+                    {f.from} → {f.to}
+                  </Text>
+                  <Text style={styles.flightAirline}>{f.airline}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                    <AppIcon name="clock" size={12} color="#9CA3AF" />
+                    <Text style={styles.flightTime}> {f.time}</Text>
+                  </View>
+                </View>
+                <View style={styles.flightRight}>
+                  <Text style={styles.flightFrom}>{t('from').toLowerCase()}</Text>
+                  <Text style={styles.flightPrice}>
+                    {f.hasResult ? formatPrice(f.priceVND, currency) : '—'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
         <View style={{ height: 24 }} />
       </ScrollView>
@@ -190,13 +346,15 @@ const styles = StyleSheet.create({
   toggleTextActive:{ color: '#0064D2', fontWeight: '700' },
   routeRow:        { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   routeBox:        { flex: 1 },
+  routeTap:        { paddingVertical: 4, paddingHorizontal: 2, borderRadius: 10 },
   routeLabel:      { fontSize: 11, color: '#9CA3AF', marginBottom: 2 },
   routeCode:       { fontSize: 26, fontWeight: '800', color: '#1A1A2E' },
   routeCity:       { fontSize: 12, color: '#6B7280' },
   swapBtn:         { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: '#0064D2', alignItems: 'center', justifyContent: 'center', marginHorizontal: 8 },
   divider:         { height: 1, backgroundColor: '#F3F4F6', marginBottom: 12 },
-  detailRow:       { flexDirection: 'row', marginBottom: 16 },
+  detailRow:       { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   detailBox:       { flex: 1 },
+  detailEditHint:  { paddingLeft: 4, justifyContent: 'center' },
   detailLabelRow:  { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
   detailLabel:     { fontSize: 11, color: '#9CA3AF' },
   detailValue:     { fontSize: 13, fontWeight: '600', color: '#1A1A2E' },
@@ -221,4 +379,6 @@ const styles = StyleSheet.create({
   flightRight:     { alignItems: 'flex-end', justifyContent: 'center' },
   flightFrom:      { fontSize: 11, color: '#9CA3AF' },
   flightPrice:     { fontSize: 16, fontWeight: '800', color: '#0064D2' },
+  popularLoading:  { marginHorizontal: 16, paddingVertical: 20, alignItems: 'center', gap: 8 },
+  popularLoadingText: { fontSize: 13, color: '#6B7280' },
 });

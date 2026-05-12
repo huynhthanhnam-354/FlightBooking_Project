@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, TextInput, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
+import { useSearch } from '../context/SearchContext';
+import { useAuth } from '../context/AuthContext';
 import AppIcon from '../components/AppIcon';
+import { useNavigation } from '@react-navigation/native';
+import { createBookingApi } from '../services/bookingApi';
+import { formatAuthError } from '../services/authApi';
 
-const BASE_FARE_VND = 1250000;
-const SERVICE_FEE_VND = 50000;
+const BASE_SERVICE_FEE_VND = 50000;
 const TAX_RATE = 0.1;
 const BOOKED_SEATS = new Set(['1B', '3C', '4D', '6E', '8A']);
 const SEAT_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
@@ -68,18 +72,59 @@ function generateSeatMap(): SeatItem[] {
 
 export default function BookingScreen() {
   const { t } = useLanguage();
+  const search = useSearch();
+  const { user } = useAuth();
+  const navigation = useNavigation<any>();
   const [step, setStep] = useState(0);
   const [seatMap] = useState(generateSeatMap());
   const [selectedSeat, setSelectedSeat] = useState('3A');
   const [selectedPayment, setSelectedPayment] = useState<'credit_card' | 'bank_transfer' | 'e_wallet' | 'cod'>('credit_card');
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', idCard: '' });
   const [errors, setErrors] = useState<{ fullName?: string; email?: string; phone?: string }>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  const flight = search.selectedFlight;
+
+  useEffect(() => {
+    if (!user) return;
+    setForm((f) => ({
+      ...f,
+      fullName: f.fullName || user.fullName,
+      email: f.email || user.email,
+      phone: f.phone || (user.phone ?? ''),
+    }));
+  }, [user]);
 
   const STEPS = [t('step_details'), t('step_passenger'), t('step_payment')];
+
+  if (!flight) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="light-content" backgroundColor="#0064D2" />
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{t('book_ticket')}</Text>
+          <Text style={styles.headerSub}>{t('select_flight_on_search_tab')}</Text>
+        </View>
+        <View style={styles.emptyWrap}>
+          <TouchableOpacity
+            style={styles.goSearchBtn}
+            onPress={() => navigation.navigate('Main', { screen: 'Flights' })}
+          >
+            <Text style={styles.goSearchText}>{t('tab_flights')}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const outboundVnd = flight.priceVND;
+  const returnLegVnd = search.tripType === 'roundTrip' ? search.roundTripReturnMinVnd ?? 0 : 0;
+  const baseFareVnd = outboundVnd + returnLegVnd;
   const selectedSeatMeta = seatMap.find((seat) => seat.id === selectedSeat);
   const seatAddOn = selectedSeatMeta?.addOn || 0;
-  const tax = Math.round(BASE_FARE_VND * TAX_RATE);
-  const totalVnd = BASE_FARE_VND + tax + SERVICE_FEE_VND + seatAddOn;
+  const tax = Math.round(baseFareVnd * TAX_RATE);
+  const totalVnd = baseFareVnd + tax + BASE_SERVICE_FEE_VND + seatAddOn;
+  const cabinLabel = flight.premium ? t('business_class') : t('economy');
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const phoneRegex = /^(0|\+84)[0-9]{9,10}$/;
@@ -107,14 +152,46 @@ export default function BookingScreen() {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step === 1) {
       const isValid = validatePassengerForm();
       if (!isValid) return;
     }
 
-    if (step < STEPS.length - 1) setStep(step + 1);
-    else Alert.alert(t('booking_success'), t('booking_code'));
+    if (step < STEPS.length - 1) {
+      setStep(step + 1);
+      return;
+    }
+
+    if (!user) {
+      Alert.alert(t('login_title'), t('booking_need_login'));
+      return;
+    }
+
+    const flightId = parseInt(flight.id, 10);
+    if (Number.isNaN(flightId)) {
+      Alert.alert(t('register_failed_title'), 'Invalid flight.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await createBookingApi({
+        flightId,
+        seatNumber: selectedSeat.trim().toUpperCase(),
+        passengerName: form.fullName.trim(),
+        passengerEmail: form.email.trim(),
+        passengerPhone: form.phone.trim() || undefined,
+        totalPriceVnd: totalVnd,
+      });
+      search.setSelectedFlight(null);
+      setStep(0);
+      Alert.alert(t('booking_success'), `${t('booking_code')}\nPNR: ${res.pnr}`);
+    } catch (e) {
+      Alert.alert(t('register_failed_title'), formatAuthError(e));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -122,7 +199,10 @@ export default function BookingScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#0064D2" />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t('book_ticket')}</Text>
-        <Text style={styles.headerSub}>HAN → SGN · 25/04</Text>
+        <Text style={styles.headerSub}>
+          {search.fromCode} → {search.toCode} · {search.departureDate}
+          {search.tripType === 'roundTrip' ? ` · ${t('return_date')}: ${search.returnDate}` : ''}
+        </Text>
       </View>
 
       <View style={styles.stepper}>
@@ -150,26 +230,26 @@ export default function BookingScreen() {
               </View>
               <View style={styles.flightSummary}>
                 <View style={styles.flightTime}>
-                  <Text style={styles.bigTime}>06:00</Text>
-                  <Text style={styles.airport}>HAN</Text>
+                  <Text style={styles.bigTime}>{flight.dep}</Text>
+                  <Text style={styles.airport}>{search.fromCode}</Text>
                 </View>
                 <View style={styles.flightMid}>
-                  <Text style={styles.duration}>2h 10m</Text>
+                  <Text style={styles.duration}>{flight.duration}</Text>
                   <View style={styles.lineRow}>
                     <View style={styles.dot} /><View style={styles.dashes} /><Text style={{ fontSize: 16 }}>✈️</Text><View style={styles.dashes} /><View style={styles.dot} />
                   </View>
                   <Text style={styles.direct}>{t('direct')}</Text>
                 </View>
                 <View style={[styles.flightTime, { alignItems: 'flex-end' }]}>
-                  <Text style={styles.bigTime}>08:10</Text>
-                  <Text style={styles.airport}>SGN</Text>
+                  <Text style={styles.bigTime}>{flight.arr}</Text>
+                  <Text style={styles.airport}>{search.toCode}</Text>
                 </View>
               </View>
               <View style={styles.divider} />
               <View style={styles.infoRow}>
-                <View style={styles.infoItem}><Text style={styles.infoLabel}>{t('airline')}</Text><Text style={styles.infoValue}>Vietnam Airlines</Text></View>
-                <View style={styles.infoItem}><Text style={styles.infoLabel}>{t('flight_no')}</Text><Text style={styles.infoValue}>VN201</Text></View>
-                <View style={styles.infoItem}><Text style={styles.infoLabel}>{t('seat_class')}</Text><Text style={styles.infoValue}>{t('economy')}</Text></View>
+                <View style={styles.infoItem}><Text style={styles.infoLabel}>{t('airline')}</Text><Text style={styles.infoValue}>{flight.airline}</Text></View>
+                <View style={styles.infoItem}><Text style={styles.infoLabel}>{t('flight_no')}</Text><Text style={styles.infoValue}>{flight.code}</Text></View>
+                <View style={styles.infoItem}><Text style={styles.infoLabel}>{t('seat_class')}</Text><Text style={styles.infoValue}>{cabinLabel}</Text></View>
               </View>
             </View>
 
@@ -288,9 +368,12 @@ export default function BookingScreen() {
                 <Text style={styles.cardTitle}> {t('price_summary')}</Text>
               </View>
               {[
-                [t('base_fare'), `${BASE_FARE_VND.toLocaleString()}₫`],
+                [t('fare_outbound'), `${outboundVnd.toLocaleString()}₫`],
+                ...(search.tripType === 'roundTrip' && returnLegVnd > 0
+                  ? [[t('fare_return_estimate'), `${returnLegVnd.toLocaleString()}₫`] as [string, string]]
+                  : []),
                 [t('tax_fee'), `${tax.toLocaleString()}₫`],
-                ['Phí dịch vụ', `${SERVICE_FEE_VND.toLocaleString()}₫`],
+                ['Phí dịch vụ', `${BASE_SERVICE_FEE_VND.toLocaleString()}₫`],
                 ['Phụ phí ghế', `+${seatAddOn.toLocaleString()}₫`],
                 [t('luggage'), t('free')],
               ].map(([l, v]) => (
@@ -367,10 +450,10 @@ export default function BookingScreen() {
                 <Text style={styles.cardTitle}> {t('booking_confirm')}</Text>
               </View>
               {[
-                [t('flight_no'),       'VN201'],
-                [t('departure_date'),  '25/04/2025'],
+                [t('flight_no'),       flight.code],
+                [t('departure_date'),  search.departureDate],
                 [t('seat'),            selectedSeat],
-                [t('passenger'),       form.fullName || 'Nguyễn Văn Nam'],
+                [t('passenger'),       form.fullName || '—'],
                 [t('total'),           `${totalVnd.toLocaleString()}₫`],
               ].map(([label, value]) => (
                 <View key={label} style={styles.priceRow}>
@@ -390,8 +473,16 @@ export default function BookingScreen() {
             <Text style={styles.backBtnText}>← {t('back')}</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={[styles.nextBtn, step === 0 && { flex: 1 }]} onPress={handleNext}>
-          <Text style={styles.nextBtnText}>{step === STEPS.length - 1 ? t('confirm_book') : `${t('next')} →`}</Text>
+        <TouchableOpacity
+          style={[styles.nextBtn, step === 0 && { flex: 1 }, submitting && { opacity: 0.85 }]}
+          onPress={() => void handleNext()}
+          disabled={submitting}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.nextBtnText}>{step === STEPS.length - 1 ? t('confirm_book') : `${t('next')} →`}</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -475,4 +566,7 @@ const styles = StyleSheet.create({
   backBtnText:   { color: '#0064D2', fontWeight: '700' },
   nextBtn:       { flex: 2, backgroundColor: '#0064D2', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   nextBtnText:   { color: '#fff', fontWeight: '700', fontSize: 15 },
+  emptyWrap:     { flex: 1, padding: 24, justifyContent: 'center' },
+  goSearchBtn:   { backgroundColor: '#0064D2', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  goSearchText:  { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

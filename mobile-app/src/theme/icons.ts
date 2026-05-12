@@ -1,12 +1,3 @@
-/**
- * Bảng icon tập trung của toàn bộ app.
- * Thư viện: @expo/vector-icons (đi kèm Expo, không cần cài thêm)
- *
- * Cách dùng:
- *   import { ICONS } from '../theme/icons';
- *   <AppIcon name="search" size={20} color="#0064D2" />
- */
-
 export type IconLib =
   | 'Ionicons'
   | 'MaterialCommunityIcons'

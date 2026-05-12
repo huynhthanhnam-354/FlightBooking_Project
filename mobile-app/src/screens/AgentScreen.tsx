@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { SafeAreaView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, FlatList } from 'react-native';
 import AppIcon from '../components/AppIcon';
 import { AgentMessage, sendMessageToAgent } from '../services/agent';
+import { useLanguage } from '../context/LanguageContext';
 
 function makeMessage(role: 'user' | 'assistant', content: string): AgentMessage {
   return {
@@ -13,15 +14,16 @@ function makeMessage(role: 'user' | 'assistant', content: string): AgentMessage 
 }
 
 export default function AgentScreen() {
-  const [messages, setMessages] = useState<AgentMessage[]>([
-    makeMessage('assistant', 'Chao ban! Minh la tro ly dat ve. Ban co the hoi minh tim chuyen bay, chon ghe, hoac toi uu chi phi.'),
-  ]);
+  const { t, language } = useLanguage();
+  const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([
-    'Tim chuyen re nhat HAN -> SGN',
-    'Goi y ghe tiet kiem chi phi',
-  ]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  useEffect(() => {
+    setMessages([makeMessage('assistant', t('agent_intro'))]);
+    setSuggestions([]);
+  }, [language, t]);
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
 
@@ -35,11 +37,11 @@ export default function AgentScreen() {
     setLoading(true);
 
     try {
-      const response = await sendMessageToAgent(text);
+      const response = await sendMessageToAgent(text, undefined, language);
       setMessages((prev) => [makeMessage('assistant', response.reply), ...prev]);
       setSuggestions(response.suggestions.map((s) => s.label));
     } catch (_err) {
-      setMessages((prev) => [makeMessage('assistant', 'Tam thoi chua the ket noi AI service. Ban vui long thu lai sau.'), ...prev]);
+      setMessages((prev) => [makeMessage('assistant', t('agent_service_error')), ...prev]);
     } finally {
       setLoading(false);
     }

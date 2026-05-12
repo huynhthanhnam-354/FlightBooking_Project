@@ -1,38 +1,82 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
+import { useSearch } from '../context/SearchContext';
 import { formatPrice } from '../utils/price';
 import AppIcon from '../components/AppIcon';
-
-// Màu đặc trưng của từng hãng bay
-const AIRLINE_COLORS: Record<string, string> = {
-  'VN': '#0064D2',
-  'VJ': '#E4002B',
-  'QH': '#00A651',
-  'BL': '#F5A623',
-};
-
-const FLIGHTS = [
-  { id: '1', airline: 'Vietnam Airlines', code: 'VN201', dep: '06:00', arr: '08:10', duration: '2h 10m', priceVND: 1250000 },
-  { id: '2', airline: 'VietJet Air',       code: 'VJ101', dep: '08:30', arr: '10:40', duration: '2h 10m', priceVND: 899000  },
-  { id: '3', airline: 'Bamboo Airways',    code: 'QH201', dep: '11:00', arr: '13:15', duration: '2h 15m', priceVND: 1050000 },
-  { id: '4', airline: 'Pacific Airlines',  code: 'BL301', dep: '14:00', arr: '16:10', duration: '2h 10m', priceVND: 750000  },
-  { id: '5', airline: 'Vietnam Airlines',  code: 'VN205', dep: '18:30', arr: '20:40', duration: '2h 10m', priceVND: 1450000 },
-];
+import { AIRLINE_COLORS, filterAndSortFlights, flightCodePrefix } from '../data/flightCatalog';
+import type { CatalogFlight } from '../data/flightCatalog';
+import { searchFlightsApi } from '../services/flightApi';
+import { formatAuthError } from '../services/authApi';
 
 export default function SearchScreen() {
   const navigation = useNavigation<any>();
   const { t, currency } = useLanguage();
-  const [activeFilter, setActiveFilter] = useState('all');
+  const search = useSearch();
+  const [activeFilter, setActiveFilter] = useState<'all' | 'cheap' | 'early' | 'fast' | 'biz'>('all');
   const [selected, setSelected] = useState<string | null>(null);
+  const [flights, setFlights] = useState<CatalogFlight[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const FILTERS = [
-    { key: 'all',   label: t('filter_all') },
-    { key: 'cheap', label: t('filter_cheapest') },
-    { key: 'early', label: t('filter_earliest') },
-    { key: 'fast',  label: t('filter_fastest') },
-    { key: 'biz',   label: t('filter_business') },
+  const loadFlights = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const out = await searchFlightsApi(search.fromCode, search.toCode);
+      setFlights(out);
+
+      if (search.tripType === 'roundTrip') {
+        const ret = await searchFlightsApi(search.toCode, search.fromCode);
+        let retMin = ret.length ? Math.min(...ret.map((x) => x.priceVND)) : null;
+        if (retMin == null && out.length) {
+          retMin = Math.round(Math.min(...out.map((x) => x.priceVND)) * 0.88);
+        }
+        search.setRoundTripReturnMinVnd(retMin);
+      } else {
+        search.setRoundTripReturnMinVnd(null);
+      }
+    } catch (e) {
+      setFlights([]);
+      search.setRoundTripReturnMinVnd(null);
+      setLoadError(formatAuthError(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [search.fromCode, search.toCode, search.tripType, search.setRoundTripReturnMinVnd]);
+
+  useEffect(() => {
+    loadFlights();
+  }, [loadFlights]);
+
+  const returnAddon = search.tripType === 'roundTrip' ? search.roundTripReturnMinVnd ?? 0 : 0;
+
+  const filteredFlights = useMemo(
+    () => filterAndSortFlights(flights, activeFilter, returnAddon),
+    [flights, activeFilter, returnAddon],
+  );
+
+  useEffect(() => {
+    setSelected(null);
+    search.setSelectedFlight(null);
+  }, [
+    activeFilter,
+    search.fromCode,
+    search.toCode,
+    search.departureDate,
+    search.returnDate,
+    search.adults,
+    search.tripType,
+    search.setSelectedFlight,
+  ]);
+
+  const FILTER_CHIPS = [
+    { key: 'all' as const, label: t('filter_all') },
+    { key: 'cheap' as const, label: t('filter_cheapest') },
+    { key: 'early' as const, label: t('filter_earliest') },
+    { key: 'fast' as const, label: t('filter_fastest') },
+    { key: 'biz' as const, label: t('filter_business') },
   ];
 
   return (
@@ -42,16 +86,20 @@ export default function SearchScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRoute}>
-          <Text style={styles.headerCity}>HAN</Text>
+          <Text style={styles.headerCity}>{search.fromCode}</Text>
           <View style={styles.headerArrowWrap}>
             <View style={styles.arrowLine} />
             <AppIcon name="airplane" size={18} color="rgba(255,255,255,0.9)" />
             <View style={styles.arrowLine} />
           </View>
-          <Text style={styles.headerCity}>SGN</Text>
+          <Text style={styles.headerCity}>{search.toCode}</Text>
         </View>
-        <Text style={styles.headerSub}>25/04/2025 · 1 {t('passenger').toLowerCase()}</Text>
-        <TouchableOpacity style={styles.editBtn}>
+        <Text style={styles.headerSub}>
+          {search.tripType === 'roundTrip' ? t('round_trip') : t('one_way')} · {search.departureDate}
+          {search.tripType === 'roundTrip' ? ` → ${search.returnDate}` : ''} · {search.adults}{' '}
+          {search.adults > 1 ? t('passenger').toLowerCase() : t('adult').toLowerCase()}
+        </Text>
+        <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('EditSearch')}>
           <AppIcon name="edit" size={13} color="#fff" />
           <Text style={styles.editText}>  {t('edit')}</Text>
         </TouchableOpacity>
@@ -59,19 +107,35 @@ export default function SearchScreen() {
 
       {/* Filter */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10 }}>
-        {FILTERS.map(f => (
+        {FILTER_CHIPS.map(f => (
           <TouchableOpacity key={f.key} style={[styles.filterChip, activeFilter === f.key && styles.filterChipActive]} onPress={() => setActiveFilter(f.key)}>
             <Text style={[styles.filterText, activeFilter === f.key && styles.filterTextActive]}>{f.label}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      <Text style={styles.resultCount}>{FLIGHTS.length} {t('flights')}</Text>
+      {loadError ? (
+        <Text style={styles.errorBanner}>{loadError}</Text>
+      ) : null}
 
+      <Text style={styles.resultCount}>
+        {loading ? '…' : filteredFlights.length} {t('flights')}
+      </Text>
+
+      {loading ? (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color="#0064D2" />
+        </View>
+      ) : filteredFlights.length === 0 ? (
+        <View style={styles.emptyBox}>
+          <Text style={styles.emptyText}>{t('no_flights_for_route')}</Text>
+        </View>
+      ) : (
       <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-        {FLIGHTS.map(f => {
-          const prefix = f.code.slice(0, 2);
+        {filteredFlights.map((f) => {
+          const prefix = flightCodePrefix(f.code);
           const badgeColor = AIRLINE_COLORS[prefix] ?? '#9CA3AF';
+          const totalDisplayVnd = f.priceVND + returnAddon;
           return (
             <TouchableOpacity key={f.id} style={[styles.card, selected === f.id && styles.cardSelected]} onPress={() => setSelected(f.id)}>
               <View style={styles.airlineRow}>
@@ -81,10 +145,12 @@ export default function SearchScreen() {
                 </View>
                 <View style={{ flex: 1, marginLeft: 10 }}>
                   <Text style={styles.airlineName}>{f.airline}</Text>
-                  <Text style={styles.flightCode}>{f.code} · {t('economy')}</Text>
+                  <Text style={styles.flightCode}>
+                    {f.code} · {f.premium ? t('business_class') : t('economy')}
+                  </Text>
                 </View>
                 <View style={styles.priceBox}>
-                  <Text style={styles.price}>{formatPrice(f.priceVND, currency)}</Text>
+                  <Text style={styles.price}>{formatPrice(totalDisplayVnd, currency)}</Text>
                   <Text style={styles.perPax}>{t('per_person')}</Text>
                 </View>
               </View>
@@ -92,7 +158,7 @@ export default function SearchScreen() {
               <View style={styles.timeRow}>
                 <View style={styles.timeBox}>
                   <Text style={styles.time}>{f.dep}</Text>
-                  <Text style={styles.airport}>HAN</Text>
+                  <Text style={styles.airport}>{search.fromCode}</Text>
                 </View>
                 <View style={styles.durationBox}>
                   <Text style={styles.duration}>{f.duration}</Text>
@@ -107,12 +173,18 @@ export default function SearchScreen() {
                 </View>
                 <View style={[styles.timeBox, { alignItems: 'flex-end' }]}>
                   <Text style={styles.time}>{f.arr}</Text>
-                  <Text style={styles.airport}>SGN</Text>
+                  <Text style={styles.airport}>{search.toCode}</Text>
                 </View>
               </View>
 
               {selected === f.id && (
-                <TouchableOpacity style={styles.selectBtn} onPress={() => navigation.navigate('Bookings')}>
+                <TouchableOpacity
+                  style={styles.selectBtn}
+                  onPress={() => {
+                    search.setSelectedFlight(f);
+                    navigation.navigate('Bookings');
+                  }}
+                >
                   <AppIcon name="check" size={15} color="#fff" />
                   <Text style={styles.selectBtnText}>  {t('select_flight')}</Text>
                 </TouchableOpacity>
@@ -122,6 +194,7 @@ export default function SearchScreen() {
         })}
         <View style={{ height: 24 }} />
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -142,6 +215,10 @@ const styles = StyleSheet.create({
   filterText:       { fontSize: 13, color: '#6B7280', fontWeight: '500' },
   filterTextActive: { color: '#0064D2', fontWeight: '700' },
   resultCount:      { fontSize: 13, color: '#6B7280', paddingHorizontal: 16, paddingVertical: 10 },
+  errorBanner:      { marginHorizontal: 16, marginTop: 8, padding: 10, borderRadius: 10, backgroundColor: '#FEF2F2', color: '#B91C1C', fontSize: 13 },
+  loadingBox:       { paddingVertical: 48, alignItems: 'center' },
+  emptyBox:         { paddingHorizontal: 24, paddingVertical: 40 },
+  emptyText:        { fontSize: 15, color: '#6B7280', textAlign: 'center' },
   list:             { flex: 1 },
   card:             { marginHorizontal: 16, marginBottom: 12, backgroundColor: '#fff', borderRadius: 14, padding: 14, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, borderWidth: 2, borderColor: 'transparent' },
   cardSelected:     { borderColor: '#0064D2' },

@@ -16,21 +16,6 @@ type Ticket = {
   qrValue?: string
 }
 
-const DEFAULT_TICKET: Ticket = {
-  pnr: 'PNR1234',
-  passenger: 'Nguyễn Văn A',
-  seat: '12A',
-  gate: 'B12',
-  boardingTime: '07:40',
-  from: 'SGN',
-  to: 'HAN',
-  depart: '2026-05-10 08:30',
-  arrive: '2026-05-10 10:15',
-  flightNumber: 'VJ123',
-  airline: 'VietAir',
-  qrValue: 'PNR1234|VJ123|SGN-HAN'
-}
-
 function hashString(s: string) {
   let h = 2166136261 >>> 0
   for (let i = 0; i < s.length; i++) {
@@ -54,7 +39,7 @@ function genMatrix(seedStr: string, size = 21) {
   return mat
 }
 
-export default function Eticket({ ticket = DEFAULT_TICKET }: { ticket?: Ticket }) {
+export default function Eticket({ ticket }: { ticket: Ticket }) {
   const mat = genMatrix(ticket.qrValue || ticket.pnr || 'ticket')
 
   async function handleShare() {
@@ -67,8 +52,7 @@ export default function Eticket({ ticket = DEFAULT_TICKET }: { ticket?: Ticket }
   }
 
   function handleSaveImage() {
-    // Placeholder: for real image save, add `react-native-view-shot` + permissions
-    Alert.alert('Lưu vé', 'Đã lưu (chế độ mô phỏng). Để lưu ảnh thực tế, cài `react-native-view-shot`.')
+    Alert.alert('Lưu vé', 'Tính năng lưu ảnh chưa bật trên bản này.')
   }
 
   return (

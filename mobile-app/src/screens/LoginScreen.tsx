@@ -1,15 +1,39 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import AppIcon from '../components/AppIcon';
+import { loginAccount, formatAuthError } from '../services/authApi';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
   const { t } = useLanguage();
+  const { signIn } = useAuth();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleLogin = async () => {
+    const em = email.trim();
+    if (!EMAIL_RE.test(em) || !password) {
+      Alert.alert(t('login_title'), t('register_fill_all'));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await loginAccount({ email: em, password });
+      await signIn(res);
+      navigation.navigate('Main');
+    } catch (e) {
+      Alert.alert(t('login_title'), `${t('register_failed_hint')}\n${formatAuthError(e)}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -64,12 +88,20 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.forgotBtn}>
+          <TouchableOpacity style={styles.forgotBtn} onPress={() => navigation.navigate('ForgotPassword')}>
             <Text style={styles.forgotText}>{t('forgot_password')}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.loginBtn} onPress={() => navigation.navigate('Main')}>
-            <Text style={styles.loginBtnText}>{t('login_btn')}</Text>
+          <TouchableOpacity
+            style={[styles.loginBtn, submitting && styles.loginBtnDisabled]}
+            onPress={handleLogin}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.loginBtnText}>{t('login_btn')}</Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.orRow}>
@@ -81,7 +113,7 @@ export default function LoginScreen() {
           {/* Social (Google & Apple — dùng text vì là brand icon) */}
           <View style={styles.socialRow}>
             {[{ letter: 'G', label: 'Google' }, { letter: 'A', label: 'Apple' }].map(s => (
-              <TouchableOpacity key={s.label} style={styles.socialBtn}>
+              <TouchableOpacity key={s.label} style={styles.socialBtn} onPress={() => Alert.alert(s.label, t('coming_soon'))}>
                 <Text style={styles.socialLetter}>{s.letter}</Text>
                 <Text style={styles.socialText}>{s.label}</Text>
               </TouchableOpacity>
@@ -115,6 +147,7 @@ const styles = StyleSheet.create({
   forgotBtn:    { alignSelf: 'flex-end', marginBottom: 20 },
   forgotText:   { color: '#0064D2', fontSize: 13, fontWeight: '600' },
   loginBtn:     { backgroundColor: '#0064D2', borderRadius: 12, paddingVertical: 15, alignItems: 'center', elevation: 3, shadowColor: '#0064D2', shadowOpacity: 0.3, shadowRadius: 8 },
+  loginBtnDisabled: { opacity: 0.75 },
   loginBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   orRow:        { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
   orLine:       { flex: 1, height: 1, backgroundColor: '#E5E7EB' },

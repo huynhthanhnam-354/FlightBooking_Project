@@ -1,27 +1,64 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Switch, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Switch, Alert, ActivityIndicator } from 'react-native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth, userInitial } from '../context/AuthContext';
 import { LANGUAGE_LABELS, Language } from '../i18n/translations';
 import { CURRENCIES } from '../i18n/currencies';
 import { formatPrice } from '../utils/price';
 import AppIcon from '../components/AppIcon';
 import { AppIconName } from '../theme/icons';
+import { listMyBookingsApi } from '../services/bookingApi';
+import { mapBookingDtoToProfileRow, type ProfileBookingRow } from '../utils/profileBookings';
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { t, language, setLanguage, currency, setCurrencyByCode } = useLanguage();
+  const { user, signOut } = useAuth();
   const [notif, setNotif] = useState(true);
   const [tab, setTab]               = useState<'info' | 'bookings'>('info');
   const [showLangPicker, setShowLangPicker]   = useState(false);
   const [showCurrPicker, setShowCurrPicker]   = useState(false);
 
-  // Giá gốc lưu bằng VND, hiển thị qua formatPrice
-  const BOOKINGS = [
-    { id: 'SB-001', route: 'HAN → SGN', date: '25/04/2025', statusKey: 'confirmed' as const,       statusColor: '#10B981', priceVND: 1375000 },
-    { id: 'SB-002', route: 'SGN → DAD', date: '10/05/2025', statusKey: 'pending_payment' as const,  statusColor: '#F59E0B', priceVND: 650000  },
-    { id: 'SB-003', route: 'HAN → DAD', date: '01/03/2025', statusKey: 'completed' as const,        statusColor: '#9CA3AF', priceVND: 750000  },
-  ];
+  const displayName = user?.fullName?.trim() || t('passenger');
+  const displayEmail = user?.email?.trim() || '—';
+
+  const [apiBookings, setApiBookings] = useState<ProfileBookingRow[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+
+  const loadBookings = useCallback(async () => {
+    if (!user) {
+      setApiBookings([]);
+      return;
+    }
+    setBookingsLoading(true);
+    try {
+      const list = await listMyBookingsApi();
+      setApiBookings(list.map(mapBookingDtoToProfileRow));
+    } catch {
+      setApiBookings([]);
+    } finally {
+      setBookingsLoading(false);
+    }
+  }, [user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadBookings();
+    }, [loadBookings]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (route.params?.initialTab === 'bookings') {
+        setTab('bookings');
+        navigation.setParams({ initialTab: undefined });
+      }
+    }, [navigation, route.params?.initialTab]),
+  );
+
+  const bookingsToShow = apiBookings;
 
   const currentLangLabel = Object.keys(LANGUAGE_LABELS).find(k => LANGUAGE_LABELS[k] === language) ?? 'Tiếng Việt';
 
@@ -29,17 +66,17 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#0064D2" />
       <View style={styles.header}>
-        <View style={styles.avatarCircle}><Text style={styles.avatarText}>N</Text></View>
-        <Text style={styles.name}>Nguyễn Văn Nam</Text>
-        <Text style={styles.email}>nam@email.com</Text>
+        <View style={styles.avatarCircle}><Text style={styles.avatarText}>{userInitial(user)}</Text></View>
+        <Text style={styles.name}>{displayName}</Text>
+        <Text style={styles.email}>{displayEmail}</Text>
         <View style={styles.badgeRow}>
           <View style={styles.badge}>
             <AppIcon name="airplane" size={12} color="#fff" />
-            <Text style={styles.badgeText}>  3 {t('trips')}</Text>
+            <Text style={styles.badgeText}>  {bookingsToShow.length} {t('trips')}</Text>
           </View>
           <View style={styles.badge}>
             <AppIcon name="star" size={12} color="#FFD700" />
-            <Text style={styles.badgeText}>  {t('member')} Gold</Text>
+            <Text style={styles.badgeText}>  {t('member')} {user?.role?.trim() || '—'}</Text>
           </View>
         </View>
       </View>
@@ -133,12 +170,20 @@ export default function ProfileScreen() {
 
             <View style={styles.card}>
               {([
-                { iconName: 'edit'    as AppIconName, labelKey: 'edit_info'  as const },
-                { iconName: 'security' as AppIconName, labelKey: 'security'  as const },
-                { iconName: 'support'  as AppIconName, labelKey: 'support'   as const },
-                { iconName: 'rateApp'  as AppIconName, labelKey: 'rate_app'  as const },
-              ]).map((item, i, arr) => (
-                <TouchableOpacity key={i} style={[styles.menuItem, i < arr.length - 1 && styles.menuItemBorder]}>
+                { iconName: 'edit' as AppIconName, labelKey: 'edit_info' as const, onPress: () => navigation.navigate('EditProfile') },
+                { iconName: 'security' as AppIconName, labelKey: 'security' as const, onPress: () => navigation.navigate('Security') },
+                { iconName: 'support' as AppIconName, labelKey: 'support' as const, onPress: () => navigation.navigate('HelpTopic', { topic: 'support' }) },
+                {
+                  iconName: 'rateApp' as AppIconName,
+                  labelKey: 'rate_app' as const,
+                  onPress: () => Alert.alert(t('rate_app'), t('thanks_rating')),
+                },
+              ] as const).map((item, i, arr) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[styles.menuItem, i < arr.length - 1 && styles.menuItemBorder]}
+                  onPress={item.onPress}
+                >
                   <View style={styles.menuIconWrap}>
                     <AppIcon name={item.iconName} size={20} color="#0064D2" />
                   </View>
@@ -152,7 +197,14 @@ export default function ProfileScreen() {
               style={styles.logoutBtn}
               onPress={() => Alert.alert(t('logout_title'), t('logout_confirm'), [
                 { text: t('cancel_btn'), style: 'cancel' },
-                { text: t('logout_title'), style: 'destructive', onPress: () => navigation.navigate('Login') },
+                {
+                  text: t('logout_title'),
+                  style: 'destructive',
+                  onPress: async () => {
+                    await signOut();
+                    navigation.navigate('Login');
+                  },
+                },
               ])}
             >
               <AppIcon name="logout" size={18} color="#EF4444" />
@@ -163,8 +215,23 @@ export default function ProfileScreen() {
 
         {tab === 'bookings' && (
           <View style={{ padding: 16 }}>
-            {BOOKINGS.map(b => (
-              <TouchableOpacity key={b.id} style={styles.bookingCard}>
+            {user && bookingsLoading ? (
+              <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#0064D2" />
+              </View>
+            ) : null}
+            {!(user && bookingsLoading) && bookingsToShow.length === 0 ? (
+              <Text style={{ textAlign: 'center', color: '#6B7280', paddingVertical: 24, fontSize: 15 }}>
+                {user ? t('no_bookings_yet') : t('profile_login_for_bookings')}
+              </Text>
+            ) : null}
+            {!(user && bookingsLoading) &&
+              bookingsToShow.map((b) => (
+              <TouchableOpacity
+                key={b.id}
+                style={styles.bookingCard}
+                onPress={() => navigation.navigate('Eticket', { ticket: b.ticket })}
+              >
                 <View style={styles.bookingTop}>
                   <Text style={styles.bookingId}>#{b.id}</Text>
                   <View style={[styles.statusBadge, { backgroundColor: b.statusColor + '20' }]}>

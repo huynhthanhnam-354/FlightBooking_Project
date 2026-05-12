@@ -7,6 +7,8 @@ import AppIcon from './src/components/AppIcon';
 import { AppIconName } from './src/theme/icons';
 
 import { LanguageProvider, useLanguage } from './src/context/LanguageContext';
+import { SearchProvider } from './src/context/SearchContext';
+import { AuthProvider } from './src/context/AuthContext';
 import WelcomeScreen  from './src/screens/WelcomeScreen';
 import HomeScreen     from './src/screens/HomeScreen';
 import SearchScreen   from './src/screens/SearchScreen';
@@ -17,6 +19,11 @@ import FlightTrackingScreen from './src/screens/FlightTrackingScreen';
 import LoginScreen    from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import EticketScreen from './src/screens/EticketScreen';
+import EditSearchScreen from './src/screens/EditSearchScreen';
+import HelpTopicScreen from './src/screens/HelpTopicScreen';
+import EditProfileScreen from './src/screens/EditProfileScreen';
+import SecurityScreen from './src/screens/SecurityScreen';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -68,6 +75,11 @@ function AppNavigator() {
         <Stack.Screen name="Eticket" component={EticketScreen} />
         <Stack.Screen name="FlightTracking" component={FlightTrackingScreen} />
         <Stack.Screen name="Main"     component={MainTabs} />
+        <Stack.Screen name="EditSearch" component={EditSearchScreen} />
+        <Stack.Screen name="HelpTopic" component={HelpTopicScreen} />
+        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+        <Stack.Screen name="Security" component={SecurityScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -76,7 +88,11 @@ function AppNavigator() {
 export default function App() {
   return (
     <LanguageProvider>
-      <AppNavigator />
+      <SearchProvider>
+        <AuthProvider>
+          <AppNavigator />
+        </AuthProvider>
+      </SearchProvider>
     </LanguageProvider>
   );
 }
