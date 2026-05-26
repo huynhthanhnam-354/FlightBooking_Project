@@ -11,7 +11,9 @@ export function AuthProvider({ children }) {
   }, []);
 
   function login({ identifier }) {
-    const u = { name: identifier };
+    const normalized = identifier?.toLowerCase() || ''
+    const role = normalized.includes('admin') ? 'admin' : 'user'
+    const u = { name: identifier, role };
     setUser(u);
     localStorage.setItem("fb_user", JSON.stringify(u));
     return u;
