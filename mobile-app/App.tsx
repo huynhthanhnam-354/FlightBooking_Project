@@ -95,21 +95,29 @@ function AppNavigator() {
   }
 
   const initialRouteName = user ? 'Main' : onboardingDone ? 'Login' : 'Welcome';
+  const navigatorKey = user ? 'auth' : `guest-${initialRouteName}`;
 
   return (
     <NavigationContainer>
-      <Stack.Navigator key={initialRouteName} initialRouteName={initialRouteName} screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Welcome"  component={WelcomeScreen} />
-        <Stack.Screen name="Login"    component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen name="Eticket" component={EticketScreen} />
-        <Stack.Screen name="FlightTracking" component={FlightTrackingScreen} />
-        <Stack.Screen name="Main"     component={MainTabs} />
-        <Stack.Screen name="EditSearch" component={EditSearchScreen} />
-        <Stack.Screen name="HelpTopic" component={HelpTopicScreen} />
-        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-        <Stack.Screen name="Security" component={SecurityScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Navigator key={navigatorKey} initialRouteName={initialRouteName} screenOptions={{ headerShown: false }}>
+        {user ? (
+          <>
+            <Stack.Screen name="Main"     component={MainTabs} />
+            <Stack.Screen name="Eticket" component={EticketScreen} />
+            <Stack.Screen name="FlightTracking" component={FlightTrackingScreen} />
+            <Stack.Screen name="EditSearch" component={EditSearchScreen} />
+            <Stack.Screen name="HelpTopic" component={HelpTopicScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="Security" component={SecurityScreen} />
+          </>
+        ) : (
+          <>
+            <Stack.Screen name="Welcome"  component={WelcomeScreen} />
+            <Stack.Screen name="Login"    component={LoginScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

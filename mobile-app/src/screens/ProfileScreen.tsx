@@ -206,7 +206,6 @@ export default function ProfileScreen() {
                   style: 'destructive',
                   onPress: async () => {
                     await signOut();
-                    navigation.navigate('Login');
                   },
                 },
               ])}

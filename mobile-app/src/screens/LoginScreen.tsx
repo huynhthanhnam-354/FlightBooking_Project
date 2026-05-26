@@ -30,10 +30,8 @@ export default function LoginScreen() {
     try {
       const res = await loginAccount({ email: em, password });
       await signIn(res);
-      navigation.navigate('Main');
     } catch (e) {
       Alert.alert(t('login_title'), `${t('register_failed_hint')}\n${formatAuthError(e)}`);
-    } finally {
       setSubmitting(false);
     }
   };

@@ -74,12 +74,8 @@ export default function RegisterScreen() {
         phone: form.phone.trim() || undefined,
       });
       await signIn(res);
-      Alert.alert(t('register_success'), email, [
-        { text: t('confirm'), onPress: () => navigation.navigate('Main') },
-      ]);
     } catch (e) {
       Alert.alert(t('register_failed_title'), `${t('register_failed_hint')}\n${formatAuthError(e)}`);
-    } finally {
       setSubmitting(false);
     }
   };
