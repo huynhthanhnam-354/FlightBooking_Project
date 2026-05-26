@@ -27,11 +27,17 @@ export default function DatePriceSlider({ days = 7, flights = [], selectedDate, 
         {items.map(it => {
           const key = it.date.toISOString().slice(0,10)
           const isSel = selectedDate === key
+          const displayPrice = flights && flights.length ? `${it.price.toLocaleString()}₫` : 'N/A'
           return (
-            <button key={key} onClick={() => onSelect && onSelect(key)} className={`min-w-[110px] p-3 rounded-lg ${isSel ? 'bg-sky-600 text-white' : 'bg-white'} shadow-sm`}> 
-              <div className="text-sm">{it.date.toLocaleDateString('vi-VN', { weekday: 'short' })}</div>
-              <div className="font-semibold">{fmtDate(it.date)}</div>
-              <div className="text-orange-600 font-bold mt-1">{it.price.toLocaleString()}₫</div>
+            <button
+              key={key}
+              onClick={() => onSelect && onSelect(key)}
+              className={`min-w-[120px] rounded-3xl border px-4 py-4 text-left shadow-sm transition ${isSel ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-900 border-slate-200 hover:border-slate-300 hover:shadow-md'}`}>
+              <div className="text-xs uppercase tracking-[0.18em] text-slate-400 mb-2">{it.date.toLocaleDateString('vi-VN', { weekday: 'short' })}</div>
+              <div className="font-semibold text-base mb-2">{fmtDate(it.date)}</div>
+              <div className={`text-sm font-semibold ${flights && flights.length ? 'text-orange-600' : 'text-slate-400'}`}>
+                {displayPrice}
+              </div>
             </button>
           )
         })}

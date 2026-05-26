@@ -52,42 +52,45 @@ export default function ChatWidget() {
   return (
     <div>
       {/* Floating button */}
-      <div className="fixed right-6 bottom-6 z-50">
+      <div className="fixed right-6 bottom-6 z-50 flex items-end justify-end">
         {!open && (
-          <button aria-label="Mở trợ lý" onClick={() => setOpen(true)} className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-600 to-sky-500 text-white shadow-lg flex items-center justify-center hover:scale-105 transition">
-            <FaRobot size={20} />
-          </button>
+          <div className="relative flex items-center justify-end">
+            <div className="absolute -right-1 top-0 rounded-full bg-slate-950/95 px-3 py-2 text-xs text-white shadow-xl shadow-slate-900/20 animate-fade-in">
+              Hi, need help booking?
+            </div>
+            <div className="absolute inset-0 rounded-full bg-sky-500/20 blur-xl" />
+            <div className="absolute inset-0 rounded-full border border-sky-400/40 animate-ping" />
+            <button aria-label="Mở trợ lý" onClick={() => setOpen(true)} className="relative w-16 h-16 rounded-full bg-gradient-to-br from-slate-900 via-slate-800 to-sky-600 text-white shadow-2xl shadow-sky-500/40 flex items-center justify-center hover:scale-105 transition-transform duration-200 z-10 border border-white/10">
+              <FaRobot size={22} />
+            </button>
+          </div>
         )}
 
         {open && (
-          <div className="w-80 md:w-96 h-[520px] bg-white/20 backdrop-blur-md border border-white/20 rounded-3xl shadow-2xl p-3 flex flex-col text-white">
-            <div className="flex items-center justify-between mb-2">
+          <div className="w-80 md:w-96 max-h-[540px] bg-white border border-slate-200 rounded-[32px] shadow-[0_30px_90px_rgba(15,23,42,0.18)] p-4 flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold">AI</div>
+                <div className="w-12 h-12 rounded-3xl bg-gradient-to-br from-sky-600 to-indigo-700 text-white flex items-center justify-center text-lg font-bold shadow-lg shadow-sky-500/20">AI</div>
                 <div>
-                  <div className="font-semibold">Trợ lý Đặt vé</div>
-                  <div className="text-xs text-green-300">Online</div>
+                  <div className="font-semibold text-slate-900">Sky AI Assistant</div>
+                  <div className="text-xs text-slate-500">Smart help for booking & support</div>
                 </div>
               </div>
-              <div>
-                <button onClick={() => setOpen(false)} aria-label="Đóng" className="p-2 rounded-full bg-white/10 hover:bg-white/20">
-                  <FiChevronDown />
-                </button>
-              </div>
+              <button onClick={() => setOpen(false)} aria-label="Đóng" className="p-2 rounded-2xl bg-slate-100 hover:bg-slate-200 transition">
+                <FiChevronDown className="text-slate-700" />
+              </button>
             </div>
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 p-1" role="log" aria-live="polite">
-              <div className="space-y-3">
-                {messages.map((m) => (
-                  <div key={m.id} className={`max-w-[84%] p-2 rounded-lg ${m.from === 'ai' ? 'bg-white/10 text-white' : 'bg-white text-black self-end'}`}>
-                    <div className="text-sm">{m.text}</div>
-                  </div>
-                ))}
-              </div>
+            <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 pr-1" role="log" aria-live="polite">
+              {messages.map((m) => (
+                <div key={m.id} className={`max-w-[84%] p-3 rounded-3xl ${m.from === 'ai' ? 'bg-slate-100 text-slate-900 self-start' : 'bg-slate-900 text-white self-end'}`}>
+                  <div className="text-sm leading-relaxed">{m.text}</div>
+                </div>
+              ))}
 
-              <div className="mt-3">
-                <div className="text-xs text-slate-200 mb-2">Gợi ý nhanh</div>
-                <div className="grid grid-cols-1 gap-2">
+              <div className="mt-2">
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-400 mb-3">Quick prompts</div>
+                <div className="grid gap-2">
                   {quickActions.map((a) => (
                     <QuickActionCard key={a.id} title={a.title} subtitle={a.subtitle} onClick={() => sendMessage(a.title)} />
                   ))}
@@ -95,11 +98,18 @@ export default function ChatWidget() {
               </div>
             </div>
 
-            <div className="mt-3">
+            <div className="mt-4 pt-3 border-t border-slate-200">
               <div className="flex gap-2">
-                <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendMessage(input)} placeholder="Nhập tin nhắn..." className="flex-1 px-3 py-2 rounded-xl bg-white/10 placeholder:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-400" />
-                <button onClick={() => sendMessage(input)} className="px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 transition flex items-center justify-center">
-                  <FiSend className="text-white" />
+                <input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && sendMessage(input)}
+                  placeholder="Ask me anything about your booking..."
+                  className="flex-1 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                />
+                <button onClick={() => sendMessage(input)} className="rounded-3xl bg-sky-600 px-4 py-3 text-white font-semibold hover:bg-sky-700 transition">
+                  <FiSend />
                 </button>
               </div>
             </div>

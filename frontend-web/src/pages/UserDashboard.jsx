@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import MOCK_BOOKINGS from '../data/mockBookings'
-import { FaPlane, FaHistory, FaUser, FaQrcode, FaClock, FaCheckCircle, FaXmarkCircle, FaCreditCard, FaPhone, FaEnvelope, FaMapMarkerAlt, FaEdit, FaSignOutAlt, FaChevronRight } from 'react-icons/fa'
+import { FaPlane, FaHistory, FaUser, FaQrcode, FaClock, FaCheckCircle, FaTimesCircle, FaCreditCard, FaPhone, FaEnvelope, FaMapMarkerAlt, FaEdit, FaSignOutAlt, FaChevronRight } from 'react-icons/fa'
 
 // QR Code component using canvas (no external dependency needed)
 function QRCodeDisplay({ value, size = 150 }) {
@@ -67,7 +67,7 @@ function TicketCard({ booking, onShowQR }) {
   const statusMap = {
     upcoming: { label: 'Sắp khởi hành', color: 'bg-sky-100 text-sky-800', icon: FaClock },
     completed: { label: 'Đã hoàn thành', color: 'bg-green-100 text-green-800', icon: FaCheckCircle },
-    cancelled: { label: 'Đã hủy', color: 'bg-rose-100 text-rose-800', icon: FaXmarkCircle }
+    cancelled: { label: 'Đã hủy', color: 'bg-rose-100 text-rose-800', icon: FaTimesCircle }
   }
 
   const s = statusMap[booking.status] || statusMap.upcoming
@@ -149,7 +149,7 @@ function QRModal({ booking, onClose }) {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-slate-800">Mã QR Vé Điện Tử</h3>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-            <FaXmarkCircle className="text-slate-400 hover:text-slate-600" />
+            <FaTimesCircle className="text-slate-400 hover:text-slate-600" />
           </button>
         </div>
 
