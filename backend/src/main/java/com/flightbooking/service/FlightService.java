@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -22,7 +24,7 @@ public class FlightService {
     private final AirLabsScheduleSyncService airLabsScheduleSyncService;
 
     @Transactional
-    public List<FlightResponse> search(String originCode, String destinationCode) {
+    public List<FlightResponse> search(String originCode, String destinationCode, LocalDate departureDate) {
         String o = originCode.trim().toUpperCase();
         String d = destinationCode.trim().toUpperCase();
         if (flightApiProperties.isConfigured()) {
@@ -32,7 +34,17 @@ public class FlightService {
                 log.warn("AirLabs sync skipped for {}→{}: {}", o, d, e.getMessage());
             }
         }
-        return flightRepository.findByOriginCodeAndDestinationCodeOrderByDepartureAtAsc(o, d)
+        List<Flight> flights;
+        if (departureDate != null) {
+            LocalDateTime start = departureDate.atStartOfDay();
+            LocalDateTime end = departureDate.plusDays(1).atStartOfDay();
+            flights = flightRepository.findByOriginCodeAndDestinationCodeAndDepartureAtBetweenOrderByDepartureAtAsc(
+                    o, d, start, end
+            );
+        } else {
+            flights = flightRepository.findByOriginCodeAndDestinationCodeOrderByDepartureAtAsc(o, d);
+        }
+        return flights
                 .stream()
                 .map(this::toResponse)
                 .toList();

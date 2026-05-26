@@ -51,10 +51,9 @@ function addDaysDdMmYyyy(baseDdMmYyyy: string, days: number): string {
   return formatDdMmYyyy(d);
 }
 
-/** Next calendar day — sensible default for flight search. */
+/** Realtime schedules are near-term, so default to today's airport board. */
 function defaultDepartureDdMmYyyy(): string {
   const t = new Date();
-  t.setDate(t.getDate() + 1);
   return formatDdMmYyyy(t);
 }
 

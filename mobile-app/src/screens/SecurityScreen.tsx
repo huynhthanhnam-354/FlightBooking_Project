@@ -18,6 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import AppIcon from '../components/AppIcon';
 import { formatAuthError } from '../services/authApi';
 import { changePasswordApi, updatePrivacyApi } from '../services/userAccountApi';
+import { isStrongPassword, validationMessages } from '../utils/inputValidation';
 
 export default function SecurityScreen() {
   const navigation = useNavigation<any>();
@@ -61,8 +62,8 @@ export default function SecurityScreen() {
       Alert.alert(t('confirm'), t('password_current_required'));
       return;
     }
-    if (!next.trim() || next.length < 6) {
-      Alert.alert(t('confirm'), t('password_too_short'));
+    if (!isStrongPassword(next)) {
+      Alert.alert(t('confirm'), validationMessages.password);
       return;
     }
     if (next !== confirm) {

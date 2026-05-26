@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
 import { LANGUAGE_LABELS } from '../i18n/translations';
 import { CURRENCIES } from '../i18n/currencies';
+import { saveOnboardingDone } from '../storage/appPreferences';
 
 const LANGUAGES = Object.keys(LANGUAGE_LABELS);
 
@@ -23,7 +24,9 @@ export default function WelcomeScreen() {
     setShowLanguage(false);
   };
 
-  const canContinue = currency.code !== '' && langLabel !== '';
+  const selectedLanguageLabel =
+    langLabel || Object.keys(LANGUAGE_LABELS).find((label) => LANGUAGE_LABELS[label] === language) || '';
+  const canContinue = currency.code !== '' && selectedLanguageLabel !== '';
 
   const selectedCurrencyLabel = `${currency.flag} ${currency.names[language]}`;
 
@@ -53,7 +56,7 @@ export default function WelcomeScreen() {
           onPress={() => { setShowLanguage(!showLanguage); setShowCurrency(false); }}
         >
           <Text style={langLabel ? styles.pickerValue : styles.pickerPlaceholder}>
-            {langLabel || t('choose_language')}
+            {selectedLanguageLabel || t('choose_language')}
           </Text>
           <Text style={styles.arrow}>{showLanguage ? '▲' : '▼'}</Text>
         </TouchableOpacity>
@@ -106,13 +109,16 @@ export default function WelcomeScreen() {
 
         <TouchableOpacity
           style={[styles.btn, !canContinue && styles.btnDisabled]}
-          onPress={() => canContinue && navigation.navigate('Login')}
+          onPress={() => {
+            if (!canContinue) return;
+            void saveOnboardingDone().finally(() => navigation.navigate('Login'));
+          }}
           disabled={!canContinue}
         >
           <Text style={styles.btnText}>{t('continue_btn')}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+        <TouchableOpacity onPress={() => void saveOnboardingDone().finally(() => navigation.navigate('Login'))}>
           <Text style={styles.skip}>{t('skip_now')}</Text>
         </TouchableOpacity>
       </ScrollView>

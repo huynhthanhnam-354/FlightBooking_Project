@@ -50,6 +50,119 @@ function normalizeStatus(s: string | null | undefined): string {
   return (s || '').toLowerCase().replace(/\s+/g, '-');
 }
 
+type MapCoord = { latitude: number; longitude: number };
+type ProjectedCoord = MapCoord & { x: number; y: number };
+
+const HAS_ANDROID_GOOGLE_MAPS_KEY = !!process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();
+
+function projectCoords(coords: MapCoord[], width: number, height: number): ProjectedCoord[] {
+  const padding = 28;
+  if (coords.length === 0 || width <= 0 || height <= 0) return [];
+  const lats = coords.map((c) => c.latitude);
+  const lngs = coords.map((c) => c.longitude);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const latRange = Math.max(maxLat - minLat, 0.01);
+  const lngRange = Math.max(maxLng - minLng, 0.01);
+  return coords.map((c) => ({
+    ...c,
+    x: padding + ((c.longitude - minLng) / lngRange) * Math.max(width - padding * 2, 1),
+    y: padding + ((maxLat - c.latitude) / latRange) * Math.max(height - padding * 2, 1),
+  }));
+}
+
+function RouteSegment({ a, b }: { a: ProjectedCoord; b: ProjectedCoord }) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  const angle = `${Math.atan2(dy, dx)}rad`;
+
+  return (
+    <View
+      style={[
+        styles.routeSegment,
+        {
+          left: a.x + dx / 2 - length / 2,
+          top: a.y + dy / 2 - 1.5,
+          width: length,
+          transform: [{ rotate: angle }],
+        },
+      ]}
+    />
+  );
+}
+
+function RoutePoint({
+  point,
+  label,
+  color,
+}: {
+  point: ProjectedCoord;
+  label: string;
+  color: string;
+}) {
+  return (
+    <View style={[styles.routePointWrap, { left: point.x - 18, top: point.y - 18 }]}>
+      <View style={[styles.routePoint, { backgroundColor: color }]} />
+      <Text style={styles.routePointLabel} numberOfLines={1}>{label}</Text>
+    </View>
+  );
+}
+
+function FlightRouteMap({
+  data,
+  lineCoords,
+}: {
+  data: FlightTrackingDto;
+  lineCoords: MapCoord[];
+}) {
+  const [layout, setLayout] = useState({ width: 0, height: 0 });
+  const projected = useMemo(
+    () => projectCoords(lineCoords, layout.width, layout.height),
+    [lineCoords, layout.height, layout.width],
+  );
+  const depPoint = data.depLat != null && data.depLng != null
+    ? projected.find((p) => p.latitude === data.depLat && p.longitude === data.depLng)
+    : undefined;
+  const aircraftPoint = data.lat != null && data.lng != null
+    ? projected.find((p) => p.latitude === data.lat && p.longitude === data.lng)
+    : undefined;
+  const arrPoint = data.arrLat != null && data.arrLng != null
+    ? projected.find((p) => p.latitude === data.arrLat && p.longitude === data.arrLng)
+    : undefined;
+
+  return (
+    <View
+      style={styles.routeMap}
+      onLayout={(e) => setLayout({
+        width: e.nativeEvent.layout.width,
+        height: e.nativeEvent.layout.height,
+      })}
+    >
+      <View style={[styles.gridLineV, { left: '25%' }]} />
+      <View style={[styles.gridLineV, { left: '50%' }]} />
+      <View style={[styles.gridLineV, { left: '75%' }]} />
+      <View style={[styles.gridLineH, { top: '33%' }]} />
+      <View style={[styles.gridLineH, { top: '66%' }]} />
+
+      {projected.map((p, i) => {
+        const next = projected[i + 1];
+        return next ? <RouteSegment key={`${i}-${next.x}-${next.y}`} a={p} b={next} /> : null;
+      })}
+      {depPoint ? <RoutePoint point={depPoint} label={data.depIata || 'DEP'} color="#2563EB" /> : null}
+      {arrPoint ? <RoutePoint point={arrPoint} label={data.arrIata || 'ARR'} color="#059669" /> : null}
+      {aircraftPoint ? <RoutePoint point={aircraftPoint} label={data.flightIata} color="#DC2626" /> : null}
+      {projected.length === 0 ? (
+        <View style={styles.routeMapEmpty}>
+          <Text style={styles.routeMapEmptyText}>No coordinates available</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export default function FlightTrackingScreen() {
   const navigation = useNavigation<any>();
   const { t } = useLanguage();
@@ -152,6 +265,8 @@ export default function FlightTrackingScreen() {
     });
   }, [data]);
 
+  const useNativeMap = Platform.OS !== 'android' || HAS_ANDROID_GOOGLE_MAPS_KEY;
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#0064D2" />
@@ -252,45 +367,49 @@ export default function FlightTrackingScreen() {
           {data ? (
             <View style={styles.mapSection} collapsable={false}>
               <View style={styles.mapOuter}>
-                <MapView
-                  key={data.flightIata}
-                  provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-                  style={styles.map}
-                  mapType="standard"
-                  initialRegion={mapRegion}
-                  showsBuildings
-                  showsTraffic={false}
-                >
-                {data.depLat != null && data.depLng != null ? (
-                  <Marker
-                    key="dep"
-                    identifier="dep"
-                    coordinate={{ latitude: data.depLat, longitude: data.depLng }}
-                    title={data.depIata || 'DEP'}
-                    pinColor="#2563EB"
-                  />
-                ) : null}
-                {data.arrLat != null && data.arrLng != null ? (
-                  <Marker
-                    key="arr"
-                    identifier="arr"
-                    coordinate={{ latitude: data.arrLat, longitude: data.arrLng }}
-                    title={data.arrIata || 'ARR'}
-                    pinColor="#059669"
-                  />
-                ) : null}
-                {data.lat != null && data.lng != null ? (
-                  <Marker
-                    key="ac"
-                    identifier="ac"
-                    coordinate={{ latitude: data.lat, longitude: data.lng }}
-                    title={data.flightIata}
-                    description={statusLabel(data.status)}
-                    pinColor="#DC2626"
-                  />
-                ) : null}
-                {lineCoords.length >= 2 ? <Polyline coordinates={lineCoords} strokeColor="#0064D2" strokeWidth={3} /> : null}
-                </MapView>
+                {useNativeMap ? (
+                  <MapView
+                    key={data.flightIata}
+                    provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+                    style={styles.map}
+                    mapType="standard"
+                    initialRegion={mapRegion}
+                    showsBuildings
+                    showsTraffic={false}
+                  >
+                    {data.depLat != null && data.depLng != null ? (
+                      <Marker
+                        key="dep"
+                        identifier="dep"
+                        coordinate={{ latitude: data.depLat, longitude: data.depLng }}
+                        title={data.depIata || 'DEP'}
+                        pinColor="#2563EB"
+                      />
+                    ) : null}
+                    {data.arrLat != null && data.arrLng != null ? (
+                      <Marker
+                        key="arr"
+                        identifier="arr"
+                        coordinate={{ latitude: data.arrLat, longitude: data.arrLng }}
+                        title={data.arrIata || 'ARR'}
+                        pinColor="#059669"
+                      />
+                    ) : null}
+                    {data.lat != null && data.lng != null ? (
+                      <Marker
+                        key="ac"
+                        identifier="ac"
+                        coordinate={{ latitude: data.lat, longitude: data.lng }}
+                        title={data.flightIata}
+                        description={statusLabel(data.status)}
+                        pinColor="#DC2626"
+                      />
+                    ) : null}
+                    {lineCoords.length >= 2 ? <Polyline coordinates={lineCoords} strokeColor="#0064D2" strokeWidth={3} /> : null}
+                  </MapView>
+                ) : (
+                  <FlightRouteMap data={data} lineCoords={lineCoords} />
+                )}
               </View>
               <Text style={styles.mapNote}>{t('flight_tracking_map_note')}</Text>
               <Text style={styles.hint}>{t('flight_tracking_hint_flights')}</Text>
@@ -389,6 +508,58 @@ const styles = StyleSheet.create({
     }),
   },
   map: { width: '100%', height: '100%', flex: 1 },
+  routeMap: {
+    flex: 1,
+    backgroundColor: '#EAF4FF',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  gridLineV: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+  },
+  gridLineH: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+  },
+  routeSegment: {
+    position: 'absolute',
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#0064D2',
+  },
+  routePointWrap: {
+    position: 'absolute',
+    width: 36,
+    alignItems: 'center',
+  },
+  routePoint: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
+  routePointLabel: {
+    marginTop: 3,
+    maxWidth: 54,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    color: '#1F2937',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  routeMapEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  routeMapEmptyText: { fontSize: 13, color: '#6B7280', fontWeight: '600' },
   mapNote: { fontSize: 11, color: '#9CA3AF', marginTop: 8, textAlign: 'center' },
   hint: { fontSize: 12, color: '#9CA3AF', marginTop: 10, lineHeight: 17 },
   suggestBtn: {

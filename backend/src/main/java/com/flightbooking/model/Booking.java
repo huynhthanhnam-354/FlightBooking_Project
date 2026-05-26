@@ -46,7 +46,7 @@ public class Booking {
     @JoinColumn(name = "flight_id", nullable = false)
     private Flight flight;
 
-    @Column(name = "seat_number", nullable = false, length = 8)
+    @Column(name = "seat_number", nullable = false, length = 64)
     private String seatNumber;
 
     @Column(name = "passenger_name", nullable = false, length = 200)
@@ -57,6 +57,19 @@ public class Booking {
 
     @Column(name = "passenger_phone", length = 32)
     private String passengerPhone;
+
+    @Column(name = "passenger_id_card", length = 64)
+    private String passengerIdCard;
+
+    @Column(name = "passenger_count", nullable = false)
+    @Builder.Default
+    private Integer passengerCount = 1;
+
+    @Column(name = "trip_type", length = 24)
+    private String tripType;
+
+    @Column(name = "payment_method", length = 32)
+    private String paymentMethod;
 
     @Column(name = "total_price_vnd", nullable = false)
     private Long totalPriceVnd;
@@ -79,6 +92,9 @@ public class Booking {
         }
         if (status == null) {
             status = BookingStatus.CONFIRMED;
+        }
+        if (passengerCount == null || passengerCount <= 0) {
+            passengerCount = 1;
         }
     }
 }

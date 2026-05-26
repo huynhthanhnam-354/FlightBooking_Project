@@ -24,11 +24,11 @@ export default function SearchScreen() {
     setLoading(true);
     setLoadError(null);
     try {
-      const out = await searchFlightsApi(search.fromCode, search.toCode);
+      const out = await searchFlightsApi(search.fromCode, search.toCode, search.departureDate);
       setFlights(out);
 
       if (search.tripType === 'roundTrip') {
-        const ret = await searchFlightsApi(search.toCode, search.fromCode);
+        const ret = await searchFlightsApi(search.toCode, search.fromCode, search.returnDate);
         let retMin = ret.length ? Math.min(...ret.map((x) => x.priceVND)) : null;
         if (retMin == null && out.length) {
           retMin = Math.round(Math.min(...out.map((x) => x.priceVND)) * 0.88);
@@ -44,7 +44,14 @@ export default function SearchScreen() {
     } finally {
       setLoading(false);
     }
-  }, [search.fromCode, search.toCode, search.tripType, search.setRoundTripReturnMinVnd]);
+  }, [
+    search.fromCode,
+    search.toCode,
+    search.departureDate,
+    search.returnDate,
+    search.tripType,
+    search.setRoundTripReturnMinVnd,
+  ]);
 
   useEffect(() => {
     loadFlights();
@@ -106,7 +113,12 @@ export default function SearchScreen() {
       </View>
 
       {/* Filter */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterBar}
+        contentContainerStyle={styles.filterContent}
+      >
         {FILTER_CHIPS.map(f => (
           <TouchableOpacity key={f.key} style={[styles.filterChip, activeFilter === f.key && styles.filterChipActive]} onPress={() => setActiveFilter(f.key)}>
             <Text style={[styles.filterText, activeFilter === f.key && styles.filterTextActive]}>{f.label}</Text>
@@ -209,7 +221,8 @@ const styles = StyleSheet.create({
   headerSub:        { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginBottom: 12 },
   editBtn:          { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
   editText:         { color: '#fff', fontSize: 13, fontWeight: '600' },
-  filterBar:        { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  filterBar:        { height: 58, maxHeight: 58, flexGrow: 0, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  filterContent:    { paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center' },
   filterChip:       { marginRight: 8, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#F3F4F6', borderWidth: 1.5, borderColor: '#F3F4F6' },
   filterChipActive: { backgroundColor: '#EFF6FF', borderColor: '#0064D2' },
   filterText:       { fontSize: 13, color: '#6B7280', fontWeight: '500' },
