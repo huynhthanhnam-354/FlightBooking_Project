@@ -12,6 +12,8 @@ import CheckoutPage from './pages/CheckoutPage'
 import BookingsPage from './pages/BookingsPage'
 import MyFlightsPage from './pages/MyFlightsPage'
 import NotificationsPage from './pages/NotificationsPage'
+import AdminDashboard from './pages/AdminDashboard'
+import UserDashboard from './pages/UserDashboard'
 
 function App() {
   return (
@@ -29,6 +31,8 @@ function App() {
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/booking" element={<BookingPage />} />
             <Route path="/booking/confirmation" element={<BookingConfirmation />} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            <Route path="/user-dashboard" element={<UserDashboard />} />
           </Routes>
           <ChatWidget />
         </div>
