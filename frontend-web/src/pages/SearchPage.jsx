@@ -2,17 +2,21 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import FlightSearchForm from '../components/FlightSearchForm'
 import FlightCard from '../components/FlightCard'
+import FlightCardSkeleton from '../components/FlightCardSkeleton'
 import SpecialOffers from '../components/SpecialOffers'
 import DatePriceSlider from '../components/DatePriceSlider'
 import PriceRangeSlider from '../components/PriceRangeSlider'
+import PriceTrendPredictor from '../components/PriceTrendPredictor'
 import { MOCK_FLIGHTS } from '../data/mockFlights'
 
 function SearchPage() {
+	const fallbackBounds = { min: 500000, max: 5000000 }
 	const [allFlights, setAllFlights] = useState(MOCK_FLIGHTS)
 	const [results, setResults] = useState(MOCK_FLIGHTS)
-	const [priceBounds, setPriceBounds] = useState({ min: 0, max: 0 })
-	const [minPrice, setMinPrice] = useState(0)
-	const [maxPrice, setMaxPrice] = useState(0)
+	const [priceBounds, setPriceBounds] = useState(fallbackBounds)
+	const [minPrice, setMinPrice] = useState(fallbackBounds.min)
+	const [maxPrice, setMaxPrice] = useState(fallbackBounds.max)
+	const [isLoading, setIsLoading] = useState(false)
 	const [selectedAirlines, setSelectedAirlines] = useState([])
 	const [selectedTimes, setSelectedTimes] = useState([])
 	const [sortBy, setSortBy] = useState('best')
@@ -35,6 +39,13 @@ function SearchPage() {
 
 	const location = useLocation()
 
+	const routeLabel = useMemo(() => {
+		const search = location?.state?.initialSearch || {}
+		const from = search.from || 'Hà Nội'
+		const to = search.to || 'Hồ Chí Minh'
+		return `${from} → ${to}`
+	}, [location?.state?.initialSearch])
+
 	useEffect(() => {
 		if (location?.state?.initialSearch) {
 			try {
@@ -48,7 +59,10 @@ function SearchPage() {
 	}, [location?.state?.initialSearch])
 
 	function applyFilters() {
-		let filtered = allFlights.filter(f => {
+		setIsLoading(true)
+		setTimeout(() => {
+			const source = allFlights
+			let filtered = source.filter(f => {
 			const p = Number(f.price) || 0
 			if (p < minPrice) return false
 			if (p > maxPrice) return false
@@ -85,7 +99,9 @@ function SearchPage() {
 		if (sortBy === 'priceDesc') filtered.sort((a, b) => b.price - a.price)
 
 		setResults(filtered)
-	}
+		setIsLoading(false)
+	}, 380)
+}
 
 	function resetFilters() {
 		setMinPrice(priceBounds.min)
@@ -93,9 +109,24 @@ function SearchPage() {
 		setSelectedAirlines([])
 		setSelectedTimes([])
 		setSortBy('best')
-		setResults(allFlights)
 		setSelectedStops([])
+		setSelectedAmenities([])
 		setSelectedDate(null)
+		setResults(allFlights)
+	}
+
+	function searchAlternativeDates() {
+		setAllFlights(MOCK_FLIGHTS)
+		setResults(MOCK_FLIGHTS)
+		setPriceBounds(fallbackBounds)
+		setMinPrice(fallbackBounds.min)
+		setMaxPrice(fallbackBounds.max)
+		setSelectedAirlines([])
+		setSelectedTimes([])
+		setSelectedStops([])
+		setSelectedAmenities([])
+		setSelectedDate(null)
+		setSortBy('best')
 	}
 
 	function toggleAirline(name) {
@@ -115,9 +146,11 @@ function SearchPage() {
 	}
 
 	function handleSearch(criteria) {
-		const from = (criteria.from || '').toLowerCase()
-		const to = (criteria.to || '').toLowerCase()
-		const results = MOCK_FLIGHTS.filter(f => {
+		setIsLoading(true)
+		setTimeout(() => {
+			const from = (criteria.from || '').toLowerCase()
+			const to = (criteria.to || '').toLowerCase()
+			const results = MOCK_FLIGHTS.filter(f => {
 			const depart = (f.depart || '').toLowerCase()
 			const arrive = (f.arrive || '').toLowerCase()
 			return (from ? depart.includes(from) : true) && (to ? arrive.includes(to) : true)
@@ -127,12 +160,15 @@ function SearchPage() {
 		setResults(results)
 
 		const prices = results.map(f => Number(f.price) || 0)
-		const min = prices.length ? Math.min(...prices) : 0
-		const max = prices.length ? Math.max(...prices) : 0
+		const hasFlights = results.length > 0
+		const min = hasFlights ? Math.min(...prices) : fallbackBounds.min
+		const max = hasFlights ? Math.max(...prices) : fallbackBounds.max
 		setPriceBounds({ min, max })
 		setMinPrice(min)
 		setMaxPrice(max)
-	}
+		setIsLoading(false)
+	}, 420)
+}
 
 	return (
 		<div className="dashboard-container">
@@ -144,13 +180,19 @@ function SearchPage() {
 						<div className="mb-4">
 							<div className="text-sm font-medium">Giá (VNĐ)</div>
 							<div className="mt-2">
-								<PriceRangeSlider min={priceBounds.min} max={priceBounds.max} valueMin={minPrice} valueMax={maxPrice} onChangeMin={setMinPrice} onChangeMax={setMaxPrice} />
-							</div>
-							<div className="text-sm small-note mt-2">Khoảng giá: {priceBounds.min.toLocaleString()}₫ — {priceBounds.max.toLocaleString()}₫</div>
+							<PriceRangeSlider
+								min={results.length ? priceBounds.min : fallbackBounds.min}
+								max={results.length ? priceBounds.max : fallbackBounds.max}
+								valueMin={results.length ? minPrice : fallbackBounds.min}
+								valueMax={results.length ? maxPrice : fallbackBounds.max}
+								onChangeMin={setMinPrice}
+								onChangeMax={setMaxPrice}
+								disabled={!results.length}
+							/>
 						</div>
+						<div className="text-sm small-note mt-2">Khoảng giá: {(results.length ? priceBounds.min : fallbackBounds.min).toLocaleString()}₫ — {(results.length ? priceBounds.max : fallbackBounds.max).toLocaleString()}₫</div>					</div>
 
-						<div className="mb-4">
-							<div className="text-sm font-medium">Hãng hàng không</div>
+					<div className="mb-4">							<div className="text-sm font-medium">Hãng hàng không</div>
 							<div className="mt-2 space-y-2">
 								{airlines.map(a => (
 									<label key={a} className="flex items-center gap-2">
@@ -198,9 +240,10 @@ function SearchPage() {
 				<main className="lg:col-span-3">
 					<FlightSearchForm onSearch={handleSearch} />
 
-					<div className="mt-4">
-						<DatePriceSlider flights={allFlights} selectedDate={selectedDate} onSelect={(d) => setSelectedDate(d)} />
-					</div>
+				<div className="mt-6">
+					<PriceTrendPredictor routeLabel={routeLabel} />
+				</div>
+
 
 					<div className="mt-4 flex items-center justify-between">
 						<div className="text-sm small-note">Hiển thị {results.length} kết quả</div>
@@ -216,10 +259,27 @@ function SearchPage() {
 					</div>
 
 					<div className="mt-4 results-list">
-						{results.length === 0 && <div className="text-center text-slate-500">Không tìm thấy chuyến nào.</div>}
-						{results.map(f => (
-							<FlightCard key={f.id} flight={f} />
-						))}
+						{isLoading ? (
+						<div className="space-y-4">
+							{[1, 2, 3, 4].map(index => (
+								<FlightCardSkeleton key={index} />
+							))}
+						</div>
+					) : results.length === 0 ? (
+							<div className="rounded-[32px] border border-slate-200 bg-slate-50 p-10 text-center shadow-sm">
+								<div className="mx-auto mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-sky-500/10 text-4xl text-sky-600">✈️</div>
+								<h2 className="text-2xl font-semibold text-slate-900 mb-3">Không tìm thấy chuyến bay phù hợp</h2>
+								<p className="mx-auto max-w-xl text-slate-600 mb-6">Thử mở rộng ngày bay, điều chỉnh bộ lọc hoặc tìm các ngày khác để tìm chuyến bay tốt nhất cho bạn.</p>
+								<div className="flex flex-col sm:flex-row justify-center gap-3">
+									<button onClick={resetFilters} className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition">Xóa bộ lọc</button>
+									<button onClick={searchAlternativeDates} className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition">Tìm ngày khác</button>
+								</div>
+							</div>
+						) : (
+							results.map(f => (
+								<FlightCard key={f.id} flight={f} />
+							))
+						)}
 					</div>
 				</main>
 			</div>
