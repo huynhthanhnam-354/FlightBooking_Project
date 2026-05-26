@@ -19,8 +19,7 @@
     <description>Flight Booking Backend API - Spring Boot</description>
 
     <properties>
-        <java.version>21</java.version>
-        <!-- JDK 21+ trong IntelliJ: Lombok cũ gây TypeTag :: UNKNOWN khi compile -->
+        <java.version>17</java.version>
         <lombok.version>1.18.36</lombok.version>
     </properties>
 
