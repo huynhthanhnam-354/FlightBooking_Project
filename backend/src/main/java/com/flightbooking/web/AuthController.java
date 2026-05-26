@@ -2,6 +2,7 @@ package com.flightbooking.web;
 
 import com.flightbooking.service.AuthService;
 import com.flightbooking.web.dto.AuthResponse;
+import com.flightbooking.web.dto.ForgotPasswordRequest;
 import com.flightbooking.web.dto.LoginRequest;
 import com.flightbooking.web.dto.RegisterRequest;
 import jakarta.validation.Valid;
@@ -28,5 +29,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.requestPasswordReset(request);
+        return ResponseEntity.noContent().build();
     }
 }

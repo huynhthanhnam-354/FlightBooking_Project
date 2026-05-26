@@ -4,7 +4,9 @@ import com.flightbooking.model.AppUser;
 import com.flightbooking.model.Role;
 import com.flightbooking.repository.AppUserRepository;
 import com.flightbooking.security.JwtService;
+import com.flightbooking.validation.InputValidator;
 import com.flightbooking.web.dto.AuthResponse;
+import com.flightbooking.web.dto.ForgotPasswordRequest;
 import com.flightbooking.web.dto.LoginRequest;
 import com.flightbooking.web.dto.RegisterRequest;
 import lombok.RequiredArgsConstructor;
@@ -27,14 +29,18 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (appUserRepository.existsByEmailIgnoreCase(request.email())) {
+        String email = InputValidator.requireEmail(request.email());
+        InputValidator.requireStrongPassword(request.password());
+        String fullName = InputValidator.requirePersonName(request.fullName());
+        String phone = InputValidator.optionalPhone(request.phone());
+        if (appUserRepository.existsByEmailIgnoreCase(email)) {
             throw new IllegalArgumentException("Email already registered");
         }
         AppUser user = AppUser.builder()
-                .email(request.email().trim().toLowerCase())
+                .email(email)
                 .passwordHash(passwordEncoder.encode(request.password()))
-                .fullName(request.fullName().trim())
-                .phone(request.phone() != null ? request.phone().trim() : null)
+                .fullName(fullName)
+                .phone(phone)
                 .role(Role.USER)
                 .build();
         appUserRepository.save(user);
@@ -56,9 +62,10 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
+        String email = InputValidator.requireEmail(request.email());
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.email().trim().toLowerCase(),
+                        email,
                         request.password()
                 )
         );
@@ -75,5 +82,13 @@ public class AuthService {
                 user.isShareAnalytics(),
                 user.isMarketingOptIn()
         );
+    }
+
+    public void requestPasswordReset(ForgotPasswordRequest request) {
+        String email = InputValidator.requireEmail(request.email());
+        // Keep the response account-enumeration safe. Email delivery can be wired here.
+        appUserRepository.findByEmailIgnoreCase(email).ifPresent(user -> {
+            // No mail provider is configured in this project yet.
+        });
     }
 }

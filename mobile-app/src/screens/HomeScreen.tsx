@@ -59,7 +59,7 @@ export default function HomeScreen() {
       try {
         const rows: PopularRow[] = await Promise.all(
           POPULAR_ROUTES.map(async (r) => {
-            const list = await searchFlightsApi(r.from, r.to);
+            const list = await searchFlightsApi(r.from, r.to, search.departureDate);
             const cheapest =
               list.length > 0 ? [...list].sort((a, b) => a.priceVND - b.priceVND)[0] : null;
             return {
@@ -95,7 +95,7 @@ export default function HomeScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [search.departureDate]);
 
   const CATEGORIES = [
     { key: 'book', iconName: 'airplane'     as const, label: t('cat_book_flight') },

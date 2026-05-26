@@ -10,6 +10,12 @@ public record BookingResponse(
         BookingStatus status,
         String seatNumber,
         String passengerName,
+        String passengerEmail,
+        String passengerPhone,
+        String passengerIdCard,
+        int passengerCount,
+        String tripType,
+        String paymentMethod,
         long totalPriceVnd,
         Instant createdAt,
         FlightResponse flight

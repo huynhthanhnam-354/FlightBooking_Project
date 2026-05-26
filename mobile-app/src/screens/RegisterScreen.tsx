@@ -6,8 +6,13 @@ import AppIcon from '../components/AppIcon';
 import { AppIconName } from '../theme/icons';
 import { registerAccount, formatAuthError } from '../services/authApi';
 import { useAuth } from '../context/AuthContext';
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import {
+  isStrongPassword,
+  isValidEmail,
+  isValidFullName,
+  isValidOptionalPhone,
+  validationMessages,
+} from '../utils/inputValidation';
 
 type Field = {
   key: string;
@@ -40,7 +45,23 @@ export default function RegisterScreen() {
     if (!agreed) return;
     const email = form.email.trim();
     const fullName = form.fullName.trim();
-    if (!fullName || !EMAIL_RE.test(email) || form.password.length < 6 || form.password !== form.confirm) {
+    if (!isValidFullName(fullName)) {
+      Alert.alert(t('register_title'), validationMessages.fullName);
+      return;
+    }
+    if (!isValidEmail(email)) {
+      Alert.alert(t('register_title'), validationMessages.email);
+      return;
+    }
+    if (!isValidOptionalPhone(form.phone)) {
+      Alert.alert(t('register_title'), validationMessages.phone);
+      return;
+    }
+    if (!isStrongPassword(form.password)) {
+      Alert.alert(t('register_title'), validationMessages.password);
+      return;
+    }
+    if (form.password !== form.confirm) {
       Alert.alert(t('register_title'), t('register_fill_all'));
       return;
     }

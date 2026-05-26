@@ -2,6 +2,7 @@ package com.flightbooking.service;
 
 import com.flightbooking.model.AppUser;
 import com.flightbooking.repository.AppUserRepository;
+import com.flightbooking.validation.InputValidator;
 import com.flightbooking.web.dto.ChangePasswordRequest;
 import com.flightbooking.web.dto.MeResponse;
 import com.flightbooking.web.dto.PrivacyUpdateRequest;
@@ -26,15 +27,15 @@ public class AccountService {
     @Transactional
     public MeResponse updateProfile(String email, UpdateProfileRequest request) {
         AppUser user = requireUser(email);
-        user.setFullName(request.fullName().trim());
-        String p = request.phone();
-        user.setPhone(p == null || p.isBlank() ? null : p.trim());
+        user.setFullName(InputValidator.requirePersonName(request.fullName()));
+        user.setPhone(InputValidator.optionalPhone(request.phone()));
         return toMe(user);
     }
 
     @Transactional
     public void changePassword(String email, ChangePasswordRequest request) {
         AppUser user = requireUser(email);
+        InputValidator.requireStrongPassword(request.newPassword());
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
             throw new BadCredentialsException("Current password is incorrect");
         }

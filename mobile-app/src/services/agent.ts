@@ -1,4 +1,6 @@
-import { translations, type Language } from '../i18n/translations';
+import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
+import type { Language } from '../i18n/translations';
 
 export type AgentRole = 'user' | 'assistant';
 
@@ -27,18 +29,21 @@ export type AgentRequestContext = {
   budgetVnd?: number;
 };
 
-/**
- * In-app copy only — no mock “AI” answers. Wire POST /agent/chat when backend exists.
- */
 export async function sendMessageToAgent(
-  _message: string,
-  _context?: AgentRequestContext,
+  message: string,
+  context?: AgentRequestContext,
   language: Language = 'vi',
 ): Promise<AgentResponse> {
-  await new Promise((resolve) => setTimeout(resolve, 280));
-  const pack = translations[language];
+  const { data } = await axios.post<AgentResponse>(`${API_BASE_URL}/api/agent/chat`, {
+    message,
+    context,
+    language,
+  }, {
+    headers: { 'Content-Type': 'application/json' },
+    timeout: 25000,
+  });
   return {
-    reply: pack.agent_assistant_reply,
-    suggestions: [],
+    reply: data.reply,
+    suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
   };
 }

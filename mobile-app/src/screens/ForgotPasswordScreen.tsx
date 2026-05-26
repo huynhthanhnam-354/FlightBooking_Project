@@ -9,15 +9,33 @@ import {
   TextInput,
   ScrollView,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
 import AppIcon from '../components/AppIcon';
+import { formatAuthError, requestPasswordReset } from '../services/authApi';
+import { isValidEmail } from '../utils/inputValidation';
 
 export default function ForgotPasswordScreen() {
   const navigation = useNavigation<any>();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async () => {
+    const cleanEmail = email.trim();
+    if (!isValidEmail(cleanEmail) || submitting) return;
+    setSubmitting(true);
+    try {
+      await requestPasswordReset(cleanEmail);
+      Alert.alert(t('confirm'), t('reset_link_demo'), [{ text: t('confirm'), onPress: () => navigation.goBack() }]);
+    } catch (e) {
+      Alert.alert(t('register_failed_title'), formatAuthError(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -41,11 +59,11 @@ export default function ForgotPasswordScreen() {
           />
         </View>
         <TouchableOpacity
-          style={[styles.btn, !email.trim() && styles.btnOff]}
-          disabled={!email.trim()}
-          onPress={() => Alert.alert(t('confirm'), t('reset_link_demo'), [{ text: t('confirm'), onPress: () => navigation.goBack() }])}
+          style={[styles.btn, (!isValidEmail(email.trim()) || submitting) && styles.btnOff]}
+          disabled={!isValidEmail(email.trim()) || submitting}
+          onPress={() => void submit()}
         >
-          <Text style={styles.btnText}>{t('send_recovery')}</Text>
+          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{t('send_recovery')}</Text>}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

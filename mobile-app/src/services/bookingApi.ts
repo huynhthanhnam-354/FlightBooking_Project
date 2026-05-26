@@ -9,6 +9,12 @@ export type BookingDto = {
   status: string;
   seatNumber: string;
   passengerName: string;
+  passengerEmail?: string | null;
+  passengerPhone?: string | null;
+  passengerIdCard?: string | null;
+  passengerCount: number;
+  tripType?: string | null;
+  paymentMethod?: string | null;
   totalPriceVnd: number;
   createdAt: string;
   flight: FlightDto;
@@ -29,6 +35,10 @@ export type CreateBookingBody = {
   passengerName: string;
   passengerEmail: string;
   passengerPhone?: string;
+  passengerIdCard?: string;
+  passengerCount: number;
+  tripType?: string;
+  paymentMethod?: string;
   totalPriceVnd: number;
 };
 
@@ -46,4 +56,12 @@ export async function listMyBookingsApi(): Promise<BookingDto[]> {
     timeout: 25000,
   });
   return Array.isArray(data) ? data : [];
+}
+
+export async function listOccupiedSeatsApi(flightId: number): Promise<string[]> {
+  const { data } = await axios.get<string[]>(`${API_BASE_URL}/api/bookings/occupied-seats`, {
+    params: { flightId },
+    timeout: 25000,
+  });
+  return Array.isArray(data) ? data.map((x) => String(x).trim().toUpperCase()).filter(Boolean) : [];
 }

@@ -3,6 +3,7 @@ import { SafeAreaView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity,
 import AppIcon from '../components/AppIcon';
 import { AgentMessage, sendMessageToAgent } from '../services/agent';
 import { useLanguage } from '../context/LanguageContext';
+import { useSearch } from '../context/SearchContext';
 
 function makeMessage(role: 'user' | 'assistant', content: string): AgentMessage {
   return {
@@ -15,6 +16,7 @@ function makeMessage(role: 'user' | 'assistant', content: string): AgentMessage 
 
 export default function AgentScreen() {
   const { t, language } = useLanguage();
+  const search = useSearch();
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,7 +39,12 @@ export default function AgentScreen() {
     setLoading(true);
 
     try {
-      const response = await sendMessageToAgent(text, undefined, language);
+      const response = await sendMessageToAgent(text, {
+        from: search.fromCode,
+        to: search.toCode,
+        date: search.departureDate,
+        passengers: search.adults,
+      }, language);
       setMessages((prev) => [makeMessage('assistant', response.reply), ...prev]);
       setSuggestions(response.suggestions.map((s) => s.label));
     } catch (_err) {
@@ -51,7 +58,7 @@ export default function AgentScreen() {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#0064D2" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>AI Assistant</Text>
+        <Text style={styles.headerTitle}>SkyBook Assistant</Text>
         <Text style={styles.headerSub}>Tu van tim chuyen bay va dat ve</Text>
       </View>
 

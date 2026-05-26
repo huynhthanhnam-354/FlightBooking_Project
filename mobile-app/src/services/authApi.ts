@@ -46,6 +46,15 @@ export async function loginAccount(body: { email: string; password: string }): P
   return data;
 }
 
+export async function requestPasswordReset(email: string): Promise<void> {
+  await axios.post(`${API_BASE_URL}/api/auth/forgot-password`, {
+    email: email.trim().toLowerCase(),
+  }, {
+    headers: { 'Content-Type': 'application/json' },
+    timeout: 25000,
+  });
+}
+
 export function formatAuthError(err: unknown): string {
   if (axios.isAxiosError(err)) {
     const d = err.response?.data as any;
