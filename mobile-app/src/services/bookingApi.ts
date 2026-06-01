@@ -15,8 +15,11 @@ export type BookingDto = {
   passengerCount: number;
   tripType?: string | null;
   paymentMethod?: string | null;
+  baggageKg?: number | null;
+  baggageFeeVnd?: number | null;
   totalPriceVnd: number;
   createdAt: string;
+  checkedInAt?: string | null;
   flight: FlightDto;
 };
 
@@ -39,6 +42,8 @@ export type CreateBookingBody = {
   passengerCount: number;
   tripType?: string;
   paymentMethod?: string;
+  baggageKg?: number;
+  baggageFeeVnd?: number;
   totalPriceVnd: number;
 };
 
@@ -56,6 +61,25 @@ export async function listMyBookingsApi(): Promise<BookingDto[]> {
     timeout: 25000,
   });
   return Array.isArray(data) ? data : [];
+}
+
+export async function updateBookingBaggageApi(
+  bookingId: number,
+  body: { baggageKg: number; baggageFeeVnd: number },
+): Promise<BookingDto> {
+  const { data } = await axios.put<BookingDto>(`${API_BASE_URL}/api/bookings/${bookingId}/baggage`, body, {
+    headers: await authHeaders(),
+    timeout: 25000,
+  });
+  return data;
+}
+
+export async function checkInBookingApi(body: { pnr: string; passengerLastName: string }): Promise<BookingDto> {
+  const { data } = await axios.post<BookingDto>(`${API_BASE_URL}/api/bookings/check-in`, body, {
+    headers: await authHeaders(),
+    timeout: 25000,
+  });
+  return data;
 }
 
 export async function listOccupiedSeatsApi(flightId: number): Promise<string[]> {

@@ -167,9 +167,10 @@ export default function BookingScreen() {
     .map((seatId) => seatMap.find((seat) => seat.id === seatId))
     .filter((seat): seat is SeatItem => !!seat);
   const seatAddOn = selectedSeatMetas.reduce((sum, seat) => sum + seat.addOn, 0);
+  const baggageAddOn = search.baggageFeeVnd;
   const tax = Math.round(baseFareVnd * TAX_RATE);
   const serviceFeeVnd = BASE_SERVICE_FEE_VND * passengerCount;
-  const totalVnd = baseFareVnd + tax + serviceFeeVnd + seatAddOn;
+  const totalVnd = baseFareVnd + tax + serviceFeeVnd + seatAddOn + baggageAddOn;
   const cabinLabel = flight.premium ? t('business_class') : t('economy');
 
   const validatePassengerForm = () => {
@@ -252,9 +253,13 @@ export default function BookingScreen() {
         passengerCount,
         tripType: search.tripType,
         paymentMethod: selectedPayment,
+        baggageKg: search.baggageKg,
+        baggageFeeVnd: baggageAddOn,
         totalPriceVnd: totalVnd,
       });
       search.setSelectedFlight(null);
+      search.setBaggageKg(0);
+      search.setBaggageFeeVnd(0);
       setStep(0);
       Alert.alert(t('booking_success'), `${t('booking_code')}\nPNR: ${res.pnr}`);
     } catch (e) {
@@ -445,7 +450,7 @@ export default function BookingScreen() {
                 [t('tax_fee'), `${tax.toLocaleString()}₫`],
                 ['Phí dịch vụ', `${serviceFeeVnd.toLocaleString()}₫`],
                 ['Phụ phí ghế', `+${seatAddOn.toLocaleString()}₫`],
-                [t('luggage'), t('free')],
+                [t('luggage'), search.baggageKg > 0 ? `${search.baggageKg} kg - ${baggageAddOn.toLocaleString()}â‚«` : t('free')],
               ].map(([l, v]) => (
                 <View key={l} style={styles.priceRow}>
                   <Text style={styles.priceLabel}>{l}</Text>
