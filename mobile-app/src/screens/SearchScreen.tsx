@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
 import { useSearch } from '../context/SearchContext';
 import { formatPrice } from '../utils/price';
@@ -10,11 +10,14 @@ import type { CatalogFlight } from '../data/flightCatalog';
 import { searchFlightsApi } from '../services/flightApi';
 import { formatAuthError } from '../services/authApi';
 
+type FlightFilter = 'all' | 'cheap' | 'early' | 'fast' | 'biz';
+
 export default function SearchScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { t, currency } = useLanguage();
   const search = useSearch();
-  const [activeFilter, setActiveFilter] = useState<'all' | 'cheap' | 'early' | 'fast' | 'biz'>('all');
+  const [activeFilter, setActiveFilter] = useState<FlightFilter>('all');
   const [selected, setSelected] = useState<string | null>(null);
   const [flights, setFlights] = useState<CatalogFlight[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +59,13 @@ export default function SearchScreen() {
   useEffect(() => {
     loadFlights();
   }, [loadFlights]);
+
+  useEffect(() => {
+    const nextFilter = route.params?.initialFilter;
+    if (['all', 'cheap', 'early', 'fast', 'biz'].includes(nextFilter)) {
+      setActiveFilter(nextFilter);
+    }
+  }, [route.params?.initialFilter]);
 
   const returnAddon = search.tripType === 'roundTrip' ? search.roundTripReturnMinVnd ?? 0 : 0;
 

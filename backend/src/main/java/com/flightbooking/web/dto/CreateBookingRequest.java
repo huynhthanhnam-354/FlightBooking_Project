@@ -17,6 +17,8 @@ public record CreateBookingRequest(
         @NotNull @Positive @Max(9) Integer passengerCount,
         @Size(max = 24) String tripType,
         @Size(max = 32) String paymentMethod,
+        @Max(40) Integer baggageKg,
+        Long baggageFeeVnd,
         @NotNull @Positive Long totalPriceVnd
 ) {
 }

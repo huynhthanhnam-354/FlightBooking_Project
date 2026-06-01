@@ -18,6 +18,10 @@ type SearchContextValue = {
 
   roundTripReturnMinVnd: number | null;
   setRoundTripReturnMinVnd: (v: number | null) => void;
+  baggageKg: number;
+  setBaggageKg: (v: number) => void;
+  baggageFeeVnd: number;
+  setBaggageFeeVnd: (v: number) => void;
   adults: number;
   setAdults: (n: number) => void;
   selectedFlight: CatalogFlight | null;
@@ -65,6 +69,8 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
   const [departureDate, setDepartureDate] = useState(dep0);
   const [returnDate, setReturnDate] = useState(() => addDaysDdMmYyyy(dep0, 7));
   const [roundTripReturnMinVnd, setRoundTripReturnMinVnd] = useState<number | null>(null);
+  const [baggageKg, setBaggageKg] = useState(0);
+  const [baggageFeeVnd, setBaggageFeeVnd] = useState(0);
   const [adults, setAdults] = useState(1);
   const [selectedFlight, setSelectedFlight] = useState<CatalogFlight | null>(null);
 
@@ -108,6 +114,10 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
       setReturnDate,
       roundTripReturnMinVnd,
       setRoundTripReturnMinVnd,
+      baggageKg,
+      setBaggageKg,
+      baggageFeeVnd,
+      setBaggageFeeVnd,
       adults,
       setAdults,
       selectedFlight,
@@ -121,6 +131,8 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
       departureDate,
       returnDate,
       roundTripReturnMinVnd,
+      baggageKg,
+      baggageFeeVnd,
       adults,
       selectedFlight,
       swapRoute,

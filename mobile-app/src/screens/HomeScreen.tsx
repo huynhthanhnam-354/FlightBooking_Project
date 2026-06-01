@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
@@ -9,13 +9,7 @@ import { formatPrice } from '../utils/price';
 import AppIcon from '../components/AppIcon';
 import { searchFlightsApi } from '../services/flightApi';
 
-import { AppIconName } from '../theme/icons';
-
-const PROMOS: { id: string; color: string; titleKey: 'todays_deals' | 'popular_flights' | 'cat_flight_status'; iconName: AppIconName }[] = [
-  { id: '1', color: '#0064D2', titleKey: 'todays_deals',     iconName: 'ticket' },
-  { id: '2', color: '#7C3AED', titleKey: 'popular_flights',  iconName: 'airplane' },
-  { id: '3', color: '#0891B2', titleKey: 'cat_flight_status', iconName: 'flightStatus' },
-];
+const DEAL_COLORS = ['#0064D2', '#7C3AED', '#0891B2', '#059669'];
 
 type PopularRow = {
   id: string;
@@ -96,6 +90,27 @@ export default function HomeScreen() {
       cancelled = true;
     };
   }, [search.departureDate]);
+
+  const dealRows = useMemo(() => {
+    const rows = popularRows.filter((r) => r.hasResult);
+    return [...rows].sort((a, b) => a.priceVND - b.priceVND).slice(0, 4);
+  }, [popularRows]);
+
+  const fallbackDealRows = POPULAR_ROUTES.slice(0, 3).map((r) => ({
+    id: r.id,
+    from: r.from,
+    to: r.to,
+    airline: '...',
+    priceVND: 0,
+    time: '...',
+    hasResult: false,
+  }));
+
+  const handleDealPress = (deal: PopularRow) => {
+    search.setFromCode(deal.from);
+    search.setToCode(deal.to);
+    navigation.navigate('Flights', { initialFilter: 'cheap' });
+  };
 
   const CATEGORIES = [
     { key: 'book', iconName: 'airplane'     as const, label: t('cat_book_flight') },
@@ -264,16 +279,23 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginLeft: 16 }}>
-            {PROMOS.map(p => (
+            {(dealRows.length ? dealRows : fallbackDealRows).map((deal, index) => (
               <TouchableOpacity
-                key={p.id}
-                style={[styles.promoCard, { backgroundColor: p.color }]}
-                onPress={() => navigation.navigate('Flights')}
+                key={deal.id}
+                style={[styles.promoCard, { backgroundColor: DEAL_COLORS[index % DEAL_COLORS.length] }]}
+                onPress={() => handleDealPress(deal)}
               >
-                <View style={styles.promoIconWrap}>
-                  <AppIcon name={p.iconName} size={32} color="rgba(255,255,255,0.9)" />
+                <View style={styles.promoTopRow}>
+                  <AppIcon name="ticket" size={24} color="rgba(255,255,255,0.9)" />
+                  <Text style={styles.promoBadge}>{t('filter_cheapest')}</Text>
                 </View>
-                <Text style={styles.promoTitle}>{t(p.titleKey)}</Text>
+                <Text style={styles.promoRoute}>
+                  {deal.from} {'->'} {deal.to}
+                </Text>
+                <Text style={styles.promoTitle}>
+                  {deal.hasResult ? formatPrice(deal.priceVND, currency) : t('popular_loading')}
+                </Text>
+                <Text style={styles.promoMeta}>{deal.airline}</Text>
               </TouchableOpacity>
             ))}
             <View style={{ width: 16 }} />
@@ -368,9 +390,12 @@ const styles = StyleSheet.create({
   catItem:         { width: '33.33%', alignItems: 'center', marginBottom: 20 },
   catIcon:         { width: 60, height: 60, borderRadius: 18, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   catLabel:        { fontSize: 11, color: '#374151', fontWeight: '500', textAlign: 'center' },
-  promoCard:       { width: 180, borderRadius: 14, padding: 16, marginRight: 12, minHeight: 100 },
-  promoIconWrap:   { marginBottom: 8 },
-  promoTitle:      { color: '#fff', fontSize: 17, fontWeight: '800' },
+  promoCard:       { width: 190, borderRadius: 14, padding: 16, marginRight: 12, minHeight: 124 },
+  promoTopRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  promoBadge:      { color: '#fff', fontSize: 11, fontWeight: '700', backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
+  promoRoute:      { color: '#fff', fontSize: 18, fontWeight: '800', marginBottom: 4 },
+  promoTitle:      { color: '#fff', fontSize: 16, fontWeight: '800' },
+  promoMeta:       { color: 'rgba(255,255,255,0.78)', fontSize: 12, fontWeight: '600', marginTop: 4 },
   flightCard:      { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6 },
   flightLeft:      { flex: 1 },
   flightCode:      { fontSize: 15, fontWeight: '700', color: '#1A1A2E' },

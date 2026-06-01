@@ -16,8 +16,11 @@ public record BookingResponse(
         int passengerCount,
         String tripType,
         String paymentMethod,
+        int baggageKg,
+        long baggageFeeVnd,
         long totalPriceVnd,
         Instant createdAt,
+        Instant checkedInAt,
         FlightResponse flight
 ) {
 }

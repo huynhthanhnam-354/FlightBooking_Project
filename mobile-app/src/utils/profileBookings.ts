@@ -37,6 +37,7 @@ function timeHmFromIso(iso: string): string {
 
 function statusForBooking(status: string): { statusKey: ProfileBookingRow['statusKey']; statusColor: string } {
   if (status === 'PENDING_PAYMENT') return { statusKey: 'pending_payment', statusColor: '#F59E0B' };
+  if (status === 'CHECKED_IN') return { statusKey: 'confirmed', statusColor: '#2563EB' };
   if (status === 'COMPLETED' || status === 'CANCELLED') return { statusKey: 'completed', statusColor: '#9CA3AF' };
   return { statusKey: 'confirmed', statusColor: '#10B981' };
 }

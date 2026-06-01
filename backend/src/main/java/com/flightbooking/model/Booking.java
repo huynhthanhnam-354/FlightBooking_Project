@@ -71,6 +71,14 @@ public class Booking {
     @Column(name = "payment_method", length = 32)
     private String paymentMethod;
 
+    @Column(name = "baggage_kg", nullable = false)
+    @Builder.Default
+    private Integer baggageKg = 0;
+
+    @Column(name = "baggage_fee_vnd", nullable = false)
+    @Builder.Default
+    private Long baggageFeeVnd = 0L;
+
     @Column(name = "total_price_vnd", nullable = false)
     private Long totalPriceVnd;
 
@@ -85,6 +93,9 @@ public class Booking {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "checked_in_at")
+    private LocalDateTime checkedInAt;
+
     @PrePersist
     void prePersist() {
         if (createdAt == null) {
@@ -95,6 +106,12 @@ public class Booking {
         }
         if (passengerCount == null || passengerCount <= 0) {
             passengerCount = 1;
+        }
+        if (baggageKg == null || baggageKg < 0) {
+            baggageKg = 0;
+        }
+        if (baggageFeeVnd == null || baggageFeeVnd < 0) {
+            baggageFeeVnd = 0L;
         }
     }
 }
