@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import MOCK_BOOKINGS from '../data/mockBookings'
-import { FaPlane, FaHistory, FaUser, FaQrcode, FaClock, FaCheckCircle, FaTimesCircle, FaCreditCard, FaPhone, FaEnvelope, FaMapMarkerAlt, FaEdit, FaSignOutAlt, FaChevronRight } from 'react-icons/fa'
+import { FaPlane, FaHistory, FaUser, FaQrcode, FaClock, FaCheckCircle, FaTimesCircle, FaCreditCard, FaPhone, FaEnvelope, FaMapMarkerAlt, FaEdit, FaSignOutAlt, FaChevronRight, FaShieldAlt, FaLock } from 'react-icons/fa'
 
 // QR Code component using canvas (no external dependency needed)
 function QRCodeDisplay({ value, size = 150 }) {
@@ -213,14 +213,45 @@ function QRModal({ booking, onClose }) {
   )
 }
 
+// Security Section Component
+function SecuritySection() {
+  return (
+    <div className="bg-white rounded-xl shadow-md p-6 mt-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <FaShieldAlt className="text-blue-500" />
+          Bảo mật tài khoản
+        </h3>
+      </div>
+
+      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <FaLock className="text-orange-600" />
+          </div>
+          <div>
+            <p className="text-sm text-slate-500">Mật khẩu</p>
+            <p className="font-medium text-slate-800">**********</p>
+          </div>
+        </div>
+        <button 
+          className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+        >
+          Đổi mật khẩu
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // Account Info Section
 function AccountSection({ user }) {
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState({
-    fullName: user?.name || 'Người dùng',
-    email: user?.email || 'user@example.com',
+    fullName: user?.name || 'Huỳnh Trần Nam Bình',
+    email: user?.email || 'binhhtn@gmail.com',
     phone: user?.phone || '+84 90 123 4567',
-    address: user?.address || 'TP. Hồ Chí Minh, Việt Nam'
+    address: user?.address || 'Đà Nẵng, Việt Nam'
   })
 
   const handleChange = (e) => {
@@ -456,11 +487,11 @@ export default function UserDashboard() {
             <div className="mb-6 p-4 bg-slate-50 rounded-xl">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                  {(user?.name || 'U')[0].toUpperCase()}
+                  {(user?.name || 'H')[0].toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-slate-800 truncate">{user?.name || 'Người dùng'}</p>
-                  <p className="text-xs text-slate-500 truncate">{user?.email || 'user@example.com'}</p>
+                  <p className="font-medium text-slate-800 truncate">{user?.name || 'Huỳnh Trần Nam Bình'}</p>
+                  <p className="text-xs text-slate-500 truncate">{user?.email || 'binhhtn@gmail.com'}</p>
                 </div>
               </div>
             </div>
@@ -497,15 +528,11 @@ export default function UserDashboard() {
             </nav>
           </div>
 
-          {/* Logout Button */}
+          {/* Version Info */}
           <div className="absolute bottom-6 left-6 right-6">
-            <button
-              onClick={logout}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors"
-            >
-              <FaSignOutAlt />
-              Đăng xuất
-            </button>
+            <p className="text-xs text-slate-400 font-medium text-center">
+              Phiên bản v1.0.0 (FlightBook AI)
+            </p>
           </div>
         </aside>
 
@@ -550,7 +577,10 @@ export default function UserDashboard() {
             )}
 
             {activeTab === 'account' && (
-              <AccountSection user={user} />
+              <div className="space-y-6">
+                <AccountSection user={user} />
+                <SecuritySection />
+              </div>
             )}
           </div>
         </main>

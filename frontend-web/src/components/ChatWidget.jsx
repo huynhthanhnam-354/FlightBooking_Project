@@ -1,21 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { FaRobot } from 'react-icons/fa'
 import { FiSend, FiChevronDown } from 'react-icons/fi'
+import axios from 'axios'
 
 function QuickActionCard({ title, subtitle, onClick }) {
-  return (
-    <button onClick={onClick} className="w-full text-left p-3 bg-white/10 hover:bg-white/20 rounded-xl border border-white/10 backdrop-blur-sm transition">
-      <div className="font-semibold text-sm">{title}</div>
-      <div className="text-xs text-slate-200 mt-1">{subtitle}</div>
-    </button>
-  )
+// ... (QuickActionCard content remains same)
 }
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
   const [messages, setMessages] = useState([
-    { id: 1, from: 'ai', text: 'Chào bạn! Tôi có thể giúp gì hôm nay?' },
+    { id: 1, from: 'ai', text: 'Chào bạn! Tôi là trợ lý ảo Sky AI. Tôi có thể giúp bạn tìm chuyến bay hoặc giải đáp thắc mắc về hành trình.' },
   ])
   const inputRef = useRef(null)
   const scrollRef = useRef(null)
@@ -25,22 +22,39 @@ export default function ChatWidget() {
   }, [open])
 
   useEffect(() => {
-    // scroll to bottom when messages change
     const el = scrollRef.current
     if (el) {
       el.scrollTop = el.scrollHeight
     }
-  }, [messages])
+  }, [messages, loading])
 
-  function sendMessage(text) {
-    if (!text || !text.trim()) return
-    const m = { id: Date.now(), from: 'user', text: text.trim() }
+  async function sendMessage(text) {
+    if (!text || !text.trim() || loading) return
+    
+    const userMessage = text.trim()
+    const m = { id: Date.now(), from: 'user', text: userMessage }
+    
     setMessages((s) => [...s, m])
     setInput('')
-    // fake AI reply
-    setTimeout(() => {
-      setMessages((s) => [...s, { id: Date.now() + 1, from: 'ai', text: `Gợi ý cho: ${text.trim()}` }])
-    }, 700)
+    setLoading(true)
+
+    try {
+      const response = await axios.post('http://localhost:8080/api/ai/chat', {
+        message: userMessage
+      })
+      
+      const aiReply = response.data.reply
+      setMessages((s) => [...s, { id: Date.now() + 1, from: 'ai', text: aiReply }])
+    } catch (error) {
+      console.error('AI Chat Error:', error)
+      setMessages((s) => [...s, { 
+        id: Date.now() + 1, 
+        from: 'ai', 
+        text: 'Hệ thống đang bận, trợ lý AI sẽ quay lại sau ít phút.' 
+      }])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const quickActions = [
@@ -81,37 +95,50 @@ export default function ChatWidget() {
               </button>
             </div>
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 pr-1" role="log" aria-live="polite">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 pr-1 pb-2" role="log" aria-live="polite">
               {messages.map((m) => (
-                <div key={m.id} className={`max-w-[84%] p-3 rounded-3xl ${m.from === 'ai' ? 'bg-slate-100 text-slate-900 self-start' : 'bg-slate-900 text-white self-end'}`}>
+                <div key={m.id} className={`max-w-[84%] p-3 rounded-3xl ${m.from === 'ai' ? 'bg-slate-100 text-slate-900 self-start rounded-bl-none' : 'bg-slate-900 text-white self-end rounded-br-none ml-auto'}`}>
                   <div className="text-sm leading-relaxed">{m.text}</div>
                 </div>
               ))}
 
-              <div className="mt-2">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400 mb-3">Quick prompts</div>
+              {loading && (
+                <div className="flex items-center gap-2 p-3 bg-slate-100 text-slate-500 rounded-3xl rounded-bl-none max-w-[84%] animate-pulse">
+                  <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                  </div>
+                  <span className="text-xs italic">Sky AI đang suy nghĩ...</span>
+                </div>
+              )}
+
+              <div className="mt-2 pt-2 border-t border-slate-50">
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Quick prompts</div>
                 <div className="grid gap-2">
                   {quickActions.map((a) => (
-                    <QuickActionCard key={a.id} title={a.title} subtitle={a.subtitle} onClick={() => sendMessage(a.title)} />
+                    <button key={a.id} onClick={() => sendMessage(a.title)} className="w-full text-left p-3 bg-slate-50 hover:bg-sky-50 rounded-2xl border border-slate-100 transition group">
+                      <div className="font-bold text-xs text-slate-700 group-hover:text-sky-700">{a.title}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">{a.subtitle}</div>
+                    </button>
                   ))}
                 </div>
               </div>
             </div>
 
             <div className="mt-4 pt-3 border-t border-slate-200">
-              <div className="flex gap-2">
+              <form onSubmit={(e) => { e.preventDefault(); sendMessage(input); }} className="flex gap-2">
                 <input
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && sendMessage(input)}
-                  placeholder="Ask me anything about your booking..."
-                  className="flex-1 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                  placeholder="Hỏi tôi bất cứ điều gì..."
+                  className="flex-1 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400 text-sm"
                 />
-                <button onClick={() => sendMessage(input)} className="rounded-3xl bg-sky-600 px-4 py-3 text-white font-semibold hover:bg-sky-700 transition">
+                <button type="submit" disabled={loading} className="rounded-3xl bg-sky-600 px-4 py-3 text-white font-semibold hover:bg-sky-700 transition disabled:opacity-50">
                   <FiSend />
                 </button>
-              </div>
+              </form>
             </div>
           </div>
         )}

@@ -3,10 +3,14 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import BookingSummary from '../components/BookingSummary'
 import { MOCK_FLIGHTS } from '../data/mockFlights'
 import { FaCreditCard, FaUniversity, FaWallet, FaLock } from 'react-icons/fa'
+import { bookingApi, paymentApi } from '../services/api'
+import { useBookingStore } from '../store/bookingStore'
+import { toast } from 'react-toastify'
 
 export default function CheckoutPage() {
   const location = useLocation()
   const navigate = useNavigate()
+  const selectedSeats = useBookingStore((state) => state.selectedSeats)
 
   const bookingState = location.state?.booking || null
   const flight = bookingState?.flight || MOCK_FLIGHTS[0]
@@ -16,7 +20,7 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState(bookingState?.contact?.phone || '')
   const [email, setEmail] = useState(bookingState?.contact?.email || '')
   const [baggage, setBaggage] = useState(bookingState?.passenger?.baggage || 'none')
-  const [payment, setPayment] = useState('card')
+  const [payment, setPayment] = useState('vnpay') // Default to VNPAY
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState('')
 
@@ -26,7 +30,7 @@ export default function CheckoutPage() {
   const serviceFee = 50000 * passengers
   const total = subtotal + tax + serviceFee
 
-  function handlePay(e) {
+  async function handlePay(e) {
     e.preventDefault()
     setError('')
     if (!name || !phone || !email) {
@@ -35,30 +39,56 @@ export default function CheckoutPage() {
     }
 
     setIsProcessing(true)
-    const ref = 'BK' + Math.random().toString(36).slice(2, 9).toUpperCase()
-    const confirmation = {
-      flight,
-      passengers,
-      passenger: { name, phone, email, baggage },
-      contact: { email, phone },
-      paymentMethod: payment,
-      priceBreakdown: { pricePer: priceNumber, subtotal, tax, serviceFee, total },
-      ref,
-      createdAt: new Date().toISOString()
-    }
 
     try {
-      const prev = JSON.parse(localStorage.getItem('fb_bookings') || '[]')
-      prev.unshift(confirmation)
-      localStorage.setItem('fb_bookings', JSON.stringify(prev))
-    } catch (err) {
-      console.error('Failed to persist booking', err)
-    }
+      if (payment === 'vnpay') {
+        // 1. Create booking in Backend first
+        const bookingRequest = {
+          flightId: flight.id,
+          seatNumber: selectedSeats.join(', ') || 'Auto',
+          passengerName: name,
+          passengerEmail: email,
+          passengerPhone: phone,
+          totalPriceVnd: total
+        };
 
-    setTimeout(() => {
+        const bookingRes = await bookingApi.create(bookingRequest);
+        const bookingId = bookingRes.data.id;
+
+        // 2. Create VNPAY Payment URL
+        const paymentRes = await paymentApi.createVnPayUrl(bookingId);
+        const paymentUrl = paymentRes.data.paymentUrl;
+
+        // 3. Redirect to VNPAY
+        window.location.href = paymentUrl;
+      } else {
+        // Legacy mock logic for other methods
+        const ref = 'BK' + Math.random().toString(36).slice(2, 9).toUpperCase()
+        const confirmation = {
+          flight,
+          passengers,
+          passenger: { name, phone, email, baggage },
+          contact: { email, phone },
+          paymentMethod: payment,
+          priceBreakdown: { pricePer: priceNumber, subtotal, tax, serviceFee, total },
+          ref,
+          createdAt: new Date().toISOString()
+        }
+
+        const prev = JSON.parse(localStorage.getItem('fb_bookings') || '[]')
+        prev.unshift(confirmation)
+        localStorage.setItem('fb_bookings', JSON.stringify(prev))
+
+        setTimeout(() => {
+          setIsProcessing(false)
+          navigate('/booking/confirmation', { state: { confirmation } })
+        }, 900)
+      }
+    } catch (err) {
+      console.error('Payment failed', err)
+      setError(err.response?.data?.message || 'Có lỗi xảy ra trong quá trình xử lý thanh toán. Vui lòng thử lại.')
       setIsProcessing(false)
-      navigate('/booking/confirmation', { state: { confirmation } })
-    }, 900)
+    }
   }
 
   return (
@@ -117,28 +147,20 @@ export default function CheckoutPage() {
 
               <div>
                 <h3 className="text-sm font-medium text-slate-700 mb-3">Phương thức thanh toán</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className={`p-3 border rounded flex items-center gap-3 cursor-pointer ${payment==='vnpay' ? 'ring-2 ring-sky-500' : ''}`}>
+                    <input type="radio" name="payment" checked={payment==='vnpay'} onChange={() => setPayment('vnpay')} />
+                    <div className="flex items-center gap-2">
+                      <div className="w-10 h-6 bg-blue-600 rounded flex items-center justify-center text-[10px] text-white font-bold italic">VNPAY</div>
+                      <span className="text-sm">Cổng thanh toán VNPAY</span>
+                    </div>
+                  </label>
+
                   <label className={`p-3 border rounded flex items-center gap-3 cursor-pointer ${payment==='card' ? 'ring-2 ring-sky-500' : ''}`}>
                     <input type="radio" name="payment" checked={payment==='card'} onChange={() => setPayment('card')} />
                     <div className="flex items-center gap-2">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7h18M3 11h18M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                       <span className="text-sm">Thẻ tín dụng</span>
-                    </div>
-                  </label>
-
-                  <label className={`p-3 border rounded flex items-center gap-3 cursor-pointer ${payment==='bank' ? 'ring-2 ring-sky-500' : ''}`}>
-                    <input type="radio" name="payment" checked={payment==='bank'} onChange={() => setPayment('bank')} />
-                    <div className="flex items-center gap-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z"/></svg>
-                      <span className="text-sm">Chuyển khoản</span>
-                    </div>
-                  </label>
-
-                  <label className={`p-3 border rounded flex items-center gap-3 cursor-pointer ${payment==='wallet' ? 'ring-2 ring-sky-500' : ''}`}>
-                    <input type="radio" name="payment" checked={payment==='wallet'} onChange={() => setPayment('wallet')} />
-                    <div className="flex items-center gap-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h3"/></svg>
-                      <span className="text-sm">Ví điện tử</span>
                     </div>
                   </label>
                 </div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useBookingStore } from '../store/bookingStore'
 import './SeatMap.css'
 
 const letters = ['A', 'B', 'C', 'D', 'E', 'F']
@@ -37,19 +38,19 @@ function generateRows() {
 }
 
 export default function SeatMap() {
-  const [rows, setRows] = useState(generateRows())
+  // Use selector to only re-render when selectedSeats change
+  const selectedSeats = useBookingStore((state) => state.selectedSeats)
+  const toggleSeat = useBookingStore((state) => state.toggleSeat)
+  
+  const [rows] = useState(generateRows())
 
   const toggleSelect = (seatId) => {
-    setRows((prev) =>
-      prev.map((row) => ({
-        ...row,
-        seats: row.seats.map((s) => (s.id === seatId ? (s.status === 'booked' ? s : { ...s, selected: !s.selected }) : s)),
-      })),
-    )
+    toggleSeat(seatId)
   }
 
   const renderSeatButton = (s) => {
-    const classes = ['seat', s.status === 'booked' ? 'booked' : s.selected ? 'selected' : 'available', s.classType === 'business' ? 'business' : '', s.extra ? 'extra' : ''].join(' ')
+    const isSelected = selectedSeats.includes(s.id)
+    const classes = ['seat', s.status === 'booked' ? 'booked' : isSelected ? 'selected' : 'available', s.classType === 'business' ? 'business' : '', s.extra ? 'extra' : ''].join(' ')
 
     return (
       <button
@@ -103,7 +104,28 @@ export default function SeatMap() {
   }
 
   return (
-    <div className="seatmap-container">
+    <div className="seatmap-container flex flex-col gap-6">
+      <div className="legend flex flex-wrap gap-4 items-center bg-slate-50 p-4 rounded-xl border border-slate-100 w-full mb-2">
+        <div className="legend-item">
+          <span className="swatch available" /> Ghế trống
+        </div>
+        <div className="legend-item">
+          <span className="swatch booked" /> Ghế đã đặt
+        </div>
+        <div className="legend-item">
+          <span className="swatch selected" /> Ghế đang chọn
+        </div>
+        <div className="legend-item">
+          <span className="swatch business" /> Hạng thương gia
+        </div>
+        <div className="legend-item">
+          <span className="swatch economy" /> Hạng phổ thông
+        </div>
+        <div className="legend-item">
+          <span className="swatch extra" /> Ghế có chỗ để chân rộng
+        </div>
+      </div>
+
       <div className="seatmap">
         <div className="cabin-top" />
 
@@ -120,32 +142,6 @@ export default function SeatMap() {
         </div>
 
         <div className="cabin-bottom" />
-      </div>
-
-      <div className="legend">
-        <div className="legend-row">
-          <div className="legend-item">
-            <span className="swatch available" /> Ghế trống
-          </div>
-          <div className="legend-item">
-            <span className="swatch booked" /> Ghế đã đặt
-          </div>
-          <div className="legend-item">
-            <span className="swatch selected" /> Ghế đang chọn
-          </div>
-        </div>
-
-        <div className="legend-row">
-          <div className="legend-item">
-            <span className="swatch business" /> Hạng thương gia
-          </div>
-          <div className="legend-item">
-            <span className="swatch economy" /> Hạng phổ thông
-          </div>
-          <div className="legend-item">
-            <span className="swatch extra" /> Ghế có chỗ để chân rộng
-          </div>
-        </div>
       </div>
     </div>
   )
