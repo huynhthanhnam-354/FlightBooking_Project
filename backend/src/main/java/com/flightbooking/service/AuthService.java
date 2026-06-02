@@ -4,7 +4,13 @@ import com.flightbooking.model.AppUser;
 import com.flightbooking.model.Role;
 import com.flightbooking.repository.AppUserRepository;
 import com.flightbooking.security.JwtService;
-import com.flightbooking.web.dto.*;
+import com.flightbooking.validation.InputValidator;
+import com.flightbooking.web.dto.AuthResponse;
+import com.flightbooking.web.dto.ForgotPasswordRequest;
+import com.flightbooking.web.dto.LoginRequest;
+import com.flightbooking.web.dto.RegisterRequest;
+import com.flightbooking.web.dto.TokenRefreshRequest;
+import com.flightbooking.web.dto.TokenRefreshResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -26,27 +32,31 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (appUserRepository.existsByEmailIgnoreCase(request.email())) {
+        String email = InputValidator.requireEmail(request.email());
+        InputValidator.requireStrongPassword(request.password());
+        String fullName = InputValidator.requirePersonName(request.fullName());
+        String phone = InputValidator.optionalPhone(request.phone());
+        if (appUserRepository.existsByEmailIgnoreCase(email)) {
             throw new IllegalArgumentException("Email already registered");
         }
         AppUser user = AppUser.builder()
-                .email(request.email().trim().toLowerCase())
+                .email(email)
                 .passwordHash(passwordEncoder.encode(request.password()))
-                .fullName(request.fullName().trim())
-                .phone(request.phone() != null ? request.phone().trim() : null)
+                .fullName(fullName)
+                .phone(phone)
                 .role(Role.USER)
                 .build();
         appUserRepository.save(user);
-        
+
         UserDetails details = org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail())
                 .password(user.getPasswordHash())
                 .roles(user.getRole().name())
                 .build();
-        
+
         String accessToken = jwtService.generateToken(details);
         String refreshToken = refreshTokenService.createRefreshToken(user.getId()).getToken();
-        
+
         return AuthResponse.of(
                 accessToken,
                 refreshToken,
@@ -61,19 +71,20 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
+        String email = InputValidator.requireEmail(request.email());
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.email().trim().toLowerCase(),
+                        email,
                         request.password()
                 )
         );
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         AppUser user = appUserRepository.findByEmailIgnoreCase(userDetails.getUsername())
                 .orElseThrow();
-        
+
         String accessToken = jwtService.generateToken(userDetails);
         String refreshToken = refreshTokenService.createRefreshToken(user.getId()).getToken();
-        
+
         return AuthResponse.of(
                 accessToken,
                 refreshToken,
@@ -103,5 +114,11 @@ public class AuthService {
                     return TokenRefreshResponse.of(token, requestRefreshToken);
                 })
                 .orElseThrow(() -> new RuntimeException("Refresh token is not in database!"));
+    }
+
+    public void requestPasswordReset(ForgotPasswordRequest request) {
+        String email = InputValidator.requireEmail(request.email());
+        appUserRepository.findByEmailIgnoreCase(email).ifPresent(user -> {
+        });
     }
 }

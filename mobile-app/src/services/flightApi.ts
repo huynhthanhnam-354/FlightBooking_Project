@@ -27,6 +27,19 @@ function minutesToDurationLabel(totalMinutes: number): string {
   return `${h}h ${m}m`;
 }
 
+export function ddMmYyyyToIsoDate(value: string): string | null {
+  const m = value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const day = Number(m[1]);
+  const month = Number(m[2]);
+  const year = Number(m[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 export function mapFlightDtoToCatalogFlight(f: FlightDto): CatalogFlight {
   return {
     id: String(f.id),
@@ -40,9 +53,14 @@ export function mapFlightDtoToCatalogFlight(f: FlightDto): CatalogFlight {
   };
 }
 
-export async function searchFlightsApi(origin: string, destination: string): Promise<CatalogFlight[]> {
+export async function searchFlightsApi(origin: string, destination: string, departureDate?: string): Promise<CatalogFlight[]> {
+  const isoDate = departureDate ? ddMmYyyyToIsoDate(departureDate) : null;
   const { data } = await axios.get<FlightDto[]>(`${API_BASE_URL}/api/flights`, {
-    params: { origin: origin.trim().toUpperCase(), destination: destination.trim().toUpperCase() },
+    params: {
+      origin: origin.trim().toUpperCase(),
+      destination: destination.trim().toUpperCase(),
+      ...(isoDate ? { departureDate: isoDate } : {}),
+    },
     timeout: 25000,
   });
   return (Array.isArray(data) ? data : []).map(mapFlightDtoToCatalogFlight);

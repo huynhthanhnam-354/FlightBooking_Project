@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import AppIcon from './src/components/AppIcon';
 import { AppIconName } from './src/theme/icons';
 
 import { LanguageProvider, useLanguage } from './src/context/LanguageContext';
 import { SearchProvider } from './src/context/SearchContext';
 import { AuthProvider } from './src/context/AuthContext';
+import { useAuth } from './src/context/AuthContext';
+import { getOnboardingDone } from './src/storage/appPreferences';
 import WelcomeScreen  from './src/screens/WelcomeScreen';
 import HomeScreen     from './src/screens/HomeScreen';
 import SearchScreen   from './src/screens/SearchScreen';
@@ -66,20 +68,56 @@ function MainTabs() {
 }
 
 function AppNavigator() {
+  const { user, hydrated } = useAuth();
+  const [prefsReady, setPrefsReady] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const done = await getOnboardingDone();
+      if (alive) {
+        setOnboardingDone(done);
+        setPrefsReady(true);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (!hydrated || !prefsReady) {
+    return (
+      <View style={styles.loadingRoot}>
+        <ActivityIndicator size="large" color="#0064D2" />
+      </View>
+    );
+  }
+
+  const initialRouteName = user ? 'Main' : onboardingDone ? 'Login' : 'Welcome';
+  const navigatorKey = user ? 'auth' : `guest-${initialRouteName}`;
+
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Welcome" screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Welcome"  component={WelcomeScreen} />
-        <Stack.Screen name="Login"    component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen name="Eticket" component={EticketScreen} />
-        <Stack.Screen name="FlightTracking" component={FlightTrackingScreen} />
-        <Stack.Screen name="Main"     component={MainTabs} />
-        <Stack.Screen name="EditSearch" component={EditSearchScreen} />
-        <Stack.Screen name="HelpTopic" component={HelpTopicScreen} />
-        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-        <Stack.Screen name="Security" component={SecurityScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Navigator key={navigatorKey} initialRouteName={initialRouteName} screenOptions={{ headerShown: false }}>
+        {user ? (
+          <>
+            <Stack.Screen name="Main"     component={MainTabs} />
+            <Stack.Screen name="Eticket" component={EticketScreen} />
+            <Stack.Screen name="FlightTracking" component={FlightTrackingScreen} />
+            <Stack.Screen name="EditSearch" component={EditSearchScreen} />
+            <Stack.Screen name="HelpTopic" component={HelpTopicScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="Security" component={SecurityScreen} />
+          </>
+        ) : (
+          <>
+            <Stack.Screen name="Welcome"  component={WelcomeScreen} />
+            <Stack.Screen name="Login"    component={LoginScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -98,6 +136,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  loadingRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F7FA' },
   tabBar:    { height: 64, paddingBottom: 8, paddingTop: 6, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F3F4F6', elevation: 10, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8 },
   tabLabel:  { fontSize: 11, fontWeight: '500' },
   tabIcon:   { alignItems: 'center' },

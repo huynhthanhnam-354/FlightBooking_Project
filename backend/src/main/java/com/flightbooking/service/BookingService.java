@@ -8,8 +8,12 @@ import com.flightbooking.model.Flight;
 import com.flightbooking.repository.AppUserRepository;
 import com.flightbooking.repository.BookingRepository;
 import com.flightbooking.repository.FlightRepository;
-import com.flightbooking.web.dto.BookingResponse;
 import com.flightbooking.time.VietnamTime;
+import com.flightbooking.validation.InputValidator;
+import com.flightbooking.web.dto.BaggageUpdateRequest;
+import com.flightbooking.web.dto.BookingAdminSummaryResponse;
+import com.flightbooking.web.dto.BookingResponse;
+import com.flightbooking.web.dto.CheckInRequest;
 import com.flightbooking.web.dto.CreateBookingRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -17,8 +21,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.UUID;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -35,23 +44,43 @@ public class BookingService {
     public BookingResponse create(String userEmail, CreateBookingRequest request) {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
                 .orElseThrow(() -> new UsernameNotFoundException(userEmail));
-        
-        // Sử dụng Pessimistic Lock để đảm bảo tính nhất quán khi đặt chỗ
         Flight flight = flightRepository.findByIdForUpdate(request.flightId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến bay: " + request.flightId()));
+                .orElseThrow(() -> new IllegalArgumentException("Flight not found: " + request.flightId()));
+        String seatNumber = normalizeSeatNumbers(request.seatNumber());
+        String passengerName = InputValidator.requirePersonName(request.passengerName());
+        String passengerEmail = request.passengerEmail() == null || request.passengerEmail().isBlank()
+                ? null
+                : InputValidator.requireEmail(request.passengerEmail());
+        String passengerPhone = InputValidator.optionalPhone(request.passengerPhone());
+        String passengerIdCard = InputValidator.optionalIdCard(request.passengerIdCard());
+        Set<String> occupied = occupiedSeatsForFlight(flight);
+        for (String seat : parseSeatNumbers(seatNumber)) {
+            if (occupied.contains(seat)) {
+                throw new IllegalArgumentException("Seat already booked: " + seat);
+            }
+        }
+        int passengerCount = request.passengerCount() == null ? 1 : request.passengerCount();
+        String paymentMethod = clean(request.paymentMethod());
+        int baggageKg = normalizeBaggageKg(request.baggageKg());
+        long baggageFeeVnd = normalizeBaggageFee(request.baggageFeeVnd());
 
-        String pnr = pnrGenerator.generate();
         Booking booking = Booking.builder()
                 .user(user)
                 .flight(flight)
-                .seatNumber(request.seatNumber().trim().toUpperCase())
-                .passengerName(request.passengerName().trim())
-                .passengerEmail(request.passengerEmail() != null ? request.passengerEmail().trim() : null)
-                .passengerPhone(request.passengerPhone() != null ? request.passengerPhone().trim() : null)
+                .seatNumber(seatNumber)
+                .passengerName(passengerName)
+                .passengerEmail(passengerEmail)
+                .passengerPhone(passengerPhone)
+                .passengerIdCard(passengerIdCard)
+                .passengerCount(passengerCount)
+                .tripType(clean(request.tripType()))
+                .paymentMethod(paymentMethod)
+                .baggageKg(baggageKg)
+                .baggageFeeVnd(baggageFeeVnd)
                 .totalPriceVnd(request.totalPriceVnd())
-                .status(BookingStatus.PENDING_PAYMENT)
+                .status(statusForPayment(paymentMethod))
                 .expiresAt(VietnamTime.nowLocal().plusMinutes(15))
-                .pnr(pnr)
+                .pnr(pnrGenerator.generate())
                 .build();
         bookingRepository.save(booking);
         return toResponse(booking);
@@ -66,29 +95,150 @@ public class BookingService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<BookingResponse> listAllForAdmin() {
+        return bookingRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public BookingAdminSummaryResponse adminSummary() {
+        long pending = bookingRepository.countByStatus(BookingStatus.PENDING_PAYMENT);
+        long confirmed = bookingRepository.countByStatus(BookingStatus.CONFIRMED);
+        long checkedIn = bookingRepository.countByStatus(BookingStatus.CHECKED_IN);
+        long completed = bookingRepository.countByStatus(BookingStatus.COMPLETED);
+        long cancelled = bookingRepository.countByStatus(BookingStatus.CANCELLED);
+        List<Booking> bookings = bookingRepository.findAll();
+        long revenue = bookings.stream()
+                .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
+                .mapToLong(b -> b.getTotalPriceVnd() == null ? 0L : b.getTotalPriceVnd())
+                .sum();
+        long baggageRevenue = bookings.stream()
+                .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
+                .mapToLong(b -> b.getBaggageFeeVnd() == null ? 0L : b.getBaggageFeeVnd())
+                .sum();
+        return new BookingAdminSummaryResponse(
+                bookings.size(),
+                pending,
+                confirmed,
+                checkedIn,
+                completed,
+                cancelled,
+                revenue,
+                baggageRevenue,
+                Map.of(
+                        "PENDING_PAYMENT", pending,
+                        "CONFIRMED", confirmed,
+                        "CHECKED_IN", checkedIn,
+                        "COMPLETED", completed,
+                        "CANCELLED", cancelled
+                )
+        );
+    }
+
     @Transactional
     public BookingResponse cancel(Long id, String userEmail) {
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn đặt vé: " + id));
-
-        // Kiểm tra quyền sở hữu
+        Booking booking = bookingRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
         if (!booking.getUser().getEmail().equalsIgnoreCase(userEmail)) {
-            throw new RuntimeException("Bạn không có quyền hủy đơn đặt vé này");
+            throw new IllegalArgumentException("Booking not found");
         }
-
-        // Kiểm tra trạng thái hiện tại (Chỉ cho phép hủy nếu là PENDING_PAYMENT hoặc CONFIRMED)
         if (booking.getStatus() == BookingStatus.CANCELLED) {
-            throw new RuntimeException("Đơn hàng đã được hủy trước đó");
+            throw new IllegalArgumentException("Booking is already cancelled");
         }
         if (booking.getStatus() == BookingStatus.COMPLETED) {
-            throw new RuntimeException("Không thể hủy chuyến bay đã hoàn thành");
+            throw new IllegalArgumentException("Completed booking cannot be cancelled");
         }
 
-        // Cập nhật trạng thái
         booking.setStatus(BookingStatus.CANCELLED);
-        bookingRepository.save(booking);
+        sendCancellationEmail(booking);
+        return toResponse(booking);
+    }
 
-        // Gửi email thông báo hủy vé
+    @Transactional
+    public BookingResponse updateBaggage(String userEmail, Long bookingId, BaggageUpdateRequest request) {
+        AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
+                .orElseThrow(() -> new UsernameNotFoundException(userEmail));
+        Booking booking = bookingRepository.findByIdForUpdate(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+        if (!booking.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("Booking not found");
+        }
+
+        int baggageKg = normalizeBaggageKg(request.baggageKg());
+        long newFee = normalizeBaggageFee(request.baggageFeeVnd());
+        long oldFee = booking.getBaggageFeeVnd() == null ? 0L : booking.getBaggageFeeVnd();
+        booking.setBaggageKg(baggageKg);
+        booking.setBaggageFeeVnd(newFee);
+        booking.setTotalPriceVnd(Math.max(0L, booking.getTotalPriceVnd() - oldFee + newFee));
+        return toResponse(booking);
+    }
+
+    @Transactional
+    public BookingResponse checkIn(String userEmail, CheckInRequest request) {
+        AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
+                .orElseThrow(() -> new UsernameNotFoundException(userEmail));
+        Booking booking = bookingRepository.findByPnrForUpdate(clean(request.pnr()))
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+        if (!booking.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("Booking not found");
+        }
+        if (booking.getStatus() == BookingStatus.PENDING_PAYMENT) {
+            throw new IllegalArgumentException("Booking must be paid before check-in");
+        }
+        if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
+            throw new IllegalArgumentException("Booking cannot be checked in");
+        }
+        String expectedLastName = lastName(booking.getPassengerName());
+        String actualLastName = clean(request.passengerLastName());
+        if (!Objects.equals(expectedLastName.toLowerCase(Locale.ROOT), actualLastName.toLowerCase(Locale.ROOT))) {
+            throw new IllegalArgumentException("Passenger name does not match");
+        }
+        booking.setStatus(BookingStatus.CHECKED_IN);
+        if (booking.getCheckedInAt() == null) {
+            booking.setCheckedInAt(VietnamTime.nowLocal());
+        }
+        return toResponse(booking);
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> listOccupiedSeats(Long flightId) {
+        Flight flight = flightService.getByIdOrThrow(flightId);
+        return occupiedSeatsForFlight(flight).stream().toList();
+    }
+
+    private BookingResponse toResponse(Booking b) {
+        Flight f = b.getFlight();
+        return new BookingResponse(
+                b.getId(),
+                b.getPnr(),
+                b.getStatus(),
+                b.getSeatNumber(),
+                b.getPassengerName(),
+                b.getPassengerEmail(),
+                b.getPassengerPhone(),
+                b.getPassengerIdCard(),
+                b.getPassengerCount(),
+                b.getTripType(),
+                b.getPaymentMethod(),
+                b.getBaggageKg() == null ? 0 : b.getBaggageKg(),
+                b.getBaggageFeeVnd() == null ? 0L : b.getBaggageFeeVnd(),
+                b.getTotalPriceVnd(),
+                VietnamTime.toInstant(b.getCreatedAt()),
+                b.getCheckedInAt() == null ? null : VietnamTime.toInstant(b.getCheckedInAt()),
+                flightService.toResponse(f)
+        );
+    }
+
+    private Set<String> occupiedSeatsForFlight(Flight flight) {
+        Set<String> out = new LinkedHashSet<>();
+        bookingRepository.findByFlightAndStatusNot(flight, BookingStatus.CANCELLED)
+                .forEach(b -> out.addAll(parseSeatNumbers(b.getSeatNumber())));
+        return out;
+    }
+
+    private void sendCancellationEmail(Booking booking) {
         try {
             Flight flight = booking.getFlight();
             BookingDTO bookingDTO = BookingDTO.builder()
@@ -103,25 +253,70 @@ public class BookingService {
                     .totalPrice(BigDecimal.valueOf(booking.getTotalPriceVnd()))
                     .build();
             emailService.sendBookingCancellationEmail(bookingDTO);
-        } catch (Exception e) {
-            // Log lỗi nhưng không làm rollback transaction vì việc hủy vé đã thành công
-            // (Log thực tế nên dùng Logger của class)
+        } catch (Exception ignored) {
+            // Cancellation should not roll back if email delivery is unavailable.
         }
-
-        return toResponse(booking);
     }
 
-    private BookingResponse toResponse(Booking b) {
-        Flight f = b.getFlight();
-        return new BookingResponse(
-                b.getId(),
-                b.getPnr(),
-                b.getStatus(),
-                b.getSeatNumber(),
-                b.getPassengerName(),
-                b.getTotalPriceVnd(),
-                VietnamTime.toInstant(b.getCreatedAt()),
-                flightService.toResponse(f)
-        );
+    private static Set<String> parseSeatNumbers(String value) {
+        Set<String> out = new LinkedHashSet<>();
+        if (value == null || value.isBlank()) {
+            return out;
+        }
+        Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .map(s -> s.toUpperCase(Locale.ROOT))
+                .forEach(out::add);
+        return out;
+    }
+
+    private static String normalizeSeatNumbers(String value) {
+        Set<String> seats = parseSeatNumbers(value);
+        if (seats.isEmpty()) {
+            throw new IllegalArgumentException("Seat is required");
+        }
+        return String.join(",", seats);
+    }
+
+    private static String clean(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private static int normalizeBaggageKg(Integer value) {
+        if (value == null) {
+            return 0;
+        }
+        if (value < 0 || value > 40) {
+            throw new IllegalArgumentException("Invalid baggage package");
+        }
+        return value;
+    }
+
+    private static long normalizeBaggageFee(Long value) {
+        if (value == null) {
+            return 0L;
+        }
+        if (value < 0) {
+            throw new IllegalArgumentException("Invalid baggage fee");
+        }
+        return value;
+    }
+
+    private static String lastName(String fullName) {
+        String cleaned = clean(fullName);
+        String[] parts = cleaned.split("\\s+");
+        return parts.length == 0 ? cleaned : parts[parts.length - 1];
+    }
+
+    private static BookingStatus statusForPayment(String paymentMethod) {
+        if ("cod".equalsIgnoreCase(paymentMethod)) {
+            return BookingStatus.CONFIRMED;
+        }
+        return BookingStatus.PENDING_PAYMENT;
     }
 }

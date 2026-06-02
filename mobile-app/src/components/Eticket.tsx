@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Share, Alert } from 'react-native'
+import { createQrMatrix } from '../utils/qrMatrix'
 
 type Ticket = {
   pnr: string
@@ -16,31 +17,8 @@ type Ticket = {
   qrValue?: string
 }
 
-function hashString(s: string) {
-  let h = 2166136261 >>> 0
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 16777619) >>> 0
-  }
-  return h
-}
-
-function genMatrix(seedStr: string, size = 21) {
-  const mat: boolean[][] = []
-  let seed = hashString(seedStr)
-  for (let r = 0; r < size; r++) {
-    const row: boolean[] = []
-    for (let c = 0; c < size; c++) {
-      seed = (seed * 1664525 + 1013904223) >>> 0
-      row.push((seed & 1) === 1)
-    }
-    mat.push(row)
-  }
-  return mat
-}
-
 export default function Eticket({ ticket }: { ticket: Ticket }) {
-  const mat = genMatrix(ticket.qrValue || ticket.pnr || 'ticket')
+  const mat = createQrMatrix(ticket.qrValue || ticket.pnr || 'ticket')
 
   async function handleShare() {
     try {
@@ -49,10 +27,6 @@ export default function Eticket({ ticket }: { ticket: Ticket }) {
     } catch (e) {
       Alert.alert('Lỗi', 'Không thể chia sẻ vé')
     }
-  }
-
-  function handleSaveImage() {
-    Alert.alert('Lưu vé', 'Tính năng lưu ảnh chưa bật trên bản này.')
   }
 
   return (
@@ -114,9 +88,6 @@ export default function Eticket({ ticket }: { ticket: Ticket }) {
             ))}
           </View>
           <View style={styles.actionsRow}>
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveImage}>
-              <Text style={styles.saveText}>Lưu vào ảnh</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
               <Text style={styles.shareText}>Chia sẻ vé</Text>
             </TouchableOpacity>
@@ -145,9 +116,9 @@ const styles = StyleSheet.create({
   smallLabel: { fontSize: 11, color: '#9CA3AF' },
   smallValue: { fontSize: 15, color: '#111827', fontWeight: '700' },
   qrCol: { width: 180, alignItems: 'center', justifyContent: 'center' },
-  qrBox: { width: 150, height: 150, backgroundColor: '#fff', padding: 6, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' },
+  qrBox: { width: 156, height: 156, backgroundColor: '#fff', padding: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' },
   qrRow: { flexDirection: 'row' },
-  qrCell: { width: 6, height: 6 },
+  qrCell: { width: 4, height: 4 },
   tearStrip: { backgroundColor: '#F8FAFC', paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: '#E6EEF8' },
   perfRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   perfDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#E6EEF8' },

@@ -22,7 +22,7 @@ const vi: Record<HelpTopicId, TopicBlock> = {
     ],
   },
   support: {
-    title: 'Hỗ trợ & liên hệ',
+    title: 'Trung tâm hỗ trợ',
     paragraphs: [
       'Hotline SkyBook (demo): 1900-xxxx, hoạt động 8:00–22:00 mỗi ngày.',
       'Email: support@skybook.demo — thời gian phản hồi trong 24 giờ.',
@@ -49,7 +49,7 @@ const en: Record<HelpTopicId, TopicBlock> = {
     ],
   },
   support: {
-    title: 'Support & contact',
+    title: 'Support center',
     paragraphs: [
       'SkyBook hotline (demo): 1900-xxxx, 8:00–22:00 daily.',
       'Email: support@skybook.demo — we aim to reply within 24 hours.',

@@ -5,8 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import AppIcon from '../components/AppIcon';
 import { loginAccount, formatAuthError } from '../services/authApi';
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { isValidEmail, validationMessages } from '../utils/inputValidation';
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
@@ -19,7 +18,11 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     const em = email.trim();
-    if (!EMAIL_RE.test(em) || !password) {
+    if (!isValidEmail(em)) {
+      Alert.alert(t('login_title'), validationMessages.email);
+      return;
+    }
+    if (!password) {
       Alert.alert(t('login_title'), t('register_fill_all'));
       return;
     }
@@ -27,10 +30,8 @@ export default function LoginScreen() {
     try {
       const res = await loginAccount({ email: em, password });
       await signIn(res);
-      navigation.navigate('Main');
     } catch (e) {
       Alert.alert(t('login_title'), `${t('register_failed_hint')}\n${formatAuthError(e)}`);
-    } finally {
       setSubmitting(false);
     }
   };
