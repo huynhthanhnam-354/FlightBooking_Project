@@ -48,7 +48,8 @@ public class BookingService {
                 .passengerEmail(request.passengerEmail() != null ? request.passengerEmail().trim() : null)
                 .passengerPhone(request.passengerPhone() != null ? request.passengerPhone().trim() : null)
                 .totalPriceVnd(request.totalPriceVnd())
-                .status(BookingStatus.CONFIRMED)
+                .status(BookingStatus.PENDING_PAYMENT)
+                .expiresAt(VietnamTime.nowLocal().plusMinutes(15))
                 .pnr(pnr)
                 .build();
         bookingRepository.save(booking);

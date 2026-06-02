@@ -3,10 +3,7 @@ package com.flightbooking.web;
 import com.flightbooking.service.FlightService;
 import com.flightbooking.web.dto.FlightResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -23,5 +20,10 @@ public class FlightController {
             @RequestParam String destination
     ) {
         return flightService.search(origin, destination);
+    }
+
+    @GetMapping("/{id}/booked-seats")
+    public List<String> getBookedSeats(@PathVariable Long id) {
+        return flightService.getBookedSeats(id);
     }
 }

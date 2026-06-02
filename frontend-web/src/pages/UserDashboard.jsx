@@ -487,10 +487,10 @@ export default function UserDashboard() {
             <div className="mb-6 p-4 bg-slate-50 rounded-xl">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                  {(user?.name || 'H')[0].toUpperCase()}
+                  {(user?.fullName || 'H')[0].toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-slate-800 truncate">{user?.name || 'Huỳnh Trần Nam Bình'}</p>
+                  <p className="font-medium text-slate-800 truncate">{user?.fullName || 'Huỳnh Trần Nam Bình'}</p>
                   <p className="text-xs text-slate-500 truncate">{user?.email || 'binhhtn@gmail.com'}</p>
                 </div>
               </div>
