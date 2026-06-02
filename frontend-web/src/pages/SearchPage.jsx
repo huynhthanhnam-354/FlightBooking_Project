@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import axios from 'axios'
 import FlightSearchForm from '../components/FlightSearchForm'
 import FlightCard from '../components/FlightCard'
 import FlightCardSkeleton from '../components/FlightCardSkeleton'
@@ -7,16 +9,51 @@ import SpecialOffers from '../components/SpecialOffers'
 import DatePriceSlider from '../components/DatePriceSlider'
 import PriceRangeSlider from '../components/PriceRangeSlider'
 import PriceTrendPredictor from '../components/PriceTrendPredictor'
+import PricePredictor from '../components/PricePredictor'
 import { MOCK_FLIGHTS } from '../data/mockFlights'
+import { useBookingStore } from '../store/bookingStore'
+
+const AIRLINES = [
+  { code: 'VN', name: 'Vietnam Airlines', logo: 'https://images.unsplash.com/photo-1436491865332-7a61a109c05?w=50&h=50&fit=crop' },
+  { code: 'VJ', name: 'VietJet Air', logo: 'https://images.unsplash.com/photo-1540962351504-03099e0a754b?w=50&h=50&fit=crop' },
+  { code: 'QH', name: 'Bamboo Airways', logo: 'https://images.unsplash.com/photo-1520437358207-323b43b50729?w=50&h=50&fit=crop' },
+  { code: 'VU', name: 'Vietravel Airlines', logo: 'https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?w=50&h=50&fit=crop' },
+  { code: 'BL', name: 'Pacific Airlines', logo: 'https://images.unsplash.com/photo-1483450388369-9ed95738483c?w=50&h=50&fit=crop' }
+];
 
 function SearchPage() {
 	const fallbackBounds = { min: 500000, max: 5000000 }
-	const [allFlights, setAllFlights] = useState(MOCK_FLIGHTS)
-	const [results, setResults] = useState(MOCK_FLIGHTS)
+	const searchParams = useBookingStore((state) => state.searchParams)
+	const setSearchParams = useBookingStore((state) => state.setSearchParams)
+
+	// TanStack Query Configuration
+	const { data: flights = [], isLoading: isQueryLoading, isError, error } = useQuery({
+		queryKey: ['flights', searchParams],
+		queryFn: async () => {
+			// In a real scenario, this would be an API call
+			// For now, we simulate the API and apply search criteria from searchParams
+			const { from, to } = searchParams
+			const fromLower = (from || '').toLowerCase()
+			const toLower = (to || '').toLowerCase()
+			
+			// Simulate network delay
+			await new Promise(resolve => setTimeout(resolve, 800))
+			
+			return MOCK_FLIGHTS.filter(f => {
+				const depart = (f.depart || '').toLowerCase()
+				const arrive = (f.arrive || '').toLowerCase()
+				return (fromLower ? depart.includes(fromLower) : true) && (toLower ? arrive.includes(toLower) : true)
+			})
+		},
+		staleTime: 5 * 60 * 1000, // 5 minutes
+		retry: 2,
+	})
+
+	const [results, setResults] = useState([])
 	const [priceBounds, setPriceBounds] = useState(fallbackBounds)
 	const [minPrice, setMinPrice] = useState(fallbackBounds.min)
 	const [maxPrice, setMaxPrice] = useState(fallbackBounds.max)
-	const [isLoading, setIsLoading] = useState(false)
+	const [isFiltering, setIsFiltering] = useState(false)
 	const [selectedAirlines, setSelectedAirlines] = useState([])
 	const [selectedTimes, setSelectedTimes] = useState([])
 	const [sortBy, setSortBy] = useState('best')
@@ -25,44 +62,37 @@ function SearchPage() {
 	const [selectedDate, setSelectedDate] = useState(null)
 
 	useEffect(() => {
-		const prices = MOCK_FLIGHTS.map(f => Number(f.price) || 0)
-		const min = Math.min(...prices)
-		const max = Math.max(...prices)
-		setPriceBounds({ min, max })
-		setMinPrice(min)
-		setMaxPrice(max)
-		setAllFlights(MOCK_FLIGHTS)
-		setResults(MOCK_FLIGHTS)
-	}, [])
-
-	const airlines = useMemo(() => Array.from(new Set(MOCK_FLIGHTS.map(f => f.airline))), [])
+		if (flights.length > 0) {
+			const prices = flights.map(f => Number(f.price) || 0)
+			const min = Math.min(...prices)
+			const max = Math.max(...prices)
+			setPriceBounds({ min, max })
+			setMinPrice(min)
+			setMaxPrice(max)
+			setResults(flights)
+		} else {
+			setResults([])
+		}
+	}, [flights])
 
 	const location = useLocation()
 
 	const routeLabel = useMemo(() => {
-		const search = location?.state?.initialSearch || {}
-		const from = search.from || 'Hà Nội'
-		const to = search.to || 'Hồ Chí Minh'
+		const from = searchParams.from || 'Hà Nội'
+		const to = searchParams.to || 'Hồ Chí Minh'
 		return `${from} → ${to}`
-	}, [location?.state?.initialSearch])
+	}, [searchParams])
 
 	useEffect(() => {
 		if (location?.state?.initialSearch) {
-			try {
-				// apply initial search coming from hero
-				handleSearch(location.state.initialSearch)
-			} catch (e) {
-				// ignore
-			}
+			setSearchParams(location.state.initialSearch)
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [location?.state?.initialSearch])
+	}, [location?.state?.initialSearch, setSearchParams])
 
 	function applyFilters() {
-		setIsLoading(true)
+		setIsFiltering(true)
 		setTimeout(() => {
-			const source = allFlights
-			let filtered = source.filter(f => {
+			let filtered = flights.filter(f => {
 			const p = Number(f.price) || 0
 			if (p < minPrice) return false
 			if (p > maxPrice) return false
@@ -99,7 +129,7 @@ function SearchPage() {
 		if (sortBy === 'priceDesc') filtered.sort((a, b) => b.price - a.price)
 
 		setResults(filtered)
-		setIsLoading(false)
+		setIsFiltering(false)
 	}, 380)
 }
 
@@ -112,21 +142,12 @@ function SearchPage() {
 		setSelectedStops([])
 		setSelectedAmenities([])
 		setSelectedDate(null)
-		setResults(allFlights)
+		setResults(flights)
 	}
 
 	function searchAlternativeDates() {
-		setAllFlights(MOCK_FLIGHTS)
-		setResults(MOCK_FLIGHTS)
-		setPriceBounds(fallbackBounds)
-		setMinPrice(fallbackBounds.min)
-		setMaxPrice(fallbackBounds.max)
-		setSelectedAirlines([])
-		setSelectedTimes([])
-		setSelectedStops([])
-		setSelectedAmenities([])
-		setSelectedDate(null)
-		setSortBy('best')
+		// Mock logic: reset and use default search
+		setSearchParams({ from: '', to: '', date: '', passengers: 1 })
 	}
 
 	function toggleAirline(name) {
@@ -146,29 +167,10 @@ function SearchPage() {
 	}
 
 	function handleSearch(criteria) {
-		setIsLoading(true)
-		setTimeout(() => {
-			const from = (criteria.from || '').toLowerCase()
-			const to = (criteria.to || '').toLowerCase()
-			const results = MOCK_FLIGHTS.filter(f => {
-			const depart = (f.depart || '').toLowerCase()
-			const arrive = (f.arrive || '').toLowerCase()
-			return (from ? depart.includes(from) : true) && (to ? arrive.includes(to) : true)
-		})
+		setSearchParams(criteria)
+	}
 
-		setAllFlights(results)
-		setResults(results)
-
-		const prices = results.map(f => Number(f.price) || 0)
-		const hasFlights = results.length > 0
-		const min = hasFlights ? Math.min(...prices) : fallbackBounds.min
-		const max = hasFlights ? Math.max(...prices) : fallbackBounds.max
-		setPriceBounds({ min, max })
-		setMinPrice(min)
-		setMaxPrice(max)
-		setIsLoading(false)
-	}, 420)
-}
+	const isLoading = isQueryLoading || isFiltering;
 
 	return (
 		<div className="dashboard-container">
@@ -192,22 +194,28 @@ function SearchPage() {
 						</div>
 						<div className="text-sm small-note mt-2">Khoảng giá: {(results.length ? priceBounds.min : fallbackBounds.min).toLocaleString()}₫ — {(results.length ? priceBounds.max : fallbackBounds.max).toLocaleString()}₫</div>					</div>
 
-					<div className="mb-4">							<div className="text-sm font-medium">Hãng hàng không</div>
-							<div className="mt-2 space-y-2">
-								{airlines.map(a => (
-									<label key={a} className="flex items-center gap-2">
-										<input type="checkbox" checked={selectedAirlines.includes(a)} onChange={() => toggleAirline(a)} />
+					<div className="mb-4">
+						<div className="text-sm font-medium">Hãng hàng không</div>
+						<div className="mt-3 space-y-3">
+							{AIRLINES.map(a => (
+								<label key={a.code} className="flex items-center justify-between group cursor-pointer">
+									<div className="flex items-center gap-3">
+										<input 
+											type="checkbox" 
+											className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+											checked={selectedAirlines.includes(a.name)} 
+											onChange={() => toggleAirline(a.name)} 
+										/>
 										<div className="flex items-center gap-2">
-											<div className="w-8 h-8">
-												{/* placeholder for logo */}
-												<div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs">{a.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div>
-											</div>
-											<span className="text-sm">{a}</span>
+											<img src={a.logo} alt={a.name} className="w-6 h-6 rounded-full object-cover border border-slate-100 shadow-sm" />
+											<span className="text-sm font-medium text-slate-700 group-hover:text-sky-600 transition-colors">{a.name}</span>
 										</div>
-									</label>
-								))}
-							</div>
+									</div>
+									<span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">{a.code}</span>
+								</label>
+							))}
 						</div>
+					</div>
 
 						<div className="mb-4">
 							<div className="text-sm font-medium">Số điểm dừng</div>
@@ -240,9 +248,25 @@ function SearchPage() {
 				<main className="lg:col-span-3">
 					<FlightSearchForm onSearch={handleSearch} />
 
-				<div className="mt-6">
-					<PriceTrendPredictor routeLabel={routeLabel} />
-				</div>
+					<div className="mt-6">
+						<PricePredictor 
+							from={searchParams.from || 'Hà Nội'} 
+							to={searchParams.to || 'Hồ Chí Minh'}
+							currentPrice={results.length > 0 ? Math.min(...results.map(f => f.price)) : 1250000}
+						/>
+					</div>
+
+					<div className="mt-6">
+						<DatePriceSlider 
+							flights={flights} 
+							selectedDate={selectedDate}
+							onSelect={setSelectedDate}
+						/>
+					</div>
+
+					<div className="mt-6">
+						<PriceTrendPredictor routeLabel={routeLabel} />
+					</div>
 
 
 					<div className="mt-4 flex items-center justify-between">
@@ -259,9 +283,15 @@ function SearchPage() {
 					</div>
 
 					<div className="mt-4 results-list">
-						{isLoading ? (
+						{isError ? (
+							<div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-[32px] text-center">
+								<h3 className="text-lg font-bold">Đã có lỗi xảy ra</h3>
+								<p>{error?.message || 'Không thể tải danh sách chuyến bay.'}</p>
+								<button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-xl">Thử lại</button>
+							</div>
+						) : isLoading ? (
 						<div className="space-y-4">
-							{[1, 2, 3, 4].map(index => (
+							{[1, 2, 3, 4, 5].map(index => (
 								<FlightCardSkeleton key={index} />
 							))}
 						</div>
