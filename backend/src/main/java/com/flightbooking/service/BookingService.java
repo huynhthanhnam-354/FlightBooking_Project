@@ -29,6 +29,7 @@ public class BookingService {
     private final FlightRepository flightRepository;
     private final FlightService flightService;
     private final EmailService emailService;
+    private final PnrGenerator pnrGenerator;
 
     @Transactional
     public BookingResponse create(String userEmail, CreateBookingRequest request) {
@@ -39,7 +40,7 @@ public class BookingService {
         Flight flight = flightRepository.findByIdForUpdate(request.flightId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến bay: " + request.flightId()));
 
-        String pnr = generatePnr();
+        String pnr = pnrGenerator.generate();
         Booking booking = Booking.builder()
                 .user(user)
                 .flight(flight)
@@ -108,19 +109,6 @@ public class BookingService {
         }
 
         return toResponse(booking);
-    }
-
-    private String generatePnr() {
-        String pnr;
-        int guard = 0;
-        do {
-            pnr = "SB" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
-            guard++;
-        } while (bookingRepository.existsByPnr(pnr) && guard < 20);
-        if (bookingRepository.existsByPnr(pnr)) {
-            pnr = "SB" + System.currentTimeMillis();
-        }
-        return pnr;
     }
 
     private BookingResponse toResponse(Booking b) {
