@@ -30,6 +30,10 @@ export default function BookingSummary({ flight, passengers = 1 }) {
         </div>
       </div>
 
+      <button className="w-full py-3 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl shadow-lg shadow-sky-600/20 transition-all active:scale-[0.98] mt-2">
+        Tiếp tục điền thông tin
+      </button>
+
       <div className="text-xs text-slate-500">Giá chỉ mang tính tham khảo — thanh toán sẽ được xử lý ở bước tiếp theo.</div>
     </aside>
   );

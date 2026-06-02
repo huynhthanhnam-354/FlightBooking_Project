@@ -1,6 +1,10 @@
 import React, { useState } from "react";
+import { useBookingStore } from "../store/bookingStore";
 
 export default function BookingForm({ flight, passengers = 1, onPassengersChange, onSubmit }) {
+  const totalPrice = useBookingStore((state) => state.totalPrice)
+  const updatePassengerInfo = useBookingStore((state) => state.updatePassengerInfo)
+
   if (!flight) return <div className="bg-white p-4 rounded shadow">Vui lòng chọn chuyến để đặt vé.</div>;
 
   const [name, setName] = useState("");
@@ -13,23 +17,25 @@ export default function BookingForm({ flight, passengers = 1, onPassengersChange
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [isLoading, setIsLoading] = useState(false);
 
-  const priceNumber = Number(String(flight.price).replace(/[^0-9]/g, "")) || 0;
-  const subtotal = priceNumber * passengers;
-  const tax = Math.round(subtotal * 0.1);
-  const serviceFee = 50000 * passengers;
-  const total = subtotal + tax + serviceFee;
+  // Use dynamic price from Store
+  const total = totalPrice || 0;
 
   function submit(e) {
     e.preventDefault();
     setIsLoading(true);
+    
+    // 1. Sync data to Global Store
+    const passengerInfo = { fullName: name, dob, passport, email, phone };
+    updatePassengerInfo(passengerInfo);
+
     const booking = {
       flight,
       passengers,
-      passenger: { name, dob, passport, seatPref },
+      passenger: passengerInfo,
       contact: { email, phone },
       travelClass,
       paymentMethod,
-      priceBreakdown: { pricePer: priceNumber, subtotal, tax, serviceFee, total }
+      priceBreakdown: { total }
     };
 
     setTimeout(() => {
