@@ -56,6 +56,11 @@ export const ICONS = {
   clock:         { lib: 'Ionicons',               name: 'time-outline' },
   flightStatus:  { lib: 'MaterialCommunityIcons', name: 'radar' },
   checkin:       { lib: 'MaterialCommunityIcons', name: 'cellphone-check' },
+  sun:           { lib: 'Ionicons',               name: 'sunny-outline' },
+  mapPin:        { lib: 'Ionicons',               name: 'location-outline' },
+  bolt:          { lib: 'MaterialCommunityIcons', name: 'lightning-bolt-outline' },
+  leaf:          { lib: 'MaterialCommunityIcons', name: 'leaf' },
+  sparkles:      { lib: 'Ionicons',               name: 'sparkles-outline' },
 
   // ── Thanh toán ────────────────────────────────────
   creditCard:    { lib: 'Ionicons',               name: 'card-outline' },

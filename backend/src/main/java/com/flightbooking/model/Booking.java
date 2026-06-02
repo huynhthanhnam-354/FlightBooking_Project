@@ -1,5 +1,6 @@
 package com.flightbooking.model;
 
+import com.flightbooking.time.VietnamTime;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -19,13 +20,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import com.flightbooking.time.VietnamTime;
-
 import java.time.LocalDateTime;
 
-/**
- * Đặt chỗ — bảng {@code bookings}, liên kết {@link AppUser} + {@link Flight}.
- */
 @Entity
 @Table(name = "bookings")
 @Getter
@@ -47,7 +43,7 @@ public class Booking {
     @JoinColumn(name = "flight_id", nullable = false)
     private Flight flight;
 
-    @Column(name = "seat_number", nullable = false, length = 8)
+    @Column(name = "seat_number", nullable = false, length = 64)
     private String seatNumber;
 
     @Column(name = "passenger_name", nullable = false, length = 200)
@@ -58,6 +54,27 @@ public class Booking {
 
     @Column(name = "passenger_phone", length = 32)
     private String passengerPhone;
+
+    @Column(name = "passenger_id_card", length = 64)
+    private String passengerIdCard;
+
+    @Column(name = "passenger_count", nullable = false)
+    @Builder.Default
+    private Integer passengerCount = 1;
+
+    @Column(name = "trip_type", length = 24)
+    private String tripType;
+
+    @Column(name = "payment_method", length = 32)
+    private String paymentMethod;
+
+    @Column(name = "baggage_kg", nullable = false)
+    @Builder.Default
+    private Integer baggageKg = 0;
+
+    @Column(name = "baggage_fee_vnd", nullable = false)
+    @Builder.Default
+    private Long baggageFeeVnd = 0L;
 
     @Column(name = "total_price_vnd", nullable = false)
     private Long totalPriceVnd;
@@ -79,6 +96,9 @@ public class Booking {
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
+    @Column(name = "checked_in_at")
+    private LocalDateTime checkedInAt;
+
     @PrePersist
     void prePersist() {
         if (createdAt == null) {
@@ -86,6 +106,15 @@ public class Booking {
         }
         if (status == null) {
             status = BookingStatus.CONFIRMED;
+        }
+        if (passengerCount == null || passengerCount <= 0) {
+            passengerCount = 1;
+        }
+        if (baggageKg == null || baggageKg < 0) {
+            baggageKg = 0;
+        }
+        if (baggageFeeVnd == null || baggageFeeVnd < 0) {
+            baggageFeeVnd = 0L;
         }
     }
 }

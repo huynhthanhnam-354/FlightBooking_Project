@@ -15,12 +15,14 @@ public class PnrGenerator {
     public String generate() {
         String pnr;
         int guard = 0;
+        boolean exists;
         do {
             pnr = "SB" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
             guard++;
-        } while (bookingRepository.existsByPnr(pnr) && guard < 20);
+            exists = bookingRepository.existsByPnr(pnr);
+        } while (exists && guard < 20);
         
-        if (bookingRepository.existsByPnr(pnr)) {
+        if (exists) {
             pnr = "SB" + System.currentTimeMillis();
         }
         return pnr;

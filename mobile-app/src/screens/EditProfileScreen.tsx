@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import AppIcon from '../components/AppIcon';
 import { formatAuthError } from '../services/authApi';
 import { updateProfileApi } from '../services/userAccountApi';
+import { isValidFullName, isValidOptionalPhone, validationMessages } from '../utils/inputValidation';
 
 export default function EditProfileScreen() {
   const navigation = useNavigation<any>();
@@ -52,8 +53,12 @@ export default function EditProfileScreen() {
 
   const save = async () => {
     const name = fullName.trim();
-    if (!name) {
-      Alert.alert(t('confirm'), t('register_fill_all'));
+    if (!isValidFullName(name)) {
+      Alert.alert(t('confirm'), validationMessages.fullName);
+      return;
+    }
+    if (!isValidOptionalPhone(phone)) {
+      Alert.alert(t('confirm'), validationMessages.phone);
       return;
     }
     setSaving(true);

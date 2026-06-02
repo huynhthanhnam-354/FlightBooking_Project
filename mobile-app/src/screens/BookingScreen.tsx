@@ -1,16 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { useSearch } from '../context/SearchContext';
 import { useAuth } from '../context/AuthContext';
 import AppIcon from '../components/AppIcon';
 import { useNavigation } from '@react-navigation/native';
-import { createBookingApi } from '../services/bookingApi';
+import { createBookingApi, listOccupiedSeatsApi } from '../services/bookingApi';
 import { formatAuthError } from '../services/authApi';
+import {
+  isValidEmail,
+  isValidFullName,
+  isValidOptionalIdCard,
+  isValidPhone,
+  validationMessages,
+} from '../utils/inputValidation';
 
 const BASE_SERVICE_FEE_VND = 50000;
 const TAX_RATE = 0.1;
-const BOOKED_SEATS = new Set(['1B', '3C', '4D', '6E', '8A']);
 const SEAT_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
 
 type CabinClass = 'business' | 'economy';
@@ -27,7 +33,7 @@ type SeatItem = {
   addOn: number;
 };
 
-function generateSeatMap(): SeatItem[] {
+function generateSeatMap(occupiedSeats: Set<string>): SeatItem[] {
   const seats: SeatItem[] = [];
   for (let row = 1; row <= 12; row++) {
     const isBusiness = row <= 2;
@@ -46,7 +52,7 @@ function generateSeatMap(): SeatItem[] {
         letter,
         side: 'left',
         classType,
-        status: BOOKED_SEATS.has(id) ? 'booked' : 'available',
+        status: occupiedSeats.has(id) ? 'booked' : 'available',
         extra,
         addOn,
       });
@@ -61,7 +67,7 @@ function generateSeatMap(): SeatItem[] {
         letter,
         side: 'right',
         classType,
-        status: BOOKED_SEATS.has(id) ? 'booked' : 'available',
+        status: occupiedSeats.has(id) ? 'booked' : 'available',
         extra,
         addOn,
       });
@@ -76,14 +82,36 @@ export default function BookingScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const [step, setStep] = useState(0);
-  const [seatMap] = useState(generateSeatMap());
-  const [selectedSeat, setSelectedSeat] = useState('3A');
+  const [occupiedSeats, setOccupiedSeats] = useState<Set<string>>(new Set());
+  const seatMap = useMemo(() => generateSeatMap(occupiedSeats), [occupiedSeats]);
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [selectedPayment, setSelectedPayment] = useState<'credit_card' | 'bank_transfer' | 'e_wallet' | 'cod'>('credit_card');
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', idCard: '' });
   const [errors, setErrors] = useState<{ fullName?: string; email?: string; phone?: string }>({});
   const [submitting, setSubmitting] = useState(false);
 
   const flight = search.selectedFlight;
+
+  useEffect(() => {
+    let cancelled = false;
+    const flightId = flight ? parseInt(flight.id, 10) : NaN;
+    if (!flight || Number.isNaN(flightId)) {
+      setOccupiedSeats(new Set());
+      setSelectedSeats([]);
+      return;
+    }
+    (async () => {
+      try {
+        const seats = await listOccupiedSeatsApi(flightId);
+        if (!cancelled) setOccupiedSeats(new Set(seats));
+      } catch {
+        if (!cancelled) setOccupiedSeats(new Set());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [flight?.id]);
 
   useEffect(() => {
     if (!user) return;
@@ -94,6 +122,19 @@ export default function BookingScreen() {
       phone: f.phone || (user.phone ?? ''),
     }));
   }, [user]);
+
+  useEffect(() => {
+    if (!flight) return;
+    setSelectedSeats((prev) => {
+      const valid = prev.filter((seat) => !occupiedSeats.has(seat)).slice(0, search.adults);
+      if (valid.length >= search.adults) return valid;
+      const fill = seatMap
+        .filter((seat) => seat.status === 'available' && !valid.includes(seat.id))
+        .slice(0, search.adults - valid.length)
+        .map((seat) => seat.id);
+      return [...valid, ...fill];
+    });
+  }, [flight, occupiedSeats, search.adults, seatMap]);
 
   const STEPS = [t('step_details'), t('step_passenger'), t('step_payment')];
 
@@ -117,42 +158,68 @@ export default function BookingScreen() {
     );
   }
 
+  const passengerCount = search.adults;
   const outboundVnd = flight.priceVND;
   const returnLegVnd = search.tripType === 'roundTrip' ? search.roundTripReturnMinVnd ?? 0 : 0;
-  const baseFareVnd = outboundVnd + returnLegVnd;
-  const selectedSeatMeta = seatMap.find((seat) => seat.id === selectedSeat);
-  const seatAddOn = selectedSeatMeta?.addOn || 0;
+  const baseFarePerPassengerVnd = outboundVnd + returnLegVnd;
+  const baseFareVnd = baseFarePerPassengerVnd * passengerCount;
+  const selectedSeatMetas = selectedSeats
+    .map((seatId) => seatMap.find((seat) => seat.id === seatId))
+    .filter((seat): seat is SeatItem => !!seat);
+  const seatAddOn = selectedSeatMetas.reduce((sum, seat) => sum + seat.addOn, 0);
+  const baggageAddOn = search.baggageFeeVnd;
   const tax = Math.round(baseFareVnd * TAX_RATE);
-  const totalVnd = baseFareVnd + tax + BASE_SERVICE_FEE_VND + seatAddOn;
+  const serviceFeeVnd = BASE_SERVICE_FEE_VND * passengerCount;
+  const totalVnd = baseFareVnd + tax + serviceFeeVnd + seatAddOn + baggageAddOn;
   const cabinLabel = flight.premium ? t('business_class') : t('economy');
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const phoneRegex = /^(0|\+84)[0-9]{9,10}$/;
 
   const validatePassengerForm = () => {
     const nextErrors: { fullName?: string; email?: string; phone?: string } = {};
 
-    if (!form.fullName.trim()) {
-      nextErrors.fullName = 'Vui lòng nhập họ và tên.';
+    if (!isValidFullName(form.fullName)) {
+      nextErrors.fullName = validationMessages.fullName;
     }
 
     if (!form.email.trim()) {
       nextErrors.email = 'Vui lòng nhập email.';
-    } else if (!emailRegex.test(form.email.trim())) {
-      nextErrors.email = 'Email không đúng định dạng.';
+    } else if (!isValidEmail(form.email)) {
+      nextErrors.email = validationMessages.email;
     }
 
     if (!form.phone.trim()) {
       nextErrors.phone = 'Vui lòng nhập số điện thoại.';
-    } else if (!phoneRegex.test(form.phone.trim())) {
-      nextErrors.phone = 'Số điện thoại không hợp lệ.';
+    } else if (!isValidPhone(form.phone)) {
+      nextErrors.phone = validationMessages.phone;
+    }
+
+    if (!isValidOptionalIdCard(form.idCard)) {
+      Alert.alert(t('confirm'), validationMessages.idCard);
+      return false;
     }
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
 
+  const toggleSeat = (seat: SeatItem) => {
+    if (seat.status === 'booked') return;
+    setSelectedSeats((prev) => {
+      if (prev.includes(seat.id)) {
+        return prev.length === 1 ? prev : prev.filter((id) => id !== seat.id);
+      }
+      if (prev.length >= passengerCount) {
+        return [...prev.slice(1), seat.id];
+      }
+      return [...prev, seat.id];
+    });
+  };
+
   const handleNext = async () => {
+    if (step === 0 && selectedSeats.length !== passengerCount) {
+      Alert.alert(t('confirm'), `${t('choose_seat')}: ${passengerCount}`);
+      return;
+    }
+
     if (step === 1) {
       const isValid = validatePassengerForm();
       if (!isValid) return;
@@ -178,13 +245,21 @@ export default function BookingScreen() {
     try {
       const res = await createBookingApi({
         flightId,
-        seatNumber: selectedSeat.trim().toUpperCase(),
+        seatNumber: selectedSeats.join(','),
         passengerName: form.fullName.trim(),
         passengerEmail: form.email.trim(),
         passengerPhone: form.phone.trim() || undefined,
+        passengerIdCard: form.idCard.trim() || undefined,
+        passengerCount,
+        tripType: search.tripType,
+        paymentMethod: selectedPayment,
+        baggageKg: search.baggageKg,
+        baggageFeeVnd: baggageAddOn,
         totalPriceVnd: totalVnd,
       });
       search.setSelectedFlight(null);
+      search.setBaggageKg(0);
+      search.setBaggageFeeVnd(0);
       setStep(0);
       Alert.alert(t('booking_success'), `${t('booking_code')}\nPNR: ${res.pnr}`);
     } catch (e) {
@@ -274,16 +349,16 @@ export default function BookingScreen() {
                       .map((seat) => (
                         <TouchableOpacity
                           key={seat.id}
-                          onPress={() => seat.status !== 'booked' && setSelectedSeat(seat.id)}
+                          onPress={() => toggleSeat(seat)}
                           disabled={seat.status === 'booked'}
                           style={[
                             styles.seat,
                             styles.businessSeat,
                             seat.status === 'booked' && styles.seatTaken,
-                            selectedSeat === seat.id && styles.seatSelected,
+                            selectedSeats.includes(seat.id) && styles.seatSelected,
                           ]}
                         >
-                          <Text style={[styles.seatText, selectedSeat === seat.id && styles.seatTextSelected]}>{seat.id}</Text>
+                          <Text style={[styles.seatText, selectedSeats.includes(seat.id) && styles.seatTextSelected]}>{seat.id}</Text>
                         </TouchableOpacity>
                       ))}
                   </View>
@@ -294,16 +369,16 @@ export default function BookingScreen() {
                       .map((seat) => (
                         <TouchableOpacity
                           key={seat.id}
-                          onPress={() => seat.status !== 'booked' && setSelectedSeat(seat.id)}
+                          onPress={() => toggleSeat(seat)}
                           disabled={seat.status === 'booked'}
                           style={[
                             styles.seat,
                             styles.businessSeat,
                             seat.status === 'booked' && styles.seatTaken,
-                            selectedSeat === seat.id && styles.seatSelected,
+                            selectedSeats.includes(seat.id) && styles.seatSelected,
                           ]}
                         >
-                          <Text style={[styles.seatText, selectedSeat === seat.id && styles.seatTextSelected]}>{seat.id}</Text>
+                          <Text style={[styles.seatText, selectedSeats.includes(seat.id) && styles.seatTextSelected]}>{seat.id}</Text>
                         </TouchableOpacity>
                       ))}
                   </View>
@@ -320,16 +395,16 @@ export default function BookingScreen() {
                       .map((seat) => (
                         <TouchableOpacity
                           key={seat.id}
-                          onPress={() => seat.status !== 'booked' && setSelectedSeat(seat.id)}
+                          onPress={() => toggleSeat(seat)}
                           disabled={seat.status === 'booked'}
                           style={[
                             styles.seat,
                             seat.extra && styles.extraLegroomSeat,
                             seat.status === 'booked' && styles.seatTaken,
-                            selectedSeat === seat.id && styles.seatSelected,
+                            selectedSeats.includes(seat.id) && styles.seatSelected,
                           ]}
                         >
-                          <Text style={[styles.seatText, selectedSeat === seat.id && styles.seatTextSelected]}>{seat.id}</Text>
+                          <Text style={[styles.seatText, selectedSeats.includes(seat.id) && styles.seatTextSelected]}>{seat.id}</Text>
                         </TouchableOpacity>
                       ))}
                   </View>
@@ -340,16 +415,16 @@ export default function BookingScreen() {
                       .map((seat) => (
                         <TouchableOpacity
                           key={seat.id}
-                          onPress={() => seat.status !== 'booked' && setSelectedSeat(seat.id)}
+                          onPress={() => toggleSeat(seat)}
                           disabled={seat.status === 'booked'}
                           style={[
                             styles.seat,
                             seat.extra && styles.extraLegroomSeat,
                             seat.status === 'booked' && styles.seatTaken,
-                            selectedSeat === seat.id && styles.seatSelected,
+                            selectedSeats.includes(seat.id) && styles.seatSelected,
                           ]}
                         >
-                          <Text style={[styles.seatText, selectedSeat === seat.id && styles.seatTextSelected]}>{seat.id}</Text>
+                          <Text style={[styles.seatText, selectedSeats.includes(seat.id) && styles.seatTextSelected]}>{seat.id}</Text>
                         </TouchableOpacity>
                       ))}
                   </View>
@@ -357,7 +432,7 @@ export default function BookingScreen() {
               ))}
 
               <View style={styles.selectedSeatInfo}>
-                <Text style={styles.selectedSeatText}>Đang chọn: {selectedSeat}</Text>
+                <Text style={styles.selectedSeatText}>Đang chọn: {selectedSeats.join(', ') || '—'}</Text>
                 <Text style={styles.selectedSeatText}>Phụ phí ghế: +{seatAddOn.toLocaleString()}₫</Text>
               </View>
             </View>
@@ -368,14 +443,14 @@ export default function BookingScreen() {
                 <Text style={styles.cardTitle}> {t('price_summary')}</Text>
               </View>
               {[
-                [t('fare_outbound'), `${outboundVnd.toLocaleString()}₫`],
+                [t('fare_outbound'), `${(outboundVnd * passengerCount).toLocaleString()}₫`],
                 ...(search.tripType === 'roundTrip' && returnLegVnd > 0
-                  ? [[t('fare_return_estimate'), `${returnLegVnd.toLocaleString()}₫`] as [string, string]]
+                  ? [[t('fare_return_estimate'), `${(returnLegVnd * passengerCount).toLocaleString()}₫`] as [string, string]]
                   : []),
                 [t('tax_fee'), `${tax.toLocaleString()}₫`],
-                ['Phí dịch vụ', `${BASE_SERVICE_FEE_VND.toLocaleString()}₫`],
+                ['Phí dịch vụ', `${serviceFeeVnd.toLocaleString()}₫`],
                 ['Phụ phí ghế', `+${seatAddOn.toLocaleString()}₫`],
-                [t('luggage'), t('free')],
+                [t('luggage'), search.baggageKg > 0 ? `${search.baggageKg} kg - ${baggageAddOn.toLocaleString()}â‚«` : t('free')],
               ].map(([l, v]) => (
                 <View key={l} style={styles.priceRow}>
                   <Text style={styles.priceLabel}>{l}</Text>
@@ -452,7 +527,7 @@ export default function BookingScreen() {
               {[
                 [t('flight_no'),       flight.code],
                 [t('departure_date'),  search.departureDate],
-                [t('seat'),            selectedSeat],
+                [t('seat'),            selectedSeats.join(', ') || '—'],
                 [t('passenger'),       form.fullName || '—'],
                 [t('total'),           `${totalVnd.toLocaleString()}₫`],
               ].map(([label, value]) => (

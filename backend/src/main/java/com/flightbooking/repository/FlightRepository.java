@@ -17,6 +17,13 @@ public interface FlightRepository extends JpaRepository<Flight, Long> {
             String destinationCode
     );
 
+    List<Flight> findByOriginCodeAndDestinationCodeAndDepartureAtBetweenOrderByDepartureAtAsc(
+            String originCode,
+            String destinationCode,
+            LocalDateTime start,
+            LocalDateTime end
+    );
+
     Optional<Flight> findByOriginCodeAndDestinationCodeAndFlightNumberAndDepartureAt(
             String originCode,
             String destinationCode,

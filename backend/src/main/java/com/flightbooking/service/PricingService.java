@@ -3,7 +3,7 @@ package com.flightbooking.service;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingPolicy;
+import java.math.RoundingMode;
 
 @Service
 public class PricingService {
@@ -27,6 +27,6 @@ public class PricingService {
         BigDecimal taxAmount = subtotal.multiply(TAX_RATE);
         BigDecimal totalServiceFee = SERVICE_FEE_PER_PASSENGER.multiply(count);
         
-        return subtotal.add(taxAmount).add(totalServiceFee).setScale(0, RoundingPolicy.HALF_UP);
+        return subtotal.add(taxAmount).add(totalServiceFee).setScale(0, RoundingMode.HALF_UP);
     }
 }

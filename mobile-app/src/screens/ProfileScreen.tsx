@@ -9,6 +9,7 @@ import { formatPrice } from '../utils/price';
 import AppIcon from '../components/AppIcon';
 import { AppIconName } from '../theme/icons';
 import { listMyBookingsApi } from '../services/bookingApi';
+import { formatAuthError } from '../services/authApi';
 import { mapBookingDtoToProfileRow, type ProfileBookingRow } from '../utils/profileBookings';
 
 export default function ProfileScreen() {
@@ -26,6 +27,7 @@ export default function ProfileScreen() {
 
   const [apiBookings, setApiBookings] = useState<ProfileBookingRow[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingsError, setBookingsError] = useState<string | null>(null);
 
   const loadBookings = useCallback(async () => {
     if (!user) {
@@ -33,11 +35,13 @@ export default function ProfileScreen() {
       return;
     }
     setBookingsLoading(true);
+    setBookingsError(null);
     try {
       const list = await listMyBookingsApi();
       setApiBookings(list.map(mapBookingDtoToProfileRow));
-    } catch {
+    } catch (e) {
       setApiBookings([]);
+      setBookingsError(formatAuthError(e));
     } finally {
       setBookingsLoading(false);
     }
@@ -202,7 +206,6 @@ export default function ProfileScreen() {
                   style: 'destructive',
                   onPress: async () => {
                     await signOut();
-                    navigation.navigate('Login');
                   },
                 },
               ])}
@@ -220,7 +223,12 @@ export default function ProfileScreen() {
                 <ActivityIndicator size="large" color="#0064D2" />
               </View>
             ) : null}
-            {!(user && bookingsLoading) && bookingsToShow.length === 0 ? (
+            {user && bookingsError ? (
+              <Text style={{ textAlign: 'center', color: '#DC2626', paddingVertical: 12, fontSize: 13 }}>
+                {bookingsError}
+              </Text>
+            ) : null}
+            {!(user && bookingsLoading) && !bookingsError && bookingsToShow.length === 0 ? (
               <Text style={{ textAlign: 'center', color: '#6B7280', paddingVertical: 24, fontSize: 15 }}>
                 {user ? t('no_bookings_yet') : t('profile_login_for_bookings')}
               </Text>
