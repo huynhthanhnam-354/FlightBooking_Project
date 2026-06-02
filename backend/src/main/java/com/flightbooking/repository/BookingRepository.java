@@ -23,4 +23,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT b FROM Booking b WHERE b.pnr = :pnr")
     Optional<Booking> findByPnrForUpdate(String pnr);
+
+    List<Booking> findByStatusAndExpiresAtBefore(BookingStatus status, java.time.LocalDateTime now);
 }

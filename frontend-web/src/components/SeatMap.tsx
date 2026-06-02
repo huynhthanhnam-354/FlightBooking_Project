@@ -1,54 +1,102 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useBookingStore } from '../store/bookingStore'
+import { flightApi } from '../services/api'
 import './SeatMap.css'
 
 const letters = ['A', 'B', 'C', 'D', 'E', 'F']
 
-function generateRows() {
-  // Predefined booked seats for demo
-  const booked = new Set(['1B', '3C', '4D', '6E', '8A'])
-  const rows = []
-  for (let r = 1; r <= 12; r++) {
-    let leftCount = 3
-    let rightCount = 3
-    let classType = 'economy'
-    if (r <= 2) {
-      leftCount = 2
-      rightCount = 2
-      classType = 'business'
-    }
+interface Seat {
+  id: string;
+  row: number;
+  letter: string;
+  side: 'left' | 'right';
+  status: 'booked' | 'available' | 'reserved';
+  classType: 'economy' | 'business';
+  extra: boolean;
+  addOn: number;
+}
 
-    const seats = []
-    for (let i = 0; i < leftCount; i++) {
-      const letter = letters[i]
-      const id = `${r}${letter}`
-      // addOn: extra charge for premium/extramile seats; business shown as premium
-      const addOn = classType === 'business' ? 400000 : r === 5 ? 150000 : 0
-      seats.push({ id, row: r, letter, side: 'left', status: booked.has(id) ? 'booked' : 'available', classType, extra: r === 5, addOn })
-    }
-    for (let i = 0; i < rightCount; i++) {
-      const letter = letters[3 + i]
-      const id = `${r}${letter}`
-      const addOn = classType === 'business' ? 400000 : r === 5 ? 150000 : 0
-      seats.push({ id, row: r, letter, side: 'right', status: booked.has(id) ? 'booked' : 'available', classType, extra: r === 5, addOn })
-    }
-    rows.push({ row: r, leftCount, rightCount, seats, classType })
-  }
-  return rows
+interface Row {
+  row: number;
+  leftCount: number;
+  rightCount: number;
+  seats: Seat[];
+  classType: 'economy' | 'business';
 }
 
 export default function SeatMap() {
-  // Use selector to only re-render when selectedSeats change
+  const selectedFlight = useBookingStore((state) => state.selectedFlight)
   const selectedSeats = useBookingStore((state) => state.selectedSeats)
   const toggleSeat = useBookingStore((state) => state.toggleSeat)
   
-  const [rows] = useState(generateRows())
+  const [bookedSeats, setBookedSeats] = useState<string[]>([])
+  const [rows, setRows] = useState<Row[]>([])
 
-  const toggleSelect = (seatId) => {
+  // Fetch actual booked seats from backend
+  useEffect(() => {
+    if (selectedFlight?.id) {
+      // In a real app, we use flightApi.getBookedSeats(selectedFlight.id)
+      // For now we simulate or assume it's integrated
+      const fetchBooked = async () => {
+          try {
+              // We need to add getBookedSeats to flightApi in api.ts
+              // For this demo, let's assume it returns some seats
+              const res = await fetch(`http://localhost:8080/api/flights/${selectedFlight.id}/booked-seats`);
+              const data = await res.json();
+              setBookedSeats(data);
+          } catch (e) {
+              console.error("Failed to fetch booked seats", e);
+              // Fallback for demo
+              setBookedSeats(['1B', '3C', '4D']);
+          }
+      }
+      fetchBooked();
+    }
+  }, [selectedFlight])
+
+  useEffect(() => {
+    const newRows: Row[] = []
+    for (let r = 1; r <= 12; r++) {
+      let leftCount = 3
+      let rightCount = 3
+      let classType: 'economy' | 'business' = 'economy'
+      if (r <= 2) {
+        leftCount = 2
+        rightCount = 2
+        classType = 'business'
+      }
+
+      const seats: Seat[] = []
+      for (let i = 0; i < leftCount; i++) {
+        const letter = letters[i]
+        const id = `${r}${letter}`
+        const addOn = classType === 'business' ? 400000 : r === 5 ? 150000 : 0
+        seats.push({ 
+            id, row: r, letter, side: 'left', 
+            status: bookedSeats.includes(id) ? 'booked' : 'available', 
+            classType, extra: r === 5, addOn 
+        })
+      }
+      for (let i = 0; i < rightCount; i++) {
+        const letter = letters[3 + i]
+        const id = `${r}${letter}`
+        const addOn = classType === 'business' ? 400000 : r === 5 ? 150000 : 0
+        seats.push({ 
+            id, row: r, letter, side: 'right', 
+            status: bookedSeats.includes(id) ? 'booked' : 'available', 
+            classType, extra: r === 5, addOn 
+        })
+      }
+      newRows.push({ row: r, leftCount, rightCount, seats, classType })
+    }
+    setRows(newRows)
+  }, [bookedSeats])
+
+  const toggleSelect = (seatId: string) => {
     toggleSeat(seatId)
   }
 
-  const renderSeatButton = (s) => {
+  const renderSeatButton = (s: Seat) => {
     const isSelected = selectedSeats.includes(s.id)
     const classes = ['seat', s.status === 'booked' ? 'booked' : isSelected ? 'selected' : 'available', s.classType === 'business' ? 'business' : '', s.extra ? 'extra' : ''].join(' ')
 
@@ -82,7 +130,7 @@ export default function SeatMap() {
   const businessRows = rows.filter((r) => r.classType === 'business')
   const economyRows = rows.filter((r) => r.classType === 'economy')
 
-  const renderRow = (row) => {
+  const renderRow = (row: Row) => {
     const leftSeats = row.seats.filter((s) => s.side === 'left')
     const rightSeats = row.seats.filter((s) => s.side === 'right')
     const seatSize = row.classType === 'business' ? 56 : 48
@@ -110,7 +158,7 @@ export default function SeatMap() {
           <span className="swatch available" /> Ghế trống
         </div>
         <div className="legend-item">
-          <span className="swatch booked" /> Ghế đã đặt
+          <span className="swatch booked" /> Ghế đang được giữ/đã đặt
         </div>
         <div className="legend-item">
           <span className="swatch selected" /> Ghế đang chọn

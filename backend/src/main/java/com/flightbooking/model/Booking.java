@@ -76,6 +76,9 @@ public class Booking {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
     @PrePersist
     void prePersist() {
         if (createdAt == null) {

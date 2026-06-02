@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BookingSummary from '../components/BookingSummary'
 import { MOCK_FLIGHTS } from '../data/mockFlights'
-import { FaCreditCard, FaUniversity, FaWallet, FaLock } from 'react-icons/fa'
+import { FaCreditCard, FaUniversity, FaWallet, FaLock, FaClock } from 'react-icons/fa'
 import { bookingApi, paymentApi } from '../services/api'
 import { useBookingStore } from '../store/bookingStore'
 import { toast } from 'react-toastify'
@@ -23,6 +23,29 @@ export default function CheckoutPage() {
   const [payment, setPayment] = useState('vnpay') // Default to VNPAY
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState('')
+  
+  // Timer state (15 minutes = 900 seconds)
+  const [timeLeft, setTimeLeft] = useState(900)
+
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      toast.error('Thời gian giữ chỗ đã hết hạn. Vui lòng đặt lại.')
+      navigate('/booking')
+      return
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => prev - 1)
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [timeLeft, navigate])
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
   const priceNumber = Number(String(flight.price).replace(/[^0-9]/g, '')) || 0
   const subtotal = priceNumber * passengers
@@ -93,6 +116,17 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-4">
+      {/* Thông báo giữ chỗ tạm thời */}
+      <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3 text-amber-800">
+          <FaClock className="animate-pulse" />
+          <span className="font-medium">Ghế của bạn đang được giữ tạm thời. Vui lòng hoàn tất thanh toán trong:</span>
+        </div>
+        <div className="text-2xl font-mono font-bold text-amber-600 bg-white px-4 py-1 rounded-lg border border-amber-200 shadow-inner">
+          {formatTime(timeLeft)}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <main className="lg:col-span-8">
           <div className="bg-white p-6 rounded-xl shadow">

@@ -93,6 +93,13 @@
             <version>3.5.3</version>
         </dependency>
 
+        <!-- Rate Limiting (Bucket4j) -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j-core</artifactId>
+            <version>8.7.0</version>
+        </dependency>
+
         <!-- Lombok (phiên bản cố định, tránh lỗi compiler với JDK mới) -->
         <dependency>
             <groupId>org.projectlombok</groupId>

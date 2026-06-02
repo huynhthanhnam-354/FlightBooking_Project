@@ -57,10 +57,10 @@ function Navbar() {
                   className="flex items-center gap-3 rounded-full border border-slate-200 bg-white p-1 pr-4 hover:shadow-md transition-all"
                 >
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-600 to-indigo-600 text-white flex items-center justify-center shadow-md">
-                    {user.name?.[0]?.toUpperCase() || 'U'}
+                    {user.fullName?.[0]?.toUpperCase() || 'U'}
                   </div>
                   <div className="hidden sm:flex flex-col text-left">
-                    <span className="text-sm font-semibold text-slate-800">{user.name}</span>
+                    <span className="text-sm font-semibold text-slate-800">{user.fullName}</span>
                     <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">{user.role === 'admin' ? 'Quản trị viên' : 'Hành khách'}</span>
                   </div>
                   <FaChevronDown className={`text-slate-400 text-xs transition-transform duration-300 ${menuOpen ? 'rotate-180' : ''}`} />

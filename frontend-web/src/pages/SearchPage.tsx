@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import axios from 'axios'
 import FlightSearchForm from '../components/FlightSearchForm'
 import FlightCard from '../components/FlightCard'
 import FlightCardSkeleton from '../components/FlightCardSkeleton'
@@ -12,6 +11,7 @@ import PriceTrendPredictor from '../components/PriceTrendPredictor'
 import PricePredictor from '../components/PricePredictor'
 import { MOCK_FLIGHTS } from '../data/mockFlights'
 import { useBookingStore } from '../store/bookingStore'
+import { Flight } from '../types/flight'
 
 const AIRLINES = [
   { code: 'VN', name: 'Vietnam Airlines', logo: 'https://images.unsplash.com/photo-1436491865332-7a61a109c05?w=50&h=50&fit=crop' },
@@ -27,11 +27,9 @@ function SearchPage() {
 	const setSearchParams = useBookingStore((state) => state.setSearchParams)
 
 	// TanStack Query Configuration
-	const { data: flights = [], isLoading: isQueryLoading, isError, error } = useQuery({
+	const { data: flights = [], isLoading: isQueryLoading, isError, error } = useQuery<Flight[]>({
 		queryKey: ['flights', searchParams],
 		queryFn: async () => {
-			// In a real scenario, this would be an API call
-			// For now, we simulate the API and apply search criteria from searchParams
 			const { from, to } = searchParams
 			const fromLower = (from || '').toLowerCase()
 			const toLower = (to || '').toLowerCase()
@@ -39,31 +37,31 @@ function SearchPage() {
 			// Simulate network delay
 			await new Promise(resolve => setTimeout(resolve, 800))
 			
-			return MOCK_FLIGHTS.filter(f => {
+			return (MOCK_FLIGHTS as any).filter((f: any) => {
 				const depart = (f.depart || '').toLowerCase()
 				const arrive = (f.arrive || '').toLowerCase()
 				return (fromLower ? depart.includes(fromLower) : true) && (toLower ? arrive.includes(toLower) : true)
 			})
 		},
-		staleTime: 5 * 60 * 1000, // 5 minutes
+		staleTime: 5 * 60 * 1000,
 		retry: 2,
 	})
 
-	const [results, setResults] = useState([])
+	const [results, setResults] = useState<Flight[]>([])
 	const [priceBounds, setPriceBounds] = useState(fallbackBounds)
 	const [minPrice, setMinPrice] = useState(fallbackBounds.min)
 	const [maxPrice, setMaxPrice] = useState(fallbackBounds.max)
 	const [isFiltering, setIsFiltering] = useState(false)
-	const [selectedAirlines, setSelectedAirlines] = useState([])
-	const [selectedTimes, setSelectedTimes] = useState([])
+	const [selectedAirlines, setSelectedAirlines] = useState<string[]>([])
+	const [selectedTimes, setSelectedTimes] = useState<string[]>([])
 	const [sortBy, setSortBy] = useState('best')
-	const [selectedStops, setSelectedStops] = useState([])
-	const [selectedAmenities, setSelectedAmenities] = useState([])
-	const [selectedDate, setSelectedDate] = useState(null)
+	const [selectedStops, setSelectedStops] = useState<string[]>([])
+	const [selectedAmenities, setSelectedAmenities] = useState<string[]>([])
+	const [selectedDate, setSelectedDate] = useState<Date | null>(null)
 
 	useEffect(() => {
 		if (flights.length > 0) {
-			const prices = flights.map(f => Number(f.price) || 0)
+			const prices = flights.map(f => Number((f as any).price) || 0)
 			const min = Math.min(...prices)
 			const max = Math.max(...prices)
 			setPriceBounds({ min, max })
@@ -93,20 +91,20 @@ function SearchPage() {
 		setIsFiltering(true)
 		setTimeout(() => {
 			let filtered = flights.filter(f => {
-			const p = Number(f.price) || 0
+			const p = Number((f as any).price) || 0
 			if (p < minPrice) return false
 			if (p > maxPrice) return false
-			if (selectedAirlines.length > 0 && !selectedAirlines.includes(f.airline)) return false
+			if (selectedAirlines.length > 0 && !selectedAirlines.includes((f as any).airline)) return false
 
 			if (selectedTimes.length > 0) {
-				const hour = parseInt(String(f.depart).split(':')[0])
+				const hour = parseInt(String((f as any).depart).split(':')[0])
 				const bucket = hour >= 5 && hour < 12 ? 'morning' : hour >= 12 && hour < 17 ? 'afternoon' : 'evening'
 				if (!selectedTimes.includes(bucket)) return false
 			}
 
 			// stops filter
 			if (selectedStops.length > 0) {
-				const stops = Number(f.stops || 0)
+				const stops = Number((f as any).stops || 0)
 				const ok = selectedStops.some(s => {
 					if (s === '0') return stops === 0
 					if (s === '1') return stops === 1
@@ -118,15 +116,15 @@ function SearchPage() {
 
 			// amenities filter
 			if (selectedAmenities.length > 0) {
-				const hasAll = selectedAmenities.every(a => (f.amenities || []).includes(a))
+				const hasAll = selectedAmenities.every(a => ((f as any).amenities || []).includes(a))
 				if (!hasAll) return false
 			}
 
 			return true
 		})
 
-		if (sortBy === 'priceAsc') filtered.sort((a, b) => a.price - b.price)
-		if (sortBy === 'priceDesc') filtered.sort((a, b) => b.price - a.price)
+		if (sortBy === 'priceAsc') filtered.sort((a, b) => (a as any).price - (b as any).price)
+		if (sortBy === 'priceDesc') filtered.sort((a, b) => (b as any).price - (a as any).price)
 
 		setResults(filtered)
 		setIsFiltering(false)
@@ -146,27 +144,14 @@ function SearchPage() {
 	}
 
 	function searchAlternativeDates() {
-		// Mock logic: reset and use default search
 		setSearchParams({ from: '', to: '', date: '', passengers: 1 })
 	}
 
-	function toggleAirline(name) {
+	function toggleAirline(name: string) {
 		setSelectedAirlines(prev => (prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name]))
 	}
 
-	function toggleTime(bucket) {
-		setSelectedTimes(prev => (prev.includes(bucket) ? prev.filter(x => x !== bucket) : [...prev, bucket]))
-	}
-
-	function toggleStops(key) {
-		setSelectedStops(prev => (prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key]))
-	}
-
-	function toggleAmenity(key) {
-		setSelectedAmenities(prev => (prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key]))
-	}
-
-	function handleSearch(criteria) {
+	function handleSearch(criteria: any) {
 		setSearchParams(criteria)
 	}
 
@@ -220,16 +205,16 @@ function SearchPage() {
 						<div className="mb-4">
 							<div className="text-sm font-medium">Số điểm dừng</div>
 							<div className="mt-2 space-y-1">
-								<label className="inline-flex items-center gap-2"><input type="checkbox" checked={selectedStops.includes('0')} onChange={() => toggleStops('0')} /> <span className="text-sm">Bay thẳng</span></label>
-								<label className="inline-flex items-center gap-2"><input type="checkbox" checked={selectedStops.includes('1')} onChange={() => toggleStops('1')} /> <span className="text-sm">1 điểm dừng</span></label>
-								<label className="inline-flex items-center gap-2"><input type="checkbox" checked={selectedStops.includes('2plus')} onChange={() => toggleStops('2plus')} /> <span className="text-sm">2+ điểm dừng</span></label>
+								<label className="inline-flex items-center gap-2"><input type="checkbox" checked={selectedStops.includes('0')} onChange={() => setSelectedStops(prev => prev.includes('0') ? prev.filter(x => x !== '0') : [...prev, '0'])} /> <span className="text-sm">Bay thẳng</span></label>
+								<label className="inline-flex items-center gap-2"><input type="checkbox" checked={selectedStops.includes('1')} onChange={() => setSelectedStops(prev => prev.includes('1') ? prev.filter(x => x !== '1') : [...prev, '1'])} /> <span className="text-sm">1 điểm dừng</span></label>
+								<label className="inline-flex items-center gap-2"><input type="checkbox" checked={selectedStops.includes('2plus')} onChange={() => setSelectedStops(prev => prev.includes('2plus') ? prev.filter(x => x !== '2plus') : [...prev, '2plus'])} /> <span className="text-sm">2+ điểm dừng</span></label>
 							</div>
 
 							<div className="mb-4 mt-3">
 								<div className="text-sm font-medium">Tiện ích</div>
 								<div className="mt-2 space-y-1">
-									<label className="inline-flex items-center gap-2"><input type="checkbox" checked={selectedAmenities.includes('wifi')} onChange={() => toggleAmenity('wifi')} /> <span className="text-sm">Wifi</span></label>
-									<label className="inline-flex items-center gap-2"><input type="checkbox" checked={selectedAmenities.includes('meal')} onChange={() => toggleAmenity('meal')} /> <span className="text-sm">Suất ăn</span></label>
+									<label className="inline-flex items-center gap-2"><input type="checkbox" checked={selectedAmenities.includes('wifi')} onChange={() => setSelectedAmenities(prev => prev.includes('wifi') ? prev.filter(x => x !== 'wifi') : [...prev, 'wifi'])} /> <span className="text-sm">Wifi</span></label>
+									<label className="inline-flex items-center gap-2"><input type="checkbox" checked={selectedAmenities.includes('meal')} onChange={() => setSelectedAmenities(prev => prev.includes('meal') ? prev.filter(x => x !== 'meal') : [...prev, 'meal'])} /> <span className="text-sm">Suất ăn</span></label>
 								</div>
 							</div>
 						</div>
@@ -241,7 +226,7 @@ function SearchPage() {
 					</div>
 
 					<div className="mt-4">
-						<SpecialOffers flights={MOCK_FLIGHTS} />
+						<SpecialOffers flights={MOCK_FLIGHTS as any} />
 					</div>
 				</aside>
 
@@ -252,13 +237,13 @@ function SearchPage() {
 						<PricePredictor 
 							from={searchParams.from || 'Hà Nội'} 
 							to={searchParams.to || 'Hồ Chí Minh'}
-							currentPrice={results.length > 0 ? Math.min(...results.map(f => f.price)) : 1250000}
+							currentPrice={results.length > 0 ? Math.min(...results.map(f => (f as any).price)) : 1250000}
 						/>
 					</div>
 
 					<div className="mt-6">
 						<DatePriceSlider 
-							flights={flights} 
+							flights={flights as any} 
 							selectedDate={selectedDate}
 							onSelect={setSelectedDate}
 						/>
@@ -286,7 +271,7 @@ function SearchPage() {
 						{isError ? (
 							<div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-[32px] text-center">
 								<h3 className="text-lg font-bold">Đã có lỗi xảy ra</h3>
-								<p>{error?.message || 'Không thể tải danh sách chuyến bay.'}</p>
+								<p>{(error as any)?.message || 'Không thể tải danh sách chuyến bay.'}</p>
 								<button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-xl">Thử lại</button>
 							</div>
 						) : isLoading ? (
@@ -307,7 +292,7 @@ function SearchPage() {
 							</div>
 						) : (
 							results.map(f => (
-								<FlightCard key={f.id} flight={f} />
+								<FlightCard key={f.id} flight={f as any} />
 							))
 						)}
 					</div>
