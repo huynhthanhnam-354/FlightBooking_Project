@@ -1,16 +1,18 @@
 package com.flightbooking.service;
 
+import com.flightbooking.dto.BookingDTO;
 import com.flightbooking.model.AppUser;
 import com.flightbooking.model.Booking;
 import com.flightbooking.model.BookingStatus;
 import com.flightbooking.model.Flight;
 import com.flightbooking.repository.AppUserRepository;
 import com.flightbooking.repository.BookingRepository;
-import com.flightbooking.web.dto.BookingResponse;
+import com.flightbooking.repository.FlightRepository;
 import com.flightbooking.time.VietnamTime;
 import com.flightbooking.validation.InputValidator;
 import com.flightbooking.web.dto.BaggageUpdateRequest;
 import com.flightbooking.web.dto.BookingAdminSummaryResponse;
+import com.flightbooking.web.dto.BookingResponse;
 import com.flightbooking.web.dto.CheckInRequest;
 import com.flightbooking.web.dto.CreateBookingRequest;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -25,7 +28,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -33,13 +35,17 @@ public class BookingService {
 
     private final BookingRepository bookingRepository;
     private final AppUserRepository appUserRepository;
+    private final FlightRepository flightRepository;
     private final FlightService flightService;
+    private final EmailService emailService;
+    private final PnrGenerator pnrGenerator;
 
     @Transactional
     public BookingResponse create(String userEmail, CreateBookingRequest request) {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
                 .orElseThrow(() -> new UsernameNotFoundException(userEmail));
-        Flight flight = flightService.getByIdOrThrow(request.flightId());
+        Flight flight = flightRepository.findByIdForUpdate(request.flightId())
+                .orElseThrow(() -> new IllegalArgumentException("Flight not found: " + request.flightId()));
         String seatNumber = normalizeSeatNumbers(request.seatNumber());
         String passengerName = InputValidator.requirePersonName(request.passengerName());
         String passengerEmail = request.passengerEmail() == null || request.passengerEmail().isBlank()
@@ -58,7 +64,6 @@ public class BookingService {
         int baggageKg = normalizeBaggageKg(request.baggageKg());
         long baggageFeeVnd = normalizeBaggageFee(request.baggageFeeVnd());
 
-        String pnr = generatePnr();
         Booking booking = Booking.builder()
                 .user(user)
                 .flight(flight)
@@ -74,7 +79,8 @@ public class BookingService {
                 .baggageFeeVnd(baggageFeeVnd)
                 .totalPriceVnd(request.totalPriceVnd())
                 .status(statusForPayment(paymentMethod))
-                .pnr(pnr)
+                .expiresAt(VietnamTime.nowLocal().plusMinutes(15))
+                .pnr(pnrGenerator.generate())
                 .build();
         bookingRepository.save(booking);
         return toResponse(booking);
@@ -132,10 +138,29 @@ public class BookingService {
     }
 
     @Transactional
+    public BookingResponse cancel(Long id, String userEmail) {
+        Booking booking = bookingRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+        if (!booking.getUser().getEmail().equalsIgnoreCase(userEmail)) {
+            throw new IllegalArgumentException("Booking not found");
+        }
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
+            throw new IllegalArgumentException("Booking is already cancelled");
+        }
+        if (booking.getStatus() == BookingStatus.COMPLETED) {
+            throw new IllegalArgumentException("Completed booking cannot be cancelled");
+        }
+
+        booking.setStatus(BookingStatus.CANCELLED);
+        sendCancellationEmail(booking);
+        return toResponse(booking);
+    }
+
+    @Transactional
     public BookingResponse updateBaggage(String userEmail, Long bookingId, BaggageUpdateRequest request) {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
                 .orElseThrow(() -> new UsernameNotFoundException(userEmail));
-        Booking booking = bookingRepository.findById(bookingId)
+        Booking booking = bookingRepository.findByIdForUpdate(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
         if (!booking.getUser().getId().equals(user.getId())) {
             throw new IllegalArgumentException("Booking not found");
@@ -154,7 +179,7 @@ public class BookingService {
     public BookingResponse checkIn(String userEmail, CheckInRequest request) {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
                 .orElseThrow(() -> new UsernameNotFoundException(userEmail));
-        Booking booking = bookingRepository.findByPnrIgnoreCase(clean(request.pnr()))
+        Booking booking = bookingRepository.findByPnrForUpdate(clean(request.pnr()))
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
         if (!booking.getUser().getId().equals(user.getId())) {
             throw new IllegalArgumentException("Booking not found");
@@ -181,19 +206,6 @@ public class BookingService {
     public List<String> listOccupiedSeats(Long flightId) {
         Flight flight = flightService.getByIdOrThrow(flightId);
         return occupiedSeatsForFlight(flight).stream().toList();
-    }
-
-    private String generatePnr() {
-        String pnr;
-        int guard = 0;
-        do {
-            pnr = "SB" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
-            guard++;
-        } while (bookingRepository.existsByPnr(pnr) && guard < 20);
-        if (bookingRepository.existsByPnr(pnr)) {
-            pnr = "SB" + System.currentTimeMillis();
-        }
-        return pnr;
     }
 
     private BookingResponse toResponse(Booking b) {
@@ -224,6 +236,26 @@ public class BookingService {
         bookingRepository.findByFlightAndStatusNot(flight, BookingStatus.CANCELLED)
                 .forEach(b -> out.addAll(parseSeatNumbers(b.getSeatNumber())));
         return out;
+    }
+
+    private void sendCancellationEmail(Booking booking) {
+        try {
+            Flight flight = booking.getFlight();
+            BookingDTO bookingDTO = BookingDTO.builder()
+                    .bookingCode(booking.getPnr())
+                    .customerName(booking.getPassengerName())
+                    .customerEmail(booking.getPassengerEmail())
+                    .flightCode(flight.getFlightNumber())
+                    .departureCity(flight.getOriginCode())
+                    .arrivalCity(flight.getDestinationCode())
+                    .departureTime(flight.getDepartureAt())
+                    .seatNumber(booking.getSeatNumber())
+                    .totalPrice(BigDecimal.valueOf(booking.getTotalPriceVnd()))
+                    .build();
+            emailService.sendBookingCancellationEmail(bookingDTO);
+        } catch (Exception ignored) {
+            // Cancellation should not roll back if email delivery is unavailable.
+        }
     }
 
     private static Set<String> parseSeatNumbers(String value) {

@@ -8,7 +8,10 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 
 import com.flightbooking.config.FlightApiProperties;
 
+import org.springframework.scheduling.annotation.EnableScheduling;
+
 @SpringBootApplication
+@EnableScheduling
 @EnableConfigurationProperties(FlightApiProperties.class)
 public class FlightBookingApplication {
 

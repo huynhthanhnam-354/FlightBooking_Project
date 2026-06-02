@@ -5,6 +5,8 @@ import com.flightbooking.web.dto.AuthResponse;
 import com.flightbooking.web.dto.ForgotPasswordRequest;
 import com.flightbooking.web.dto.LoginRequest;
 import com.flightbooking.web.dto.RegisterRequest;
+import com.flightbooking.web.dto.TokenRefreshRequest;
+import com.flightbooking.web.dto.TokenRefreshResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -29,6 +31,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<TokenRefreshResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
+        return ResponseEntity.ok(authService.refreshToken(request));
     }
 
     @PostMapping("/forgot-password")

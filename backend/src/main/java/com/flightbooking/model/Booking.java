@@ -1,5 +1,6 @@
 package com.flightbooking.model;
 
+import com.flightbooking.time.VietnamTime;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -12,19 +13,15 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import com.flightbooking.time.VietnamTime;
-
 import java.time.LocalDateTime;
 
-/**
- * Đặt chỗ — bảng {@code bookings}, liên kết {@link AppUser} + {@link Flight}.
- */
 @Entity
 @Table(name = "bookings")
 @Getter
@@ -90,8 +87,14 @@ public class Booking {
     @Column(nullable = false, unique = true, length = 24)
     private String pnr;
 
+    @Version
+    private Integer version;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
 
     @Column(name = "checked_in_at")
     private LocalDateTime checkedInAt;

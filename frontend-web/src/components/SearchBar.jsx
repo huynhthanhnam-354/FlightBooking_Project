@@ -14,24 +14,28 @@ function useOutsideClick(ref, handler) {
   }, [ref, handler])
 }
 
-function AirportSuggest({ query, onPick }) {
-  if (!query || query.length < 1) return null
-  const q = query.trim().toLowerCase()
-  const results = AIRPORTS.filter(a =>
-    a.city.toLowerCase().includes(q) || a.code.toLowerCase().includes(q) || a.name.toLowerCase().includes(q),
-  ).slice(0, 6)
+function AirportSuggest({ query, onPick, excludeCode }) {
+  const q = (query || '').trim().toLowerCase()
+  const results = AIRPORTS.filter(a => {
+    if (excludeCode && a.code === excludeCode) return false
+    if (!q) return true // Show all if no query
+    return a.city.toLowerCase().includes(q) || a.code.toLowerCase().includes(q) || (a.name || a.airport || '').toLowerCase().includes(q)
+  }).slice(0, 10)
 
   if (!results.length) return (
-    <div className="p-2 text-sm text-slate-500">Không tìm thấy</div>
+    <div className="p-4 text-sm text-slate-500 italic">Không tìm thấy địa điểm phù hợp</div>
   )
 
   return (
-    <ul className="divide-y">
+    <ul className="max-h-60 overflow-y-auto divide-y divide-slate-50">
       {results.map((a) => (
         <li key={a.code}>
-          <button type="button" onClick={() => onPick(a)} className="w-full text-left p-2 hover:bg-slate-50">
-            <div className="font-medium">{a.city} <span className="text-xs text-slate-400">({a.code})</span></div>
-            <div className="text-xs text-slate-500">{a.name}</div>
+          <button type="button" onClick={() => onPick(a)} className="w-full text-left px-4 py-3 hover:bg-sky-50 transition-colors group">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-slate-800 group-hover:text-sky-700">{a.city}</span>
+              <span className="text-xs font-black text-sky-600 bg-sky-50 px-2 py-1 rounded">{a.code}</span>
+            </div>
+            <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-tight">{a.name || a.airport}</div>
           </button>
         </li>
       ))}
@@ -44,7 +48,9 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
   const [searchMode, setSearchMode] = useState('classic')
   const [tripType, setTripType] = useState('roundtrip')
   const [from, setFrom] = useState('Hà Nội (HAN)')
+  const [fromCode, setFromCode] = useState('HAN')
   const [to, setTo] = useState('Hồ Chí Minh (SGN)')
+  const [toCode, setToCode] = useState('SGN')
   const [departDate, setDepartDate] = useState('')
   const [returnDate, setReturnDate] = useState('')
   const [segments, setSegments] = useState([{ id: 1, from: '', to: '', date: '' }, { id: 2, from: '', to: '', date: '' }])
@@ -63,10 +69,14 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
 
     if (initialSearch.from) {
       setFrom(initialSearch.from)
+      const code = (initialSearch.from.match(/\((.*?)\)/) || [])[1]
+      if (code) setFromCode(code)
       setFromQuery('')
     }
     if (initialSearch.to) {
       setTo(initialSearch.to)
+      const code = (initialSearch.to.match(/\((.*?)\)/) || [])[1]
+      if (code) setToCode(code)
       setToQuery('')
     }
     if (initialSearch.departDate) {
@@ -102,15 +112,15 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
   const toRef = useRef(null)
   const paxRef = useRef(null)
 
-  useOutsideClick(fromRef, () => setShowFromSuggest(false))
-  useOutsideClick(toRef, () => setShowToSuggest(false))
+  useOutsideClick(fromRef, () => { setShowFromSuggest(false); setFromQuery('') })
+  useOutsideClick(toRef, () => { setShowToSuggest(false); setToQuery('') })
   useOutsideClick(paxRef, () => setShowPax(false))
 
-  const handlePickAirport = (setter, codeCity, setQuery, a) => {
+  const handlePickAirport = (setter, setCode, setQuery, setShow, a) => {
     setter(`${a.city} (${a.code})`)
+    setCode(a.code)
     setQuery('')
-    setShowFromSuggest(false)
-    setShowToSuggest(false)
+    setShow(false)
   }
 
   function submit(e) {
@@ -132,7 +142,7 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
   const isAIMode = searchMode === 'ai'
 
   return (
-    <form onSubmit={submit} className="w-full bg-white/95 backdrop-blur-md p-4 md:p-6 rounded-3xl shadow-lg">
+    <form onSubmit={submit} className="w-full bg-white/95 backdrop-blur-md p-4 md:p-6 rounded-3xl shadow-lg relative z-30">
       <div className="flex flex-wrap gap-2 items-center mb-4">
         <button
           type="button"
@@ -184,40 +194,44 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
           <div>
             {tripType !== 'multicity' ? (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                <div className="md:col-span-1">
-                  <label className="text-xs text-slate-600">Điểm đi</label>
-                  <div className="relative" ref={fromRef}>
-                    <input
-                      value={fromQuery || from}
-                      onChange={(e) => { setFromQuery(e.target.value); setShowFromSuggest(true) }}
-                      onFocus={() => setShowFromSuggest(true)}
-                      placeholder="Điểm đi"
-                      className="w-full p-3 rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-sky-500 hover:shadow-sm transition"
-                    />
-                    {showFromSuggest && (
-                      <div className="absolute left-0 right-0 mt-2 bg-white rounded-lg shadow-lg z-50 border">
-                        <AirportSuggest query={fromQuery} onPick={(a) => handlePickAirport(setFrom, a, setFromQuery, a)} />
-                      </div>
-                    )}
-                  </div>
+                <div className="md:col-span-1 relative" ref={fromRef}>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Điểm đi</label>
+                  <input
+                    value={fromQuery || from}
+                    onChange={(e) => { setFromQuery(e.target.value); setShowFromSuggest(true) }}
+                    onFocus={() => setShowFromSuggest(true)}
+                    placeholder="Chọn điểm đi"
+                    className="w-full p-3 rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-sky-500 hover:shadow-sm transition font-medium"
+                  />
+                  {showFromSuggest && (
+                    <div className="absolute left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl z-[60] border border-slate-100 overflow-hidden">
+                      <AirportSuggest 
+                        query={fromQuery} 
+                        excludeCode={toCode}
+                        onPick={(a) => handlePickAirport(setFrom, setFromCode, setFromQuery, setShowFromSuggest, a)} 
+                      />
+                    </div>
+                  )}
                 </div>
 
-                <div className="md:col-span-1">
-                  <label className="text-xs text-slate-600">Điểm đến</label>
-                  <div className="relative" ref={toRef}>
-                    <input
-                      value={toQuery || to}
-                      onChange={(e) => { setToQuery(e.target.value); setShowToSuggest(true) }}
-                      onFocus={() => setShowToSuggest(true)}
-                      placeholder="Điểm đến"
-                      className="w-full p-3 rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-sky-500 hover:shadow-sm transition"
-                    />
-                    {showToSuggest && (
-                      <div className="absolute left-0 right-0 mt-2 bg-white rounded-lg shadow-lg z-50 border">
-                        <AirportSuggest query={toQuery} onPick={(a) => handlePickAirport(setTo, a, setToQuery, a)} />
-                      </div>
-                    )}
-                  </div>
+                <div className="md:col-span-1 relative" ref={toRef}>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Điểm đến</label>
+                  <input
+                    value={toQuery || to}
+                    onChange={(e) => { setToQuery(e.target.value); setShowToSuggest(true) }}
+                    onFocus={() => setShowToSuggest(true)}
+                    placeholder="Chọn điểm đến"
+                    className="w-full p-3 rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-sky-500 hover:shadow-sm transition font-medium"
+                  />
+                  {showToSuggest && (
+                    <div className="absolute left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl z-[60] border border-slate-100 overflow-hidden">
+                      <AirportSuggest 
+                        query={toQuery} 
+                        excludeCode={fromCode}
+                        onPick={(a) => handlePickAirport(setTo, setToCode, setToQuery, setShowToSuggest, a)} 
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="md:col-span-1">

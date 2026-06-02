@@ -1,9 +1,13 @@
 package com.flightbooking.service;
 
-import com.flightbooking.model.Flight;
-import com.flightbooking.integration.AirLabsScheduleSyncService;
 import com.flightbooking.config.FlightApiProperties;
+import com.flightbooking.integration.AirLabsScheduleSyncService;
+import com.flightbooking.model.Booking;
+import com.flightbooking.model.BookingStatus;
+import com.flightbooking.model.Flight;
+import com.flightbooking.repository.BookingRepository;
 import com.flightbooking.repository.FlightRepository;
+import com.flightbooking.time.VietnamTime;
 import com.flightbooking.web.dto.FlightResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +24,23 @@ import java.util.List;
 public class FlightService {
 
     private final FlightRepository flightRepository;
+    private final BookingRepository bookingRepository;
     private final FlightApiProperties flightApiProperties;
     private final AirLabsScheduleSyncService airLabsScheduleSyncService;
+
+    @Transactional(readOnly = true)
+    public List<String> getBookedSeats(Long flightId) {
+        Flight flight = getByIdOrThrow(flightId);
+        
+        // Lấy tất cả các ghế đã được đặt (CONFIRMED) hoặc đang được giữ (PENDING_PAYMENT & chưa hết hạn)
+        return flight.getBookings().stream()
+                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED || 
+                            (b.getStatus() == BookingStatus.PENDING_PAYMENT && b.getExpiresAt() != null && b.getExpiresAt().isAfter(VietnamTime.nowLocal())))
+                .map(Booking::getSeatNumber)
+                .flatMap(s -> java.util.Arrays.stream(s.split(","))) // Handle multiple seats in one string if needed
+                .map(String::trim)
+                .toList();
+    }
 
     @Transactional
     public List<FlightResponse> search(String originCode, String destinationCode, LocalDate departureDate) {

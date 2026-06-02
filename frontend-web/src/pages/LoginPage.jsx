@@ -3,17 +3,29 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import LoginForm from "../components/LoginForm";
 import { CiPlane } from "react-icons/ci";
+import { authApi } from "../services/api";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { loginSuccess } = useAuth();
+  const [error, setError] = useState("");
 
   const handleLogin = async (credentials) => {
-    console.log("Login attempted:", credentials);
-    // Gọi login từ AuthContext
-    login({ name: credentials.identifier });
-    // Chuyển đến trang chủ
-    navigate("/");
+    setError("");
+    try {
+      const response = await authApi.login({
+        email: credentials.identifier,
+        password: credentials.password
+      });
+      
+      // Lưu thông tin vào Context & LocalStorage
+      loginSuccess(response.data);
+      
+      // Chuyển đến trang chủ
+      navigate("/");
+    } catch (err) {
+      setError(err.response?.data?.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại.");
+    }
   };
 
   return (
@@ -37,6 +49,12 @@ export default function LoginPage() {
             <h1 className="text-3xl font-bold text-gray-800">SkyBooking</h1>
             <p className="text-sm text-gray-500">Đặt chuyến bay của bạn ngay hôm nay</p>
           </div>
+
+          {error && (
+            <div className="p-3 bg-red-100 text-red-700 text-sm rounded-lg text-center font-medium border border-red-200">
+              {error}
+            </div>
+          )}
 
           {/* Biểu mẫu đăng nhập */}
           <LoginForm onLogin={handleLogin} />

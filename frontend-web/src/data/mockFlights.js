@@ -1,5 +1,7 @@
 export const MOCK_FLIGHTS = [
-  { id: "f1", airline: "VietAir", flightNumber: "VJ123", depart: "08:00 HN", arrive: "10:00 HCM", duration: "2h", price: 1200000, stops: 0, amenities: ['wifi', 'meal'] },
-  { id: "f2", airline: "SkyFly", flightNumber: "SF456", depart: "12:30 HN", arrive: "14:35 HCM", duration: "2h 5m", price: 1350000, stops: 1, amenities: ['meal'] },
-  { id: "f3", airline: "OceanAir", flightNumber: "OA789", depart: "18:20 HN", arrive: "20:25 HCM", duration: "2h 5m", price: 1400000, stops: 0, amenities: ['wifi'] }
+  { id: "f1", airline: "Vietnam Airlines", flightNumber: "VN123", depart: "08:00 HN", arrive: "10:00 HCM", duration: "2h", price: 2100000, stops: 0, amenities: ['wifi', 'meal'] },
+  { id: "f2", airline: "VietJet Air", flightNumber: "VJ456", depart: "12:30 HN", arrive: "14:35 HCM", duration: "2h 5m", price: 980000, stops: 0, amenities: ['meal'] },
+  { id: "f3", airline: "Bamboo Airways", flightNumber: "QH789", depart: "18:20 HN", arrive: "20:25 HCM", duration: "2h 5m", price: 1450000, stops: 0, amenities: ['wifi'] },
+  { id: "f4", airline: "Vietravel Airlines", flightNumber: "VU123", depart: "09:00 HN", arrive: "11:15 HCM", duration: "2h 15m", price: 1100000, stops: 0, amenities: ['wifi'] },
+  { id: "f5", airline: "Pacific Airlines", flightNumber: "BL789", depart: "15:45 HN", arrive: "17:55 HCM", duration: "2h 10m", price: 1250000, stops: 0, amenities: ['meal'] }
 ];

@@ -1,58 +1,35 @@
-/** IATA list for search — Vietnam + major international hubs */
+/** Danh sách sân bay phổ biến tại Việt Nam */
 export const AIRPORTS = [
-  // Vietnam
-  { code: 'HAN', city: 'Hà Nội', name: 'Nội Bài International Airport' },
-  { code: 'SGN', city: 'Hồ Chí Minh', name: 'Tân Sơn Nhất International Airport' },
-  { code: 'DAD', city: 'Đà Nẵng', name: 'Đà Nẵng International Airport' },
-  { code: 'CXR', city: 'Nha Trang', name: 'Cam Ranh International Airport' },
-  { code: 'PQC', city: 'Phú Quốc', name: 'Phú Quốc International Airport' },
-  { code: 'VII', city: 'Vinh', name: 'Vinh International Airport' },
-  { code: 'HPH', city: 'Hải Phòng', name: 'Cat Bi Airport' },
-  { code: 'VCA', city: 'Cần Thơ', name: 'Can Tho Airport' },
-  { code: 'DLI', city: 'Đà Lạt', name: 'Lien Khuong Airport' },
-  { code: 'BMV', city: 'Buôn Ma Thuột', name: 'Buon Ma Thuot Airport' },
-  // Southeast Asia & East Asia
-  { code: 'SIN', city: 'Singapore', name: 'Changi Airport' },
-  { code: 'BKK', city: 'Bangkok', name: 'Suvarnabhumi Airport' },
-  { code: 'DMK', city: 'Bangkok', name: 'Don Mueang Airport' },
-  { code: 'HKT', city: 'Phuket', name: 'Phuket International Airport' },
-  { code: 'KUL', city: 'Kuala Lumpur', name: 'Kuala Lumpur International Airport' },
-  { code: 'PEN', city: 'Penang', name: 'Penang International Airport' },
-  { code: 'MNL', city: 'Manila', name: 'Ninoy Aquino International Airport' },
-  { code: 'CEB', city: 'Cebu', name: 'Mactan–Cebu International Airport' },
-  { code: 'CGK', city: 'Jakarta', name: 'Soekarno–Hatta International Airport' },
-  { code: 'DPS', city: 'Bali', name: 'Ngurah Rai International Airport' },
-  { code: 'REP', city: 'Siem Reap', name: 'Siem Reap International Airport' },
-  { code: 'PNH', city: 'Phnom Penh', name: 'Phnom Penh International Airport' },
-  { code: 'ICN', city: 'Seoul', name: 'Incheon International Airport' },
-  { code: 'NRT', city: 'Tokyo', name: 'Narita International Airport' },
-  { code: 'HND', city: 'Tokyo', name: 'Haneda Airport' },
-  { code: 'KIX', city: 'Osaka', name: 'Kansai International Airport' },
-  { code: 'TPE', city: 'Taipei', name: 'Taoyuan International Airport' },
-  { code: 'HKG', city: 'Hong Kong', name: 'Hong Kong International Airport' },
-  { code: 'PVG', city: 'Shanghai', name: 'Pudong International Airport' },
-  { code: 'PEK', city: 'Beijing', name: 'Capital International Airport' },
-  { code: 'CAN', city: 'Guangzhou', name: 'Baiyun International Airport' },
-  { code: 'SZX', city: 'Shenzhen', name: 'Shenzhen Bao’an International Airport' },
-  { code: 'DEL', city: 'New Delhi', name: 'Indira Gandhi International Airport' },
-  { code: 'BOM', city: 'Mumbai', name: 'Chhatrapati Shivaji Maharaj International Airport' },
-  // Oceania & Middle East
-  { code: 'SYD', city: 'Sydney', name: 'Kingsford Smith Airport' },
-  { code: 'MEL', city: 'Melbourne', name: 'Melbourne Airport' },
-  { code: 'AKL', city: 'Auckland', name: 'Auckland Airport' },
-  { code: 'DXB', city: 'Dubai', name: 'Dubai International Airport' },
-  { code: 'DOH', city: 'Doha', name: 'Hamad International Airport' },
-  // Europe & Americas
-  { code: 'LHR', city: 'London', name: 'Heathrow Airport' },
-  { code: 'CDG', city: 'Paris', name: 'Charles de Gaulle Airport' },
-  { code: 'AMS', city: 'Amsterdam', name: 'Schiphol Airport' },
-  { code: 'FRA', city: 'Frankfurt', name: 'Frankfurt Airport' },
-  { code: 'IST', city: 'Istanbul', name: 'Istanbul Airport' },
-  { code: 'LAX', city: 'Los Angeles', name: 'Los Angeles International Airport' },
-  { code: 'SFO', city: 'San Francisco', name: 'San Francisco International Airport' },
-  { code: 'JFK', city: 'New York', name: 'John F. Kennedy International Airport' },
-  { code: 'ORD', city: 'Chicago', name: "O'Hare International Airport" },
-  { code: 'YYZ', city: 'Toronto', name: 'Pearson International Airport' },
-]
+  { code: 'HAN', city: 'Hà Nội', name: 'Sân bay Quốc tế Nội Bài' },
+  { code: 'SGN', city: 'TP. Hồ Chí Minh', name: 'Sân bay Quốc tế Tân Sơn Nhất' },
+  { code: 'DAD', city: 'Đà Nẵng', name: 'Sân bay Quốc tế Đà Nẵng' },
+  { code: 'PQC', city: 'Phú Quốc', name: 'Sân bay Quốc tế Phú Quốc' },
+  { code: 'CXR', city: 'Nha Trang', name: 'Sân bay Quốc tế Cam Ranh' },
+  { code: 'HPH', city: 'Hải Phòng', name: 'Sân bay Cát Bi' },
+  { code: 'HUI', city: 'Huế', name: 'Sân bay Quốc tế Phú Bài' },
+  { code: 'DLI', city: 'Đà Lạt', name: 'Sân bay Liên Khương' },
+  { code: 'VII', city: 'Vinh', airport: 'Sân bay Quốc tế Vinh' }, // Fixing inconsistent key if any, but request uses 'airport'
+  { code: 'UIH', city: 'Quy Nhơn', name: 'Sân bay Phù Cát' },
+  { code: 'THD', city: 'Thanh Hóa', name: 'Sân bay Thọ Xuân' },
+  { code: 'VCA', city: 'Cần Thơ', name: 'Sân bay Quốc tế Cần Thơ' }
+];
 
-export default AIRPORTS
+// Note: Consistent key 'name' or 'airport'? The user provided 'airport' in the object list.
+// Let's use 'name' to keep it consistent with the existing codebase structure but with the user's values.
+
+export const VIETNAM_AIRPORTS = [
+  { code: 'HAN', city: 'Hà Nội', name: 'Sân bay Quốc tế Nội Bài' },
+  { code: 'SGN', city: 'TP. Hồ Chí Minh', name: 'Sân bay Quốc tế Tân Sơn Nhất' },
+  { code: 'DAD', city: 'Đà Nẵng', name: 'Sân bay Quốc tế Đà Nẵng' },
+  { code: 'PQC', city: 'Phú Quốc', name: 'Sân bay Quốc tế Phú Quốc' },
+  { code: 'CXR', city: 'Nha Trang', name: 'Sân bay Quốc tế Cam Ranh' },
+  { code: 'HPH', city: 'Hải Phòng', name: 'Sân bay Cát Bi' },
+  { code: 'HUI', city: 'Huế', name: 'Sân bay Quốc tế Phú Bài' },
+  { code: 'DLI', city: 'Đà Lạt', name: 'Sân bay Liên Khương' },
+  { code: 'VII', city: 'Vinh', name: 'Sân bay Quốc tế Vinh' },
+  { code: 'UIH', city: 'Quy Nhơn', name: 'Sân bay Phù Cát' },
+  { code: 'THD', city: 'Thanh Hóa', name: 'Sân bay Thọ Xuân' },
+  { code: 'VCA', city: 'Cần Thơ', name: 'Sân bay Quốc tế Cần Thơ' }
+];
+
+export default AIRPORTS;

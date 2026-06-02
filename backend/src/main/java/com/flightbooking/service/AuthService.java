@@ -9,6 +9,8 @@ import com.flightbooking.web.dto.AuthResponse;
 import com.flightbooking.web.dto.ForgotPasswordRequest;
 import com.flightbooking.web.dto.LoginRequest;
 import com.flightbooking.web.dto.RegisterRequest;
+import com.flightbooking.web.dto.TokenRefreshRequest;
+import com.flightbooking.web.dto.TokenRefreshResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -26,6 +28,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -44,14 +47,19 @@ public class AuthService {
                 .role(Role.USER)
                 .build();
         appUserRepository.save(user);
+
         UserDetails details = org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail())
                 .password(user.getPasswordHash())
                 .roles(user.getRole().name())
                 .build();
-        String token = jwtService.generateToken(details);
+
+        String accessToken = jwtService.generateToken(details);
+        String refreshToken = refreshTokenService.createRefreshToken(user.getId()).getToken();
+
         return AuthResponse.of(
-                token,
+                accessToken,
+                refreshToken,
                 user.getEmail(),
                 user.getFullName(),
                 user.getRole().name(),
@@ -61,6 +69,7 @@ public class AuthService {
         );
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         String email = InputValidator.requireEmail(request.email());
         Authentication authentication = authenticationManager.authenticate(
@@ -72,9 +81,13 @@ public class AuthService {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         AppUser user = appUserRepository.findByEmailIgnoreCase(userDetails.getUsername())
                 .orElseThrow();
-        String token = jwtService.generateToken(userDetails);
+
+        String accessToken = jwtService.generateToken(userDetails);
+        String refreshToken = refreshTokenService.createRefreshToken(user.getId()).getToken();
+
         return AuthResponse.of(
-                token,
+                accessToken,
+                refreshToken,
                 user.getEmail(),
                 user.getFullName(),
                 user.getRole().name(),
@@ -84,11 +97,28 @@ public class AuthService {
         );
     }
 
+    @Transactional
+    public TokenRefreshResponse refreshToken(TokenRefreshRequest request) {
+        String requestRefreshToken = request.refreshToken();
+
+        return refreshTokenService.findByToken(requestRefreshToken)
+                .map(refreshTokenService::verifyExpiration)
+                .map(com.flightbooking.model.RefreshToken::getUser)
+                .map(user -> {
+                    UserDetails details = org.springframework.security.core.userdetails.User.builder()
+                            .username(user.getEmail())
+                            .password(user.getPasswordHash())
+                            .roles(user.getRole().name())
+                            .build();
+                    String token = jwtService.generateToken(details);
+                    return TokenRefreshResponse.of(token, requestRefreshToken);
+                })
+                .orElseThrow(() -> new RuntimeException("Refresh token is not in database!"));
+    }
+
     public void requestPasswordReset(ForgotPasswordRequest request) {
         String email = InputValidator.requireEmail(request.email());
-        // Keep the response account-enumeration safe. Email delivery can be wired here.
         appUserRepository.findByEmailIgnoreCase(email).ifPresent(user -> {
-            // No mail provider is configured in this project yet.
         });
     }
 }
