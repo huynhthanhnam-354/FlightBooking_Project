@@ -20,6 +20,7 @@ import AppIcon from '../components/AppIcon';
 import { checkInBookingApi, listMyBookingsApi, updateBookingBaggageApi, type BookingDto } from '../services/bookingApi';
 import { formatAuthError } from '../services/authApi';
 import { createSupportTicketApi } from '../services/supportTicketApi';
+import { formatPrice } from '../utils/price';
 
 const BAGGAGE_PACKAGES = [
   { kg: 0, price: 0, labelKey: 'bag_pkg_carry' },
@@ -144,10 +145,6 @@ function helpText(language: string, key: keyof typeof HELP_EN) {
   return HELP_TEXT[language]?.[key] ?? HELP_EN[key] ?? key;
 }
 
-function money(v: number) {
-  return `${v.toLocaleString()}d`;
-}
-
 function flightTime(iso?: string) {
   const t = iso?.split('T')[1] ?? '';
   return t.length >= 5 ? t.slice(0, 5) : '--:--';
@@ -197,8 +194,9 @@ export default function HelpTopicScreen() {
 
 function BaggageFeature({ navigation }: { navigation: any }) {
   const search = useSearch();
-  const { language } = useLanguage();
+  const { language, currency } = useLanguage();
   const h = (key: keyof typeof HELP_EN) => helpText(language, key);
+  const money = (value: number) => formatPrice(value, currency);
   const [selectedKg, setSelectedKg] = useState(20);
   const [bookings, setBookings] = useState<BookingDto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -287,7 +285,7 @@ function BaggageFeature({ navigation }: { navigation: any }) {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>{h('estimate_fee')}</Text>
         <InfoLine label={h('baggage_package')} value={pack.kg === 0 ? h('carry_only') : `${pack.kg} kg ${h('checked_bag')}`} />
-        <InfoLine label={h('package_fee')} value={pack.price ? money(pack.price) : '0d'} />
+        <InfoLine label={h('package_fee')} value={pack.price ? money(pack.price) : money(0)} />
         <InfoLine label={h('handling_fee')} value={money(serviceFee)} />
         <View style={styles.totalLine}>
           <Text style={styles.totalLabel}>{h('total' as keyof typeof HELP_EN)}</Text>
@@ -329,7 +327,7 @@ function BaggageFeature({ navigation }: { navigation: any }) {
         ) : (
           <View>
             <Text style={styles.mutedText}>{h('no_booking_baggage')}</Text>
-            <TouchableOpacity style={styles.secondaryBtn} onPress={() => navigation.navigate('Flights')}>
+            <TouchableOpacity style={styles.secondaryBtn} onPress={() => navigation.navigate('Main', { screen: 'Flights' })}>
               <Text style={styles.secondaryText}>{h('book_first')}</Text>
               <AppIcon name="chevronRight" size={16} color="#0064D2" />
             </TouchableOpacity>
@@ -347,7 +345,7 @@ function BaggageFeature({ navigation }: { navigation: any }) {
             <Text style={styles.checkText}>{h(ruleKey as keyof typeof HELP_EN)}</Text>
           </View>
         ))}
-        <TouchableOpacity style={styles.secondaryBtn} onPress={() => navigation.navigate('Flights')}>
+        <TouchableOpacity style={styles.secondaryBtn} onPress={() => navigation.navigate('Main', { screen: 'Flights' })}>
           <Text style={styles.secondaryText}>{h('find_baggage_flight')}</Text>
           <AppIcon name="chevronRight" size={16} color="#0064D2" />
         </TouchableOpacity>
@@ -477,7 +475,7 @@ function CheckinFeature({ navigation }: { navigation: any }) {
         ) : (
           <View>
             <Text style={styles.mutedText}>{h('no_booking_checkin')}</Text>
-            <TouchableOpacity style={styles.secondaryBtn} onPress={() => navigation.navigate('Flights')}>
+            <TouchableOpacity style={styles.secondaryBtn} onPress={() => navigation.navigate('Main', { screen: 'Flights' })}>
               <Text style={styles.secondaryText}>{h('book_first')}</Text>
               <AppIcon name="chevronRight" size={16} color="#0064D2" />
             </TouchableOpacity>
