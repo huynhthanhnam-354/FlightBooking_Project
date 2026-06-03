@@ -1,10 +1,12 @@
 import type { BookingDto } from '../services/bookingApi';
 
 export type ProfileBookingRow = {
+  rawId: number;
   id: string;
   route: string;
   date: string;
-  statusKey: 'confirmed' | 'pending_payment' | 'completed';
+  status: string;
+  statusKey: 'confirmed' | 'pending_payment' | 'completed' | 'cancelled' | 'checked_in';
   statusColor: string;
   priceVND: number;
   ticket: {
@@ -37,8 +39,9 @@ function timeHmFromIso(iso: string): string {
 
 function statusForBooking(status: string): { statusKey: ProfileBookingRow['statusKey']; statusColor: string } {
   if (status === 'PENDING_PAYMENT') return { statusKey: 'pending_payment', statusColor: '#F59E0B' };
-  if (status === 'CHECKED_IN') return { statusKey: 'confirmed', statusColor: '#2563EB' };
-  if (status === 'COMPLETED' || status === 'CANCELLED') return { statusKey: 'completed', statusColor: '#9CA3AF' };
+  if (status === 'CHECKED_IN') return { statusKey: 'checked_in', statusColor: '#2563EB' };
+  if (status === 'CANCELLED') return { statusKey: 'cancelled', statusColor: '#9CA3AF' };
+  if (status === 'COMPLETED') return { statusKey: 'completed', statusColor: '#9CA3AF' };
   return { statusKey: 'confirmed', statusColor: '#10B981' };
 }
 
@@ -47,9 +50,11 @@ export function mapBookingDtoToProfileRow(b: BookingDto): ProfileBookingRow {
   const { statusKey, statusColor } = statusForBooking(b.status);
   const depHm = timeHmFromIso(f.departureAt);
   return {
+    rawId: b.id,
     id: `B-${b.id}`,
     route: `${f.originCode} → ${f.destinationCode}`,
     date: formatDdMmYyyy(f.departureAt),
+    status: b.status,
     statusKey,
     statusColor,
     priceVND: b.totalPriceVnd,

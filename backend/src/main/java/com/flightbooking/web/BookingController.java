@@ -48,14 +48,6 @@ public class BookingController {
         return bookingService.create(user.getUsername(), request);
     }
 
-    @PostMapping("/{id}/cancel")
-    public BookingResponse cancel(
-            @AuthenticationPrincipal UserDetails user,
-            @PathVariable Long id
-    ) {
-        return bookingService.cancel(id, user.getUsername());
-    }
-
     @PutMapping("/{bookingId}/baggage")
     public BookingResponse updateBaggage(
             @AuthenticationPrincipal UserDetails user,
@@ -71,5 +63,21 @@ public class BookingController {
             @Valid @RequestBody CheckInRequest request
     ) {
         return bookingService.checkIn(user.getUsername(), request);
+    }
+
+    @PostMapping("/{bookingId}/payment/mock-confirm")
+    public BookingResponse confirmMockPayment(
+            @AuthenticationPrincipal UserDetails user,
+            @PathVariable Long bookingId
+    ) {
+        return bookingService.confirmMockPayment(user.getUsername(), bookingId);
+    }
+
+    @PostMapping("/{bookingId}/cancel")
+    public BookingResponse cancel(
+            @AuthenticationPrincipal UserDetails user,
+            @PathVariable Long bookingId
+    ) {
+        return bookingService.cancel(user.getUsername(), bookingId);
     }
 }

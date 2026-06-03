@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FaMicrophone } from 'react-icons/fa'
-import { AIRPORTS } from '../data/airports'
+import { AIRPORTS, AIRPORT_ALIASES, normalizeAirportSearchText } from '../data/airports'
 
 const samplePrompt = 'Tìm vé khứ hồi Hà Nội đi Đà Nẵng giữa tháng sau cho 2 người...'
 
 function normalizeText(text) {
-  return text.trim().toLowerCase()
+  return normalizeAirportSearchText(text)
 }
 
 function findCitiesFromText(text) {
   const normalized = normalizeText(text)
   const matches = AIRPORTS.filter((airport) => {
-    const cityLower = airport.city.toLowerCase()
-    return normalized.includes(cityLower) || normalized.includes(airport.code.toLowerCase())
+    const tokens = [airport.city, airport.code, airport.name, ...(AIRPORT_ALIASES[airport.code] || [])]
+      .map(normalizeAirportSearchText)
+      .filter(Boolean)
+    return tokens.some((token) => normalized.includes(token))
   })
   const unique = []
   const seen = new Set()

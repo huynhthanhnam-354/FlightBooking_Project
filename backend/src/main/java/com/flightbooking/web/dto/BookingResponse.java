@@ -6,6 +6,9 @@ import java.time.Instant;
 
 public record BookingResponse(
         Long id,
+        Long userId,
+        String userEmail,
+        String userFullName,
         String pnr,
         BookingStatus status,
         String seatNumber,
@@ -21,6 +24,7 @@ public record BookingResponse(
         long totalPriceVnd,
         Instant createdAt,
         Instant checkedInAt,
+        String checkInChannel,
         FlightResponse flight
 ) {
 }

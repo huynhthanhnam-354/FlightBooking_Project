@@ -2,7 +2,7 @@ import type { Language } from '../i18n/translations';
 
 type Names = Record<Language, string>;
 
-export type AirportDef = { code: string; name: Names };
+export type AirportDef = { code: string; name: Names; aliases?: string[] };
 
 function n(vi: string, en: string): Names {
   return { vi, en, ko: en, ja: en, zh: en, th: en, es: en };
@@ -133,6 +133,83 @@ export const AIRPORT_LIST: AirportDef[] = [
   { code: 'YVR', name: n('Vancouver', 'Vancouver') },
   { code: 'YYZ', name: n('Toronto', 'Toronto') },
 ];
+
+const EXTRA_ALIASES: Record<string, string[]> = {
+  HAN: ['ha noi', 'hà nội', 'hanoi', 'noi bai', 'nội bài'],
+  SGN: ['sai gon', 'sài gòn', 'saigon', 'ho chi minh', 'hcmc', 'tp hcm', 'tphcm', 'tan son nhat', 'tân sơn nhất'],
+  DAD: ['da nang', 'đà nẵng', 'danang'],
+  HPH: ['hai phong', 'hải phòng', 'cat bi', 'cát bi'],
+  CXR: ['nha trang', 'cam ranh'],
+  PQC: ['phu quoc', 'phú quốc'],
+  VCA: ['can tho', 'cần thơ'],
+  THD: ['thanh hoa', 'thanh hóa', 'tho xuan', 'thọ xuân'],
+  DIN: ['dien bien', 'điện biên', 'dien bien phu', 'điện biên phủ'],
+  UIH: ['quy nhon', 'quy nhơn', 'phu cat', 'phù cát'],
+  BMV: ['buon ma thuot', 'buôn ma thuột'],
+  DLI: ['da lat', 'đà lạt', 'lien khuong', 'liên khương'],
+  VTE: ['vieng chan', 'viêng chăn', 'vientiane'],
+  TPE: ['dai bac', 'đài bắc', 'taipei', 'taibei', '台北', '臺北'],
+  KHH: ['cao hung', 'cao hùng', 'kaohsiung', '高雄'],
+  HKG: ['hong kong', 'hồng kông', 'xianggang', '香港'],
+  MFM: ['ma cao', 'macau', 'macao', '澳门', '澳門'],
+  PVG: ['thuong hai', 'thượng hải', 'shanghai', 'shang hai', '上海', 'pudong', '浦东', '浦東'],
+  SHA: ['thuong hai', 'thượng hải', 'shanghai', 'shang hai', '上海', 'hongqiao', '虹桥', '虹橋'],
+  PEK: ['bac kinh', 'bắc kinh', 'beijing', 'peking', '北京'],
+  PKX: ['bac kinh', 'bắc kinh', 'beijing', 'peking', '北京', 'daxing', '大兴', '大興'],
+  CAN: ['quang chau', 'quảng châu', 'guangzhou', 'canton', '广州', '廣州'],
+  SZX: ['tham quyen', 'thâm quyến', 'shenzhen', '深圳'],
+  CTU: ['thanh do', 'thành đô', 'chengdu', '成都'],
+  XIY: ['tay an', 'tây an', 'xian', "xi'an", '西安'],
+  KMG: ['con minh', 'côn minh', 'kunming', '昆明'],
+  ICN: ['seoul', 'incheon', '서울', '仁川', '인천'],
+  PUS: ['busan', 'pusan', '부산'],
+  NRT: ['tokyo', 'tokio', 'to kyo', '東京', 'とうきょう', 'narita', '成田'],
+  HND: ['tokyo', 'tokio', 'to kyo', '東京', 'とうきょう', 'haneda', '羽田'],
+  KIX: ['osaka', '大阪', 'kansai', '関西', '關西'],
+  FUK: ['fukuoka', '福岡'],
+  BKK: ['bangkok', 'băng cốc', 'bang coc', 'กรุงเทพ', 'krung thep', 'suvarnabhumi'],
+  DMK: ['bangkok', 'băng cốc', 'bang coc', 'กรุงเทพ', 'krung thep', 'don mueang', 'don muang'],
+  HKT: ['phuket', 'ภูเก็ต'],
+  CNX: ['chiang mai', 'เชียงใหม่'],
+  KUL: ['kuala lumpur', 'kl', '吉隆坡'],
+  PEN: ['penang', '槟城', '檳城'],
+  MNL: ['manila', 'maynila', '马尼拉', '馬尼拉'],
+  CGK: ['jakarta', 'djakarta', '雅加达', '雅加達'],
+  DPS: ['bali', 'denpasar', '峇里', '巴厘'],
+  LHR: ['london', 'luan don', 'luân đôn', 'heathrow', '伦敦', '倫敦'],
+  CDG: ['paris', 'pa ri', 'ba le', '巴黎', 'charles de gaulle'],
+  FRA: ['frankfurt', 'frank furt', '法兰克福', '法蘭克福'],
+  MUC: ['munich', 'munchen', 'muenchen', 'münchen', '慕尼黑'],
+  FCO: ['rome', 'roma', 'la ma', 'la mã', '罗马', '羅馬'],
+  IST: ['istanbul', 'istanbul', '伊斯坦布尔', '伊斯坦堡'],
+  ZRH: ['zurich', 'zuerich', 'zürich', '苏黎世', '蘇黎世'],
+  LAX: ['los angeles', 'la', '洛杉矶', '洛杉磯'],
+  SFO: ['san francisco', 'sf', '旧金山', '舊金山'],
+  JFK: ['new york', 'nyc', '纽约', '紐約'],
+  EWR: ['new york', 'newark', 'nyc', '纽约', '紐約'],
+  ORD: ['chicago', '芝加哥'],
+  YVR: ['vancouver', '温哥华', '溫哥華'],
+  YYZ: ['toronto', '多伦多', '多倫多'],
+};
+
+export function normalizeAirportSearchText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af\u0e00-\u0e7f]+/g, ' ')
+    .trim();
+}
+
+export function airportSearchBlob(airport: AirportDef): string {
+  const names = Object.values(airport.name);
+  const aliases = [...(airport.aliases ?? []), ...(EXTRA_ALIASES[airport.code] ?? [])];
+  return [airport.code, ...names, ...aliases]
+    .map(normalizeAirportSearchText)
+    .join(' ');
+}
 
 export function airportName(code: string, lang: Language): string {
   const a = AIRPORT_LIST.find((x) => x.code === code);

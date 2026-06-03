@@ -8,7 +8,7 @@ import { CURRENCIES } from '../i18n/currencies';
 import { formatPrice } from '../utils/price';
 import AppIcon from '../components/AppIcon';
 import { AppIconName } from '../theme/icons';
-import { listMyBookingsApi } from '../services/bookingApi';
+import { cancelBookingApi, confirmMockPaymentApi, listMyBookingsApi } from '../services/bookingApi';
 import { formatAuthError } from '../services/authApi';
 import { mapBookingDtoToProfileRow, type ProfileBookingRow } from '../utils/profileBookings';
 
@@ -28,6 +28,7 @@ export default function ProfileScreen() {
   const [apiBookings, setApiBookings] = useState<ProfileBookingRow[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsError, setBookingsError] = useState<string | null>(null);
+  const [bookingActionId, setBookingActionId] = useState<number | null>(null);
 
   const loadBookings = useCallback(async () => {
     if (!user) {
@@ -63,6 +64,69 @@ export default function ProfileScreen() {
   );
 
   const bookingsToShow = apiBookings;
+
+  const fillTemplate = (template: string, values: Record<string, string>) =>
+    Object.entries(values).reduce((out, [key, value]) => out.replace(`{${key}}`, value), template);
+
+  const payBooking = (booking: ProfileBookingRow) => {
+    Alert.alert(t('payment_confirm_title'), fillTemplate(t('payment_confirm_message'), {
+      amount: formatPrice(booking.priceVND, currency),
+      booking: booking.id,
+    }), [
+      { text: t('cancel_btn'), style: 'cancel' },
+      {
+        text: t('pay_ticket'),
+        onPress: async () => {
+          setBookingActionId(booking.rawId);
+          try {
+            await confirmMockPaymentApi(booking.rawId);
+            Alert.alert(t('payment_success_title'), `PNR: ${booking.ticket.pnr}`);
+            await loadBookings();
+          } catch (e) {
+            Alert.alert(t('payment_failed_title'), formatAuthError(e));
+          } finally {
+            setBookingActionId(null);
+          }
+        },
+      },
+    ]);
+  };
+
+  const cancelBooking = (booking: ProfileBookingRow) => {
+    Alert.alert(t('cancel_booking_title'), fillTemplate(t('cancel_booking_message'), {
+      booking: booking.id,
+    }), [
+      { text: t('cancel_btn'), style: 'cancel' },
+      {
+        text: t('cancel_ticket'),
+        style: 'destructive',
+        onPress: async () => {
+          setBookingActionId(booking.rawId);
+          try {
+            await cancelBookingApi(booking.rawId);
+            Alert.alert(t('cancel_booking_success_title'), `PNR: ${booking.ticket.pnr}`);
+            await loadBookings();
+          } catch (e) {
+            Alert.alert(t('cancel_booking_failed_title'), formatAuthError(e));
+          } finally {
+            setBookingActionId(null);
+          }
+        },
+      },
+    ]);
+  };
+
+  const openTicket = (booking: ProfileBookingRow) => {
+    navigation.navigate('Eticket', { ticket: booking.ticket });
+  };
+
+  const openCheckIn = (booking: ProfileBookingRow) => {
+    navigation.navigate('HelpTopic', {
+      topic: 'checkin',
+      initialPnr: booking.ticket.pnr,
+      initialLastName: booking.ticket.passenger.trim().split(/\s+/).filter(Boolean).slice(-1)[0] ?? '',
+    });
+  };
 
   const currentLangLabel = Object.keys(LANGUAGE_LABELS).find(k => LANGUAGE_LABELS[k] === language) ?? 'Tiếng Việt';
 
@@ -234,28 +298,75 @@ export default function ProfileScreen() {
               </Text>
             ) : null}
             {!(user && bookingsLoading) &&
-              bookingsToShow.map((b) => (
-              <TouchableOpacity
-                key={b.id}
-                style={styles.bookingCard}
-                onPress={() => navigation.navigate('Eticket', { ticket: b.ticket })}
-              >
-                <View style={styles.bookingTop}>
-                  <Text style={styles.bookingId}>#{b.id}</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: b.statusColor + '20' }]}>
-                    <Text style={[styles.statusText, { color: b.statusColor }]}>{t(b.statusKey)}</Text>
+              bookingsToShow.map((b) => {
+              const canPay = b.status === 'PENDING_PAYMENT';
+              const canCancel = b.status === 'PENDING_PAYMENT';
+              const canCheckIn = b.status === 'CONFIRMED';
+              const canViewTicket = b.status === 'CONFIRMED' || b.status === 'CHECKED_IN' || b.status === 'COMPLETED';
+              const actionBusy = bookingActionId === b.rawId;
+              return (
+              <View key={b.id} style={styles.bookingCard}>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (canViewTicket) openTicket(b);
+                  }}
+                  disabled={!canViewTicket}
+                >
+                  <View style={styles.bookingTop}>
+                    <Text style={styles.bookingId}>#{b.id}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: b.statusColor + '20' }]}>
+                      <Text style={[styles.statusText, { color: b.statusColor }]}>{t(b.statusKey)}</Text>
+                    </View>
                   </View>
-                </View>
-                <Text style={styles.bookingRoute}>{b.route}</Text>
-                <View style={styles.bookingBottom}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <AppIcon name="calendar" size={13} color="#6B7280" />
-                    <Text style={styles.bookingDate}>{b.date}</Text>
+                  <Text style={styles.bookingRoute}>{b.route}</Text>
+                  <View style={styles.bookingBottom}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <AppIcon name="calendar" size={13} color="#6B7280" />
+                      <Text style={styles.bookingDate}>{b.date}</Text>
+                    </View>
+                    <Text style={styles.bookingPrice}>{formatPrice(b.priceVND, currency)}</Text>
                   </View>
-                  <Text style={styles.bookingPrice}>{formatPrice(b.priceVND, currency)}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+                {(canPay || canCancel || canViewTicket || canCheckIn) && (
+                  <View style={styles.bookingActions}>
+                    {canPay && (
+                      <TouchableOpacity
+                        style={[styles.payActionBtn, actionBusy && styles.actionDisabled]}
+                        onPress={() => payBooking(b)}
+                        disabled={actionBusy}
+                      >
+                        {actionBusy ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.payActionText}>{t('pay_ticket')}</Text>}
+                      </TouchableOpacity>
+                    )}
+                    {canCancel && (
+                      <TouchableOpacity
+                        style={[styles.cancelActionBtn, actionBusy && styles.actionDisabled]}
+                        onPress={() => cancelBooking(b)}
+                        disabled={actionBusy}
+                      >
+                        <Text style={styles.cancelActionText}>{t('cancel_ticket')}</Text>
+                      </TouchableOpacity>
+                    )}
+                    {canViewTicket && (
+                      <TouchableOpacity
+                        style={styles.viewActionBtn}
+                        onPress={() => openTicket(b)}
+                      >
+                        <Text style={styles.viewActionText}>{t('view_ticket')}</Text>
+                      </TouchableOpacity>
+                    )}
+                    {canCheckIn && (
+                      <TouchableOpacity
+                        style={styles.checkinActionBtn}
+                        onPress={() => openCheckIn(b)}
+                      >
+                        <Text style={styles.checkinActionText}>{t('checkin_ticket')}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+              </View>
+            )})}
           </View>
         )}
         <View style={{ height: 24 }} />
@@ -306,4 +417,14 @@ const styles = StyleSheet.create({
   bookingBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   bookingDate:   { fontSize: 13, color: '#6B7280' },
   bookingPrice:  { fontSize: 15, fontWeight: '800', color: '#0064D2' },
+  bookingActions:{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
+  payActionBtn:  { flex: 1, backgroundColor: '#0064D2', borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
+  payActionText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  cancelActionBtn: { flex: 1, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA', borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
+  cancelActionText:{ color: '#DC2626', fontSize: 13, fontWeight: '800' },
+  viewActionBtn: { flex: 1, backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
+  viewActionText:{ color: '#0064D2', fontSize: 13, fontWeight: '800' },
+  checkinActionBtn: { flex: 1, backgroundColor: '#10B981', borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
+  checkinActionText:{ color: '#fff', fontSize: 13, fontWeight: '800' },
+  actionDisabled:{ opacity: 0.65 },
 });

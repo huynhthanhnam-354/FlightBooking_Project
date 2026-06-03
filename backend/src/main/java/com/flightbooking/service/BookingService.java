@@ -3,8 +3,11 @@ package com.flightbooking.service;
 import com.flightbooking.dto.BookingDTO;
 import com.flightbooking.model.AppUser;
 import com.flightbooking.model.Booking;
+import com.flightbooking.model.BookingPassenger;
 import com.flightbooking.model.BookingStatus;
 import com.flightbooking.model.Flight;
+import com.flightbooking.model.PaymentStatus;
+import com.flightbooking.model.PaymentTransaction;
 import com.flightbooking.repository.AppUserRepository;
 import com.flightbooking.repository.BookingRepository;
 import com.flightbooking.repository.FlightRepository;
@@ -82,6 +85,23 @@ public class BookingService {
                 .expiresAt(VietnamTime.nowLocal().plusMinutes(15))
                 .pnr(pnrGenerator.generate())
                 .build();
+        for (String seat : parseSeatNumbers(seatNumber)) {
+            booking.addPassenger(BookingPassenger.builder()
+                    .flight(flight)
+                    .seatNumber(seat)
+                    .fullName(passengerName)
+                    .email(passengerEmail)
+                    .phone(passengerPhone)
+                    .idCard(passengerIdCard)
+                    .build());
+        }
+        booking.setPaymentTransaction(PaymentTransaction.builder()
+                .provider(paymentProvider(paymentMethod))
+                .amountVnd(request.totalPriceVnd())
+                .status(paymentStatusFor(paymentMethod))
+                .paidAt(paymentStatusFor(paymentMethod) == PaymentStatus.MOCK_CONFIRMED ? VietnamTime.nowLocal() : null)
+                .providerReference(booking.getPnr())
+                .build());
         bookingRepository.save(booking);
         return toResponse(booking);
     }
@@ -110,6 +130,10 @@ public class BookingService {
         long completed = bookingRepository.countByStatus(BookingStatus.COMPLETED);
         long cancelled = bookingRepository.countByStatus(BookingStatus.CANCELLED);
         List<Booking> bookings = bookingRepository.findAll();
+        long onlineCheckedIn = bookings.stream()
+                .filter(b -> b.getStatus() == BookingStatus.CHECKED_IN)
+                .filter(b -> "ONLINE".equalsIgnoreCase(b.getCheckInChannel()))
+                .count();
         long revenue = bookings.stream()
                 .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
                 .mapToLong(b -> b.getTotalPriceVnd() == null ? 0L : b.getTotalPriceVnd())
@@ -123,6 +147,7 @@ public class BookingService {
                 pending,
                 confirmed,
                 checkedIn,
+                onlineCheckedIn,
                 completed,
                 cancelled,
                 revenue,
@@ -138,25 +163,6 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponse cancel(Long id, String userEmail) {
-        Booking booking = bookingRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
-        if (!booking.getUser().getEmail().equalsIgnoreCase(userEmail)) {
-            throw new IllegalArgumentException("Booking not found");
-        }
-        if (booking.getStatus() == BookingStatus.CANCELLED) {
-            throw new IllegalArgumentException("Booking is already cancelled");
-        }
-        if (booking.getStatus() == BookingStatus.COMPLETED) {
-            throw new IllegalArgumentException("Completed booking cannot be cancelled");
-        }
-
-        booking.setStatus(BookingStatus.CANCELLED);
-        sendCancellationEmail(booking);
-        return toResponse(booking);
-    }
-
-    @Transactional
     public BookingResponse updateBaggage(String userEmail, Long bookingId, BaggageUpdateRequest request) {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
                 .orElseThrow(() -> new UsernameNotFoundException(userEmail));
@@ -164,6 +170,9 @@ public class BookingService {
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
         if (!booking.getUser().getId().equals(user.getId())) {
             throw new IllegalArgumentException("Booking not found");
+        }
+        if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
+            throw new IllegalArgumentException("Baggage can only be updated before payment");
         }
 
         int baggageKg = normalizeBaggageKg(request.baggageKg());
@@ -199,6 +208,53 @@ public class BookingService {
         if (booking.getCheckedInAt() == null) {
             booking.setCheckedInAt(VietnamTime.nowLocal());
         }
+        booking.setCheckInChannel("ONLINE");
+        return toResponse(booking);
+    }
+
+    @Transactional
+    public BookingResponse confirmMockPayment(String userEmail, Long bookingId) {
+        AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
+                .orElseThrow(() -> new UsernameNotFoundException(userEmail));
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+        if (!booking.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("Booking not found");
+        }
+        if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
+            throw new IllegalArgumentException("Booking is not waiting for payment");
+        }
+        booking.setStatus(BookingStatus.CONFIRMED);
+        PaymentTransaction payment = booking.getPaymentTransaction();
+        if (payment != null) {
+            payment.setStatus(PaymentStatus.MOCK_CONFIRMED);
+            payment.setPaidAt(VietnamTime.nowLocal());
+            payment.setProviderReference(booking.getPnr());
+        }
+        return toResponse(booking);
+    }
+
+    @Transactional
+    public BookingResponse cancel(String userEmail, Long bookingId) {
+        AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
+                .orElseThrow(() -> new UsernameNotFoundException(userEmail));
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+        if (!booking.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("Booking not found");
+        }
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
+            throw new IllegalArgumentException("Booking is already cancelled");
+        }
+        if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
+            throw new IllegalArgumentException("Only unpaid bookings can be cancelled directly");
+        }
+        booking.setStatus(BookingStatus.CANCELLED);
+        booking.setCancelledAt(VietnamTime.nowLocal());
+        PaymentTransaction payment = booking.getPaymentTransaction();
+        if (payment != null && payment.getStatus() == PaymentStatus.MOCK_CONFIRMED) {
+            payment.setStatus(PaymentStatus.REFUNDED);
+        }
         return toResponse(booking);
     }
 
@@ -210,8 +266,12 @@ public class BookingService {
 
     private BookingResponse toResponse(Booking b) {
         Flight f = b.getFlight();
+        AppUser u = b.getUser();
         return new BookingResponse(
                 b.getId(),
+                u.getId(),
+                u.getEmail(),
+                u.getFullName(),
                 b.getPnr(),
                 b.getStatus(),
                 b.getSeatNumber(),
@@ -227,6 +287,7 @@ public class BookingService {
                 b.getTotalPriceVnd(),
                 VietnamTime.toInstant(b.getCreatedAt()),
                 b.getCheckedInAt() == null ? null : VietnamTime.toInstant(b.getCheckedInAt()),
+                b.getCheckInChannel(),
                 flightService.toResponse(f)
         );
     }
@@ -234,7 +295,17 @@ public class BookingService {
     private Set<String> occupiedSeatsForFlight(Flight flight) {
         Set<String> out = new LinkedHashSet<>();
         bookingRepository.findByFlightAndStatusNot(flight, BookingStatus.CANCELLED)
-                .forEach(b -> out.addAll(parseSeatNumbers(b.getSeatNumber())));
+                .forEach(b -> {
+                    if (b.getPassengers() == null || b.getPassengers().isEmpty()) {
+                        out.addAll(parseSeatNumbers(b.getSeatNumber()));
+                        return;
+                    }
+                    b.getPassengers().stream()
+                            .map(BookingPassenger::getSeatNumber)
+                            .filter(Objects::nonNull)
+                            .map(s -> s.toUpperCase(Locale.ROOT))
+                            .forEach(out::add);
+                });
         return out;
     }
 
@@ -318,5 +389,17 @@ public class BookingService {
             return BookingStatus.CONFIRMED;
         }
         return BookingStatus.PENDING_PAYMENT;
+    }
+
+    private static PaymentStatus paymentStatusFor(String paymentMethod) {
+        if ("cod".equalsIgnoreCase(paymentMethod)) {
+            return PaymentStatus.MOCK_CONFIRMED;
+        }
+        return PaymentStatus.PENDING;
+    }
+
+    private static String paymentProvider(String paymentMethod) {
+        String cleaned = clean(paymentMethod);
+        return cleaned == null ? "UNSPECIFIED" : cleaned.toUpperCase(Locale.ROOT);
     }
 }

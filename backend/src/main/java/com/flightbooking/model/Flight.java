@@ -6,8 +6,10 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,7 +23,19 @@ import java.time.LocalDateTime;
  * Chuyến bay — bảng {@code flights}, đồng bộ catalog cho web/mobile.
  */
 @Entity
-@Table(name = "flights")
+@Table(
+        name = "flights",
+        indexes = {
+                @Index(name = "idx_flights_route_departure", columnList = "origin_code, destination_code, departure_at"),
+                @Index(name = "idx_flights_departure", columnList = "departure_at")
+        },
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_flights_route_number_departure",
+                        columnNames = {"origin_code", "destination_code", "flight_number", "departure_at"}
+                )
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor

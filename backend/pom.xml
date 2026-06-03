@@ -132,6 +132,7 @@
                 <version>3.13.0</version>
                 <configuration>
                     <release>${java.version}</release>
+                    <proc>full</proc>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>

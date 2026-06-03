@@ -206,6 +206,10 @@ function BaggageFeature({ navigation }: { navigation: any }) {
   const pack = BAGGAGE_PACKAGES.find((x) => x.kg === selectedKg) ?? BAGGAGE_PACKAGES[0];
   const serviceFee = pack.kg > 0 ? 30000 : 0;
   const total = pack.price + serviceFee;
+  const unpaidBookings = useMemo(
+    () => bookings.filter((booking) => booking.status === 'PENDING_PAYMENT'),
+    [bookings],
+  );
 
   useEffect(() => {
     let alive = true;
@@ -302,8 +306,8 @@ function BaggageFeature({ navigation }: { navigation: any }) {
             <ActivityIndicator color="#0064D2" />
             <Text style={styles.mutedText}>{h('loading_bookings')}</Text>
           </View>
-        ) : bookings.length ? (
-          bookings.slice(0, 4).map((booking) => (
+        ) : unpaidBookings.length ? (
+          unpaidBookings.slice(0, 4).map((booking) => (
             <View key={booking.id} style={styles.bookingPick}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.bookingRoute}>
@@ -353,15 +357,16 @@ function BaggageFeature({ navigation }: { navigation: any }) {
 }
 
 function CheckinFeature({ navigation }: { navigation: any }) {
+  const route = useRoute<any>();
   const { language } = useLanguage();
   const h = (key: keyof typeof HELP_EN) => helpText(language, key);
-  const [pnr, setPnr] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [pnr, setPnr] = useState(String(route.params?.initialPnr ?? '').toUpperCase());
+  const [lastName, setLastName] = useState(String(route.params?.initialLastName ?? ''));
   const [loading, setLoading] = useState(false);
   const [bookings, setBookings] = useState<BookingDto[]>([]);
   const [checkedIn, setCheckedIn] = useState<BookingDto | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const upcoming = useMemo(() => bookings.slice(0, 3), [bookings]);
+  const upcoming = useMemo(() => bookings.filter((booking) => booking.status === 'CONFIRMED').slice(0, 3), [bookings]);
 
   useEffect(() => {
     let alive = true;

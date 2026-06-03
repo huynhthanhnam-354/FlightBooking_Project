@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FaMicrophone } from 'react-icons/fa'
-import { AIRPORTS } from '../data/airports'
+import { AIRPORTS, airportSearchBlob, normalizeAirportSearchText } from '../data/airports'
 
 function useOutsideClick(ref, handler) {
   useEffect(() => {
@@ -15,11 +15,11 @@ function useOutsideClick(ref, handler) {
 }
 
 function AirportSuggest({ query, onPick, excludeCode }) {
-  const q = (query || '').trim().toLowerCase()
+  const q = normalizeAirportSearchText(query || '')
   const results = AIRPORTS.filter(a => {
     if (excludeCode && a.code === excludeCode) return false
-    if (!q) return true // Show all if no query
-    return a.city.toLowerCase().includes(q) || a.code.toLowerCase().includes(q) || (a.name || a.airport || '').toLowerCase().includes(q)
+    if (!q) return true
+    return airportSearchBlob(a).includes(q)
   }).slice(0, 10)
 
   if (!results.length) return (

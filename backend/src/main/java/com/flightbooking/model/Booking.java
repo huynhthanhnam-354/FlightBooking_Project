@@ -1,6 +1,7 @@
 package com.flightbooking.model;
 
 import com.flightbooking.time.VietnamTime;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -9,8 +10,11 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -21,9 +25,18 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "bookings")
+@Table(
+        name = "bookings",
+        indexes = {
+                @Index(name = "idx_bookings_user_created", columnList = "user_id, created_at"),
+                @Index(name = "idx_bookings_flight_status", columnList = "flight_id, status"),
+                @Index(name = "idx_bookings_status_created", columnList = "status, created_at")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -90,6 +103,10 @@ public class Booking {
     @Version
     private Integer version;
 
+    @Column(name = "source_channel", nullable = false, length = 24)
+    @Builder.Default
+    private String sourceChannel = "MOBILE";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -98,6 +115,19 @@ public class Booking {
 
     @Column(name = "checked_in_at")
     private LocalDateTime checkedInAt;
+
+    @Column(name = "check_in_channel", length = 24)
+    private String checkInChannel;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<BookingPassenger> passengers = new ArrayList<>();
+
+    @OneToOne(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private PaymentTransaction paymentTransaction;
 
     @PrePersist
     void prePersist() {
@@ -115,6 +145,21 @@ public class Booking {
         }
         if (baggageFeeVnd == null || baggageFeeVnd < 0) {
             baggageFeeVnd = 0L;
+        }
+        if (sourceChannel == null || sourceChannel.isBlank()) {
+            sourceChannel = "MOBILE";
+        }
+    }
+
+    public void addPassenger(BookingPassenger passenger) {
+        passengers.add(passenger);
+        passenger.setBooking(this);
+    }
+
+    public void setPaymentTransaction(PaymentTransaction paymentTransaction) {
+        this.paymentTransaction = paymentTransaction;
+        if (paymentTransaction != null) {
+            paymentTransaction.setBooking(this);
         }
     }
 }

@@ -5,6 +5,9 @@ import type { FlightDto } from './flightApi';
 
 export type BookingDto = {
   id: number;
+  userId?: number;
+  userEmail?: string | null;
+  userFullName?: string | null;
   pnr: string;
   status: string;
   seatNumber: string;
@@ -20,6 +23,7 @@ export type BookingDto = {
   totalPriceVnd: number;
   createdAt: string;
   checkedInAt?: string | null;
+  checkInChannel?: string | null;
   flight: FlightDto;
 };
 
@@ -71,6 +75,30 @@ export async function updateBookingBaggageApi(
     headers: await authHeaders(),
     timeout: 25000,
   });
+  return data;
+}
+
+export async function confirmMockPaymentApi(bookingId: number): Promise<BookingDto> {
+  const { data } = await axios.post<BookingDto>(
+    `${API_BASE_URL}/api/bookings/${bookingId}/payment/mock-confirm`,
+    {},
+    {
+      headers: await authHeaders(),
+      timeout: 25000,
+    },
+  );
+  return data;
+}
+
+export async function cancelBookingApi(bookingId: number): Promise<BookingDto> {
+  const { data } = await axios.post<BookingDto>(
+    `${API_BASE_URL}/api/bookings/${bookingId}/cancel`,
+    {},
+    {
+      headers: await authHeaders(),
+      timeout: 25000,
+    },
+  );
   return data;
 }
 

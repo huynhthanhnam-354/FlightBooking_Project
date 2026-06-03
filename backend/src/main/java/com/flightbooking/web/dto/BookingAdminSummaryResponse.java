@@ -7,6 +7,7 @@ public record BookingAdminSummaryResponse(
         long pendingPayment,
         long confirmed,
         long checkedIn,
+        long onlineCheckedIn,
         long completed,
         long cancelled,
         long totalRevenueVnd,
