@@ -7,6 +7,12 @@ import { bookingApi, paymentApi } from '../services/api'
 import { useBookingStore } from '../store/bookingStore'
 import { toast } from 'react-toastify'
 
+const BAGGAGE_OPTIONS = {
+  none: { kg: 0, fee: 0, title: 'Không hành lý', note: 'Miễn phí' },
+  '20': { kg: 20, fee: 220000, title: '1 x 20kg', note: '+220.000₫' },
+  '40': { kg: 40, fee: 480000, title: '2 x 20kg', note: '+480.000₫' },
+}
+
 export default function CheckoutPage() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -19,7 +25,7 @@ export default function CheckoutPage() {
   const [name, setName] = useState(bookingState?.passenger?.name || '')
   const [phone, setPhone] = useState(bookingState?.contact?.phone || '')
   const [email, setEmail] = useState(bookingState?.contact?.email || '')
-  const [baggage, setBaggage] = useState(bookingState?.passenger?.baggage || 'none')
+  const [baggage, setBaggage] = useState<keyof typeof BAGGAGE_OPTIONS>(bookingState?.passenger?.baggage || 'none')
   const [payment, setPayment] = useState('vnpay') // Default to VNPAY
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState('')
@@ -51,7 +57,8 @@ export default function CheckoutPage() {
   const subtotal = priceNumber * passengers
   const tax = Math.round(subtotal * 0.1)
   const serviceFee = 50000 * passengers
-  const total = subtotal + tax + serviceFee
+  const baggageOption = BAGGAGE_OPTIONS[baggage] ?? BAGGAGE_OPTIONS.none
+  const total = subtotal + tax + serviceFee + baggageOption.fee
 
   async function handlePay(e) {
     e.preventDefault()
@@ -72,6 +79,8 @@ export default function CheckoutPage() {
           passengerName: name,
           passengerEmail: email,
           passengerPhone: phone,
+          baggageKg: baggageOption.kg,
+          baggageFeeVnd: baggageOption.fee,
           totalPriceVnd: total
         };
 
@@ -156,25 +165,28 @@ export default function CheckoutPage() {
                   <label className={`p-3 border rounded cursor-pointer flex items-center gap-3 ${baggage==='none' ? 'ring-2 ring-sky-500' : ''}`}>
                     <input type="radio" name="baggage" checked={baggage==='none'} onChange={() => setBaggage('none')} />
                     <div>
-                      <div className="text-sm font-medium">Không hành lý</div>
-                      <div className="text-xs text-slate-500">Miễn phí</div>
+                      <div className="text-sm font-medium">{BAGGAGE_OPTIONS.none.title}</div>
+                      <div className="text-xs text-slate-500">{BAGGAGE_OPTIONS.none.note}</div>
                     </div>
                   </label>
                   <label className={`p-3 border rounded cursor-pointer flex items-center gap-3 ${baggage==='20' ? 'ring-2 ring-sky-500' : ''}`}>
                     <input type="radio" name="baggage" checked={baggage==='20'} onChange={() => setBaggage('20')} />
                     <div>
-                      <div className="text-sm font-medium">1 x 20kg</div>
-                      <div className="text-xs text-slate-500">Phí áp dụng</div>
+                      <div className="text-sm font-medium">{BAGGAGE_OPTIONS['20'].title}</div>
+                      <div className="text-xs text-slate-500">{BAGGAGE_OPTIONS['20'].note}</div>
                     </div>
                   </label>
                   <label className={`p-3 border rounded cursor-pointer flex items-center gap-3 ${baggage==='40' ? 'ring-2 ring-sky-500' : ''}`}>
                     <input type="radio" name="baggage" checked={baggage==='40'} onChange={() => setBaggage('40')} />
                     <div>
-                      <div className="text-sm font-medium">2 x 20kg</div>
-                      <div className="text-xs text-slate-500">Phí áp dụng</div>
+                      <div className="text-sm font-medium">{BAGGAGE_OPTIONS['40'].title}</div>
+                      <div className="text-xs text-slate-500">{BAGGAGE_OPTIONS['40'].note}</div>
                     </div>
                   </label>
                 </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  Mục Hành lý dùng để mua thêm hoặc cập nhật cho booking chưa thanh toán.
+                </p>
               </div>
 
               {error && <div className="text-sm text-red-600">{error}</div>}
@@ -230,6 +242,17 @@ export default function CheckoutPage() {
               </div>
 
               <BookingSummary flight={flight} passengers={passengers} />
+
+              <div className="mt-4 border-t border-slate-100 pt-3 text-sm">
+                <div className="flex justify-between text-slate-600">
+                  <span>Hành lý</span>
+                  <span>{baggageOption.kg > 0 ? `${baggageOption.kg}kg` : 'Không hành lý'}</span>
+                </div>
+                <div className="mt-2 flex justify-between font-semibold text-slate-900">
+                  <span>Tổng thanh toán</span>
+                  <span>{total.toLocaleString()}₫</span>
+                </div>
+              </div>
 
               <div className="mt-4 text-sm text-slate-600 flex items-center gap-2">
                 <FaLock className="text-sky-600" />

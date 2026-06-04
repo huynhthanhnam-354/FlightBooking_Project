@@ -1,148 +1,244 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { FaRobot } from 'react-icons/fa'
-import { FiSend, FiChevronDown } from 'react-icons/fi'
-import axios from 'axios'
+import { FiSend, FiX } from 'react-icons/fi'
+import api from '../services/api'
 
-function QuickActionCard({ title, subtitle, onClick }) {
-// ... (QuickActionCard content remains same)
+const initialMessage = {
+  id: 1,
+  from: 'ai',
+  text: 'Xin chao, toi la tro ly Sky AI. Ban can tim chuyen bay, hoi FAQ hay can ho tro ve booking?',
+}
+
+function getSessionId() {
+  const key = 'sky_ai_session_id'
+  const existing = localStorage.getItem(key)
+  if (existing) return existing
+  const value = `web-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  localStorage.setItem(key, value)
+  return value
+}
+
+function normalizeSuggestions(items) {
+  if (!Array.isArray(items)) return []
+  return items
+    .map((item, index) => {
+      if (typeof item === 'string') {
+        return { id: `suggestion-${index}-${item}`, label: item }
+      }
+      if (item && typeof item === 'object') {
+        const label = String(item.label || item.id || '').trim()
+        const id = String(item.id || label || `suggestion-${index}`).trim()
+        return { id, label: label || id }
+      }
+      return { id: `suggestion-${index}`, label: String(item ?? '') }
+    })
+    .filter((item) => item.label.trim())
 }
 
 export default function ChatWidget() {
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [messages, setMessages] = useState([
-    { id: 1, from: 'ai', text: 'Chào bạn! Tôi là trợ lý ảo Sky AI. Tôi có thể giúp bạn tìm chuyến bay hoặc giải đáp thắc mắc về hành trình.' },
-  ])
+  const [messages, setMessages] = useState([initialMessage])
   const inputRef = useRef(null)
   const scrollRef = useRef(null)
+  const sessionId = useMemo(getSessionId, [])
 
   useEffect(() => {
     if (open) inputRef.current?.focus()
   }, [open])
 
   useEffect(() => {
-    const el = scrollRef.current
-    if (el) {
-      el.scrollTop = el.scrollHeight
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages, loading])
 
+  function handleSuggestionAction(suggestion) {
+    const id = suggestion?.id || suggestion?.label || ''
+    const routeMap = {
+      checkin: '/check-in',
+      support: '/support',
+      refund: '/support',
+      payment: '/support',
+      baggage: '/support',
+      'extra-baggage': '/support',
+      'book-baggage': '/booking',
+      'my-bookings': '/user-dashboard',
+      ticket: '/user-dashboard',
+      eticket: '/user-dashboard',
+      pnr: '/user-dashboard',
+      flights: '/booking',
+      'search-flight': '/booking',
+    }
+
+    const route = routeMap[id]
+    if (route) {
+      setOpen(false)
+      navigate(route)
+      return
+    }
+
+    sendMessage(suggestion?.label || id)
+  }
+
   async function sendMessage(text) {
-    if (!text || !text.trim() || loading) return
-    
-    const userMessage = text.trim()
-    const m = { id: Date.now(), from: 'user', text: userMessage }
-    
-    setMessages((s) => [...s, m])
+    const userMessage = text?.trim()
+    if (!userMessage || loading) return
+
+    setMessages((items) => [...items, { id: Date.now(), from: 'user', text: userMessage }])
     setInput('')
     setLoading(true)
 
     try {
-      const response = await axios.post('http://localhost:8080/api/ai/chat', {
-        message: userMessage
+      const { data } = await api.post('/ai/chat', {
+        message: userMessage,
+        sessionId,
+        platform: 'web',
+        language: 'vi',
       })
-      
-      const aiReply = response.data.reply
-      setMessages((s) => [...s, { id: Date.now() + 1, from: 'ai', text: aiReply }])
+
+      setMessages((items) => [
+        ...items,
+        {
+          id: Date.now() + 1,
+          from: 'ai',
+          text: data?.reply || 'Toi chua co cau tra loi phu hop.',
+          suggestions: normalizeSuggestions(data?.suggestions),
+        },
+      ])
     } catch (error) {
       console.error('AI Chat Error:', error)
-      setMessages((s) => [...s, { 
-        id: Date.now() + 1, 
-        from: 'ai', 
-        text: 'Hệ thống đang bận, trợ lý AI sẽ quay lại sau ít phút.' 
-      }])
+      setMessages((items) => [
+        ...items,
+        { id: Date.now() + 1, from: 'ai', text: 'He thong AI dang ban. Vui long thu lai sau.' },
+      ])
     } finally {
       setLoading(false)
     }
   }
 
-  const quickActions = [
-    { id: 'cheap', title: 'Tìm vé rẻ nhất', subtitle: 'So sánh giá trong tuần' },
-    { id: 'weather', title: 'Xem thời tiết điểm đến', subtitle: 'Nhiệt độ & dự báo' },
-    { id: 'help', title: 'Gợi ý hành trình', subtitle: 'Gợi ý điểm dừng và lịch trình' },
+  const quickPrompts = [
+    'Quy dinh hanh ly nhu the nao?',
+    'Toi muon doi hoac huy ve',
+    'Huong dan check-in online',
   ]
 
   return (
-    <div>
-      {/* Floating button */}
-      <div className="fixed right-6 bottom-6 z-50 flex items-end justify-end">
-        {!open && (
-          <div className="relative flex items-center justify-end">
-            <div className="absolute -right-1 top-0 rounded-full bg-slate-950/95 px-3 py-2 text-xs text-white shadow-xl shadow-slate-900/20 animate-fade-in">
-              Hi, need help booking?
+    <div className="fixed right-5 bottom-5 z-50">
+      {!open ? (
+        <button
+          type="button"
+          aria-label="Mo tro ly AI"
+          onClick={() => setOpen(true)}
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-600 text-white shadow-lg shadow-sky-700/25 transition hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2"
+        >
+          <FaRobot size={20} />
+        </button>
+      ) : (
+        <section className="flex h-[520px] max-h-[calc(100vh-7rem)] w-[min(360px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+          <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-600 text-white">
+                <FaRobot size={16} />
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-slate-900">Sky AI</div>
+                <div className="text-xs text-slate-500">FAQ, knowledge va ho tro booking</div>
+              </div>
             </div>
-            <div className="absolute inset-0 rounded-full bg-sky-500/20 blur-xl" />
-            <div className="absolute inset-0 rounded-full border border-sky-400/40 animate-ping" />
-            <button aria-label="Mở trợ lý" onClick={() => setOpen(true)} className="relative w-16 h-16 rounded-full bg-gradient-to-br from-slate-900 via-slate-800 to-sky-600 text-white shadow-2xl shadow-sky-500/40 flex items-center justify-center hover:scale-105 transition-transform duration-200 z-10 border border-white/10">
-              <FaRobot size={22} />
+            <button
+              type="button"
+              aria-label="Dong tro ly AI"
+              onClick={() => setOpen(false)}
+              className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+            >
+              <FiX />
             </button>
-          </div>
-        )}
+          </header>
 
-        {open && (
-          <div className="w-80 md:w-96 max-h-[540px] bg-white border border-slate-200 rounded-[32px] shadow-[0_30px_90px_rgba(15,23,42,0.18)] p-4 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-3xl bg-gradient-to-br from-sky-600 to-indigo-700 text-white flex items-center justify-center text-lg font-bold shadow-lg shadow-sky-500/20">AI</div>
-                <div>
-                  <div className="font-semibold text-slate-900">Sky AI Assistant</div>
-                  <div className="text-xs text-slate-500">Smart help for booking & support</div>
+          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-4 py-3" role="log" aria-live="polite">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`max-w-[84%] ${message.from === 'user' ? 'ml-auto' : ''}`}
+              >
+                <div
+                  className={`rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                    message.from === 'ai'
+                      ? 'rounded-bl-sm bg-white text-slate-800 shadow-sm'
+                      : 'rounded-br-sm bg-sky-600 text-white'
+                  }`}
+                >
+                  {message.text}
                 </div>
-              </div>
-              <button onClick={() => setOpen(false)} aria-label="Đóng" className="p-2 rounded-2xl bg-slate-100 hover:bg-slate-200 transition">
-                <FiChevronDown className="text-slate-700" />
-              </button>
-            </div>
-
-            <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 pr-1 pb-2" role="log" aria-live="polite">
-              {messages.map((m) => (
-                <div key={m.id} className={`max-w-[84%] p-3 rounded-3xl ${m.from === 'ai' ? 'bg-slate-100 text-slate-900 self-start rounded-bl-none' : 'bg-slate-900 text-white self-end rounded-br-none ml-auto'}`}>
-                  <div className="text-sm leading-relaxed">{m.text}</div>
-                </div>
-              ))}
-
-              {loading && (
-                <div className="flex items-center gap-2 p-3 bg-slate-100 text-slate-500 rounded-3xl rounded-bl-none max-w-[84%] animate-pulse">
-                  <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                {message.from === 'ai' && message.suggestions?.length ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {message.suggestions.map((suggestion, index) => (
+                      <button
+                        key={`${suggestion.id || 'suggestion'}-${suggestion.label || index}-${index}`}
+                        type="button"
+                        onClick={() => handleSuggestionAction(suggestion)}
+                        className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
+                      >
+                        {suggestion.label}
+                      </button>
+                    ))}
                   </div>
-                  <span className="text-xs italic">Sky AI đang suy nghĩ...</span>
-                </div>
-              )}
-
-              <div className="mt-2 pt-2 border-t border-slate-50">
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Quick prompts</div>
-                <div className="grid gap-2">
-                  {quickActions.map((a) => (
-                    <button key={a.id} onClick={() => sendMessage(a.title)} className="w-full text-left p-3 bg-slate-50 hover:bg-sky-50 rounded-2xl border border-slate-100 transition group">
-                      <div className="font-bold text-xs text-slate-700 group-hover:text-sky-700">{a.title}</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">{a.subtitle}</div>
-                    </button>
-                  ))}
-                </div>
+                ) : null}
               </div>
+            ))}
+
+            {loading ? (
+              <div className="max-w-[84%] rounded-2xl rounded-bl-sm bg-white px-3 py-2 text-xs text-slate-500 shadow-sm">
+                Sky AI dang tra loi...
+              </div>
+            ) : null}
+          </div>
+
+          <div className="border-t border-slate-200 bg-white p-3">
+            <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+              {quickPrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => sendMessage(prompt)}
+                  disabled={loading}
+                  className="shrink-0 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 disabled:opacity-50"
+                >
+                  {prompt}
+                </button>
+              ))}
             </div>
 
-            <div className="mt-4 pt-3 border-t border-slate-200">
-              <form onSubmit={(e) => { e.preventDefault(); sendMessage(input); }} className="flex gap-2">
-                <input
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Hỏi tôi bất cứ điều gì..."
-                  className="flex-1 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400 text-sm"
-                />
-                <button type="submit" disabled={loading} className="rounded-3xl bg-sky-600 px-4 py-3 text-white font-semibold hover:bg-sky-700 transition disabled:opacity-50">
-                  <FiSend />
-                </button>
-              </form>
-            </div>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                sendMessage(input)
+              }}
+              className="flex gap-2"
+            >
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder="Nhap cau hoi..."
+                className="min-w-0 flex-1 rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
+                disabled={loading}
+              />
+              <button
+                type="submit"
+                disabled={loading || !input.trim()}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-600 text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                <FiSend size={16} />
+              </button>
+            </form>
           </div>
-        )}
-      </div>
+        </section>
+      )}
     </div>
   )
 }

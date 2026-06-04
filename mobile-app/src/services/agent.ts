@@ -29,21 +29,45 @@ export type AgentRequestContext = {
   budgetVnd?: number;
 };
 
+function normalizeSuggestion(item: unknown, index: number): AgentSuggestion {
+  if (typeof item === 'string') {
+    return { id: `suggestion-${index}-${item}`, label: item };
+  }
+
+  if (item && typeof item === 'object') {
+    const raw = item as Partial<AgentSuggestion>;
+    const label = String(raw.label || raw.id || '').trim();
+    const id = String(raw.id || label || `suggestion-${index}`).trim();
+    return {
+      id,
+      label: label || id,
+    };
+  }
+
+  return { id: `suggestion-${index}`, label: String(item ?? '') };
+}
+
 export async function sendMessageToAgent(
   message: string,
   context?: AgentRequestContext,
   language: Language = 'vi',
 ): Promise<AgentResponse> {
-  const { data } = await axios.post<AgentResponse>(`${API_BASE_URL}/api/agent/chat`, {
+  const { data } = await axios.post<AgentResponse>(`${API_BASE_URL}/api/ai/chat`, {
     message,
     context,
     language,
+    platform: 'mobile',
+    sessionId: `mobile-${language}`,
   }, {
     headers: { 'Content-Type': 'application/json' },
     timeout: 25000,
   });
   return {
     reply: data.reply,
-    suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+    suggestions: Array.isArray(data.suggestions)
+      ? data.suggestions
+          .map(normalizeSuggestion)
+          .filter((item) => item.label.trim().length > 0)
+      : [],
   };
 }

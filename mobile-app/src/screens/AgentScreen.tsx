@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AppIcon from '../components/AppIcon';
-import { AgentMessage, sendMessageToAgent } from '../services/agent';
+import { AgentMessage, AgentSuggestion, sendMessageToAgent } from '../services/agent';
 import { useLanguage } from '../context/LanguageContext';
 import { useSearch } from '../context/SearchContext';
 import { AI_DESTINATION_FILTERS, AI_DESTINATIONS, AIDestination, AIDestinationFilter } from '../data/aiDestinations';
@@ -37,7 +37,7 @@ export default function AgentScreen() {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<AgentSuggestion[]>([]);
   const [activeDestinationFilter, setActiveDestinationFilter] = useState<AIDestinationFilter>('season');
   const [destinationPrices, setDestinationPrices] = useState<Record<string, DestinationPrice>>({});
   const [pricesLoading, setPricesLoading] = useState(false);
@@ -131,12 +131,37 @@ export default function AgentScreen() {
         passengers: search.adults,
       }, language);
       setMessages((prev) => [makeMessage('assistant', response.reply), ...prev]);
-      setSuggestions(response.suggestions.map((s) => s.label));
+      setSuggestions(response.suggestions);
     } catch (_err) {
       setMessages((prev) => [makeMessage('assistant', t('agent_service_error')), ...prev]);
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleSuggestionPress(suggestion: AgentSuggestion) {
+    const id = suggestion.id || suggestion.label || '';
+    if (['checkin'].includes(id)) {
+      navigation.navigate('HelpTopic', { topic: 'checkin' });
+      return;
+    }
+    if (['support', 'refund', 'payment'].includes(id)) {
+      navigation.navigate('HelpTopic', { topic: 'support' });
+      return;
+    }
+    if (['baggage', 'extra-baggage'].includes(id)) {
+      navigation.navigate('HelpTopic', { topic: 'baggage' });
+      return;
+    }
+    if (['book-baggage', 'flights', 'search-flight'].includes(id)) {
+      navigation.navigate('Flights');
+      return;
+    }
+    if (['my-bookings', 'ticket', 'eticket', 'pnr'].includes(id)) {
+      navigation.navigate('Profile');
+      return;
+    }
+    handleSend(suggestion.label);
   }
 
   return (
@@ -237,9 +262,14 @@ export default function AgentScreen() {
       />
 
       <View style={styles.suggestionWrap}>
-        {suggestions.map((s) => (
-          <TouchableOpacity key={s} style={styles.suggestionChip} onPress={() => handleSend(s)} disabled={loading}>
-            <Text style={styles.suggestionText}>{s}</Text>
+        {suggestions.map((s, index) => (
+          <TouchableOpacity
+            key={`${s.id || 'suggestion'}-${s.label || index}-${index}`}
+            style={styles.suggestionChip}
+            onPress={() => handleSuggestionPress(s)}
+            disabled={loading}
+          >
+            <Text style={styles.suggestionText}>{s.label || s.id}</Text>
           </TouchableOpacity>
         ))}
       </View>

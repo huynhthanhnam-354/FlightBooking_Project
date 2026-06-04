@@ -12,12 +12,191 @@ import {
   isValidFullName,
   isValidOptionalIdCard,
   isValidPhone,
-  validationMessages,
 } from '../utils/inputValidation';
+import { formatPrice } from '../utils/price';
 
 const BASE_SERVICE_FEE_VND = 50000;
 const TAX_RATE = 0.1;
 const SEAT_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
+const BAGGAGE_PACKAGES = [
+  { kg: 0, price: 0, labelKey: 'bag_carry' },
+  { kg: 15, price: 160000, labelKey: 'bag_light' },
+  { kg: 20, price: 220000, labelKey: 'bag_popular' },
+  { kg: 25, price: 280000, labelKey: 'bag_travel' },
+  { kg: 30, price: 350000, labelKey: 'bag_long' },
+  { kg: 40, price: 480000, labelKey: 'bag_max' },
+] as const;
+
+const BOOKING_TEXT = {
+  vi: {
+    available: 'Ghế trống',
+    booked: 'Đã đặt',
+    selected: 'Đang chọn',
+    businessCabin: 'Hạng thương gia',
+    economyCabin: 'Phổ thông',
+    selectedSeat: 'Đang chọn',
+    seatFee: 'Phụ phí ghế',
+    serviceFee: 'Phí dịch vụ',
+    baggageTitle: 'Chọn hành lý ký gửi',
+    baggageHint: 'Chọn gói hành lý cho booking này. Mục Hành lý trên trang chủ dùng để mua thêm hoặc cập nhật cho booking chưa thanh toán.',
+    bag_carry: 'Chỉ xách tay',
+    bag_light: 'Gọn nhẹ',
+    bag_popular: 'Phổ biến',
+    bag_travel: 'Du lịch',
+    bag_long: 'Dài ngày',
+    bag_max: 'Tối đa',
+    emailRequired: 'Vui lòng nhập email.',
+    phoneRequired: 'Vui lòng nhập số điện thoại.',
+    invalidEmail: 'Email không hợp lệ. Vui lòng dùng địa chỉ @gmail.com.',
+    invalidFullName: 'Họ tên không hợp lệ.',
+    invalidPhone: 'Số điện thoại không hợp lệ.',
+    invalidIdCard: 'CCCD hoặc hộ chiếu không hợp lệ.',
+  },
+  en: {
+    available: 'Available',
+    booked: 'Booked',
+    selected: 'Selected',
+    businessCabin: 'Business class',
+    economyCabin: 'Economy',
+    selectedSeat: 'Selected',
+    seatFee: 'Seat surcharge',
+    serviceFee: 'Service fee',
+    baggageTitle: 'Choose checked baggage',
+    baggageHint: 'Choose baggage for this booking. Use Baggage on the home screen to add or update baggage for unpaid bookings.',
+    bag_carry: 'Carry-on only',
+    bag_light: 'Light',
+    bag_popular: 'Popular',
+    bag_travel: 'Travel',
+    bag_long: 'Long trip',
+    bag_max: 'Maximum',
+    emailRequired: 'Please enter your email.',
+    phoneRequired: 'Please enter your phone number.',
+    invalidEmail: 'Invalid email. Please use a @gmail.com address.',
+    invalidFullName: 'Invalid full name.',
+    invalidPhone: 'Invalid phone number.',
+    invalidIdCard: 'Invalid ID card or passport.',
+  },
+  ko: {
+    available: '빈 좌석',
+    booked: '예약됨',
+    selected: '선택됨',
+    businessCabin: '비즈니스석',
+    economyCabin: '일반석',
+    selectedSeat: '선택 좌석',
+    seatFee: '좌석 추가요금',
+    serviceFee: '서비스 수수료',
+    baggageTitle: '위탁 수하물 선택',
+    baggageHint: '이 예약에 적용할 수하물 패키지를 선택하세요. 홈의 수하물 메뉴는 결제 전 예약의 수하물을 추가 또는 변경할 때 사용합니다.',
+    bag_carry: '기내 수하물만',
+    bag_light: '라이트',
+    bag_popular: '인기',
+    bag_travel: '여행',
+    bag_long: '장기 여행',
+    bag_max: '최대',
+    emailRequired: '이메일을 입력하세요.',
+    phoneRequired: '전화번호를 입력하세요.',
+    invalidEmail: '올바른 이메일이 아닙니다. @gmail.com 주소를 사용하세요.',
+    invalidFullName: '올바른 이름이 아닙니다.',
+    invalidPhone: '올바른 전화번호가 아닙니다.',
+    invalidIdCard: '신분증 또는 여권 번호가 올바르지 않습니다.',
+  },
+  ja: {
+    available: '空席',
+    booked: '予約済み',
+    selected: '選択中',
+    businessCabin: 'ビジネスクラス',
+    economyCabin: 'エコノミー',
+    selectedSeat: '選択中',
+    seatFee: '座席追加料金',
+    serviceFee: 'サービス料',
+    baggageTitle: '受託手荷物を選択',
+    baggageHint: 'この予約の手荷物パッケージを選択します。ホームの手荷物メニューは、未払い予約の手荷物を追加または更新するために使います。',
+    bag_carry: '機内持込のみ',
+    bag_light: 'ライト',
+    bag_popular: '人気',
+    bag_travel: '旅行',
+    bag_long: '長期旅行',
+    bag_max: '最大',
+    emailRequired: 'メールアドレスを入力してください。',
+    phoneRequired: '電話番号を入力してください。',
+    invalidEmail: 'メールアドレスが無効です。@gmail.com のアドレスを使用してください。',
+    invalidFullName: '氏名が無効です。',
+    invalidPhone: '電話番号が無効です。',
+    invalidIdCard: '身分証またはパスポート番号が無効です。',
+  },
+  zh: {
+    available: '可选座位',
+    booked: '已预订',
+    selected: '已选择',
+    businessCabin: '商务舱',
+    economyCabin: '经济舱',
+    selectedSeat: '已选择',
+    seatFee: '座位附加费',
+    serviceFee: '服务费',
+    baggageTitle: '选择托运行李',
+    baggageHint: '为本次预订选择行李套餐。首页的行李功能用于为未付款预订添加或更新行李。',
+    bag_carry: '仅随身行李',
+    bag_light: '轻量',
+    bag_popular: '热门',
+    bag_travel: '旅行',
+    bag_long: '长途',
+    bag_max: '最大',
+    emailRequired: '请输入电子邮件。',
+    phoneRequired: '请输入手机号码。',
+    invalidEmail: '电子邮件无效。请使用 @gmail.com 地址。',
+    invalidFullName: '姓名无效。',
+    invalidPhone: '手机号码无效。',
+    invalidIdCard: '身份证或护照号码无效。',
+  },
+  th: {
+    available: 'ที่นั่งว่าง',
+    booked: 'จองแล้ว',
+    selected: 'เลือกอยู่',
+    businessCabin: 'ชั้นธุรกิจ',
+    economyCabin: 'ชั้นประหยัด',
+    selectedSeat: 'เลือกอยู่',
+    seatFee: 'ค่าที่นั่งเพิ่มเติม',
+    serviceFee: 'ค่าบริการ',
+    baggageTitle: 'เลือกสัมภาระโหลดใต้ท้องเครื่อง',
+    baggageHint: 'เลือกแพ็กเกจสัมภาระสำหรับการจองนี้ เมนูสัมภาระในหน้าหลักใช้เพิ่มหรือแก้ไขสัมภาระสำหรับการจองที่ยังไม่ชำระเงิน',
+    bag_carry: 'ถือขึ้นเครื่องเท่านั้น',
+    bag_light: 'เบา',
+    bag_popular: 'ยอดนิยม',
+    bag_travel: 'เดินทาง',
+    bag_long: 'ทริปยาว',
+    bag_max: 'สูงสุด',
+    emailRequired: 'กรุณากรอกอีเมล',
+    phoneRequired: 'กรุณากรอกเบอร์โทรศัพท์',
+    invalidEmail: 'อีเมลไม่ถูกต้อง กรุณาใช้ที่อยู่ @gmail.com',
+    invalidFullName: 'ชื่อ-นามสกุลไม่ถูกต้อง',
+    invalidPhone: 'เบอร์โทรศัพท์ไม่ถูกต้อง',
+    invalidIdCard: 'เลขบัตรหรือพาสปอร์ตไม่ถูกต้อง',
+  },
+  es: {
+    available: 'Disponible',
+    booked: 'Reservado',
+    selected: 'Seleccionado',
+    businessCabin: 'Clase ejecutiva',
+    economyCabin: 'Económica',
+    selectedSeat: 'Seleccionado',
+    seatFee: 'Recargo de asiento',
+    serviceFee: 'Cargo de servicio',
+    baggageTitle: 'Elegir equipaje facturado',
+    baggageHint: 'Elige equipaje para esta reserva. Usa Equipaje en la pantalla principal para agregar o actualizar equipaje en reservas pendientes de pago.',
+    bag_carry: 'Solo cabina',
+    bag_light: 'Ligero',
+    bag_popular: 'Popular',
+    bag_travel: 'Viaje',
+    bag_long: 'Viaje largo',
+    bag_max: 'Máximo',
+    emailRequired: 'Ingresa tu correo electrónico.',
+    phoneRequired: 'Ingresa tu número de teléfono.',
+    invalidEmail: 'Correo inválido. Usa una dirección @gmail.com.',
+    invalidFullName: 'Nombre completo inválido.',
+    invalidPhone: 'Número de teléfono inválido.',
+    invalidIdCard: 'DNI o pasaporte inválido.',
+  },
+} as const;
 
 type CabinClass = 'business' | 'economy';
 type SeatStatus = 'booked' | 'available';
@@ -77,7 +256,7 @@ function generateSeatMap(occupiedSeats: Set<string>): SeatItem[] {
 }
 
 export default function BookingScreen() {
-  const { t } = useLanguage();
+  const { t, language, currency } = useLanguage();
   const search = useSearch();
   const { user } = useAuth();
   const navigation = useNavigation<any>();
@@ -89,6 +268,8 @@ export default function BookingScreen() {
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', idCard: '' });
   const [errors, setErrors] = useState<{ fullName?: string; email?: string; phone?: string }>({});
   const [submitting, setSubmitting] = useState(false);
+  const bt = (key: keyof typeof BOOKING_TEXT.en) => BOOKING_TEXT[language]?.[key] ?? BOOKING_TEXT.en[key];
+  const money = (valueVnd: number) => formatPrice(valueVnd, currency);
 
   const flight = search.selectedFlight;
 
@@ -177,23 +358,23 @@ export default function BookingScreen() {
     const nextErrors: { fullName?: string; email?: string; phone?: string } = {};
 
     if (!isValidFullName(form.fullName)) {
-      nextErrors.fullName = validationMessages.fullName;
+      nextErrors.fullName = bt('invalidFullName');
     }
 
     if (!form.email.trim()) {
-      nextErrors.email = 'Vui lòng nhập email.';
+      nextErrors.email = bt('emailRequired');
     } else if (!isValidEmail(form.email)) {
-      nextErrors.email = validationMessages.email;
+      nextErrors.email = bt('invalidEmail');
     }
 
     if (!form.phone.trim()) {
-      nextErrors.phone = 'Vui lòng nhập số điện thoại.';
+      nextErrors.phone = bt('phoneRequired');
     } else if (!isValidPhone(form.phone)) {
-      nextErrors.phone = validationMessages.phone;
+      nextErrors.phone = bt('invalidPhone');
     }
 
     if (!isValidOptionalIdCard(form.idCard)) {
-      Alert.alert(t('confirm'), validationMessages.idCard);
+      Alert.alert(t('confirm'), bt('invalidIdCard'));
       return false;
     }
 
@@ -212,6 +393,11 @@ export default function BookingScreen() {
       }
       return [...prev, seat.id];
     });
+  };
+
+  const selectBaggage = (kg: number, fee: number) => {
+    search.setBaggageKg(kg);
+    search.setBaggageFeeVnd(fee);
   };
 
   const handleNext = async () => {
@@ -334,12 +520,12 @@ export default function BookingScreen() {
                 <Text style={styles.cardTitle}> {t('choose_seat')}</Text>
               </View>
               <View style={styles.legendWrap}>
-                <View style={styles.legendItem}><View style={[styles.legendDot, styles.legendAvailable]} /><Text style={styles.legendText}>Ghế trống</Text></View>
-                <View style={styles.legendItem}><View style={[styles.legendDot, styles.legendBooked]} /><Text style={styles.legendText}>Đã đặt</Text></View>
-                <View style={styles.legendItem}><View style={[styles.legendDot, styles.legendSelected]} /><Text style={styles.legendText}>Đang chọn</Text></View>
+                <View style={styles.legendItem}><View style={[styles.legendDot, styles.legendAvailable]} /><Text style={styles.legendText}>{bt('available')}</Text></View>
+                <View style={styles.legendItem}><View style={[styles.legendDot, styles.legendBooked]} /><Text style={styles.legendText}>{bt('booked')}</Text></View>
+                <View style={styles.legendItem}><View style={[styles.legendDot, styles.legendSelected]} /><Text style={styles.legendText}>{bt('selected')}</Text></View>
               </View>
 
-              <Text style={styles.cabinTitle}>Hạng thương gia</Text>
+              <Text style={styles.cabinTitle}>{bt('businessCabin')}</Text>
               {[1, 2].map((rowNumber) => (
                 <View key={`biz-${rowNumber}`} style={styles.seatRow}>
                   <Text style={styles.rowLabel}>{rowNumber}</Text>
@@ -385,7 +571,7 @@ export default function BookingScreen() {
                 </View>
               ))}
 
-              <Text style={styles.cabinTitle}>Phổ thông</Text>
+              <Text style={styles.cabinTitle}>{bt('economyCabin')}</Text>
               {[3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((rowNumber) => (
                 <View key={`eco-${rowNumber}`} style={styles.seatRow}>
                   <Text style={styles.rowLabel}>{rowNumber}</Text>
@@ -432,8 +618,36 @@ export default function BookingScreen() {
               ))}
 
               <View style={styles.selectedSeatInfo}>
-                <Text style={styles.selectedSeatText}>Đang chọn: {selectedSeats.join(', ') || '—'}</Text>
-                <Text style={styles.selectedSeatText}>Phụ phí ghế: +{seatAddOn.toLocaleString()}₫</Text>
+                <Text style={styles.selectedSeatText}>{bt('selectedSeat')}: {selectedSeats.join(', ') || '—'}</Text>
+                <Text style={styles.selectedSeatText}>{bt('seatFee')}: +{money(seatAddOn)}</Text>
+              </View>
+            </View>
+
+            <View style={styles.card}>
+              <View style={styles.cardTitleRow}>
+                <AppIcon name="luggage" size={18} color="#0064D2" />
+                <Text style={styles.cardTitle}> {bt('baggageTitle')}</Text>
+              </View>
+              <Text style={styles.baggageHint}>{bt('baggageHint')}</Text>
+              <View style={styles.baggageGrid}>
+                {BAGGAGE_PACKAGES.map((item) => {
+                  const active = search.baggageKg === item.kg;
+                  return (
+                    <TouchableOpacity
+                      key={item.kg}
+                      style={[styles.baggageOption, active && styles.baggageOptionActive]}
+                      onPress={() => selectBaggage(item.kg, item.price)}
+                    >
+                      <Text style={[styles.baggageKg, active && styles.baggageTextActive]}>
+                        {item.kg === 0 ? '0 kg' : `${item.kg} kg`}
+                      </Text>
+                      <Text style={[styles.baggageLabel, active && styles.baggageTextActive]}>{bt(item.labelKey)}</Text>
+                      <Text style={[styles.baggagePrice, active && styles.baggageTextActive]}>
+                        {item.price > 0 ? money(item.price) : t('free')}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 
@@ -443,14 +657,14 @@ export default function BookingScreen() {
                 <Text style={styles.cardTitle}> {t('price_summary')}</Text>
               </View>
               {[
-                [t('fare_outbound'), `${(outboundVnd * passengerCount).toLocaleString()}₫`],
+                [t('fare_outbound'), money(outboundVnd * passengerCount)],
                 ...(search.tripType === 'roundTrip' && returnLegVnd > 0
-                  ? [[t('fare_return_estimate'), `${(returnLegVnd * passengerCount).toLocaleString()}₫`] as [string, string]]
+                  ? [[t('fare_return_estimate'), money(returnLegVnd * passengerCount)] as [string, string]]
                   : []),
-                [t('tax_fee'), `${tax.toLocaleString()}₫`],
-                ['Phí dịch vụ', `${serviceFeeVnd.toLocaleString()}₫`],
-                ['Phụ phí ghế', `+${seatAddOn.toLocaleString()}₫`],
-                [t('luggage'), search.baggageKg > 0 ? `${search.baggageKg} kg - ${baggageAddOn.toLocaleString()}â‚«` : t('free')],
+                [t('tax_fee'), money(tax)],
+                [bt('serviceFee'), money(serviceFeeVnd)],
+                [bt('seatFee'), `+${money(seatAddOn)}`],
+                [t('luggage'), search.baggageKg > 0 ? `${search.baggageKg} kg - ${money(baggageAddOn)}` : t('free')],
               ].map(([l, v]) => (
                 <View key={l} style={styles.priceRow}>
                   <Text style={styles.priceLabel}>{l}</Text>
@@ -459,7 +673,7 @@ export default function BookingScreen() {
               ))}
               <View style={[styles.priceRow, styles.totalRow]}>
                 <Text style={styles.totalLabel}>{t('total')}</Text>
-                <Text style={styles.totalValue}>{totalVnd.toLocaleString()}₫</Text>
+                <Text style={styles.totalValue}>{money(totalVnd)}</Text>
               </View>
             </View>
           </View>
@@ -529,7 +743,7 @@ export default function BookingScreen() {
                 [t('departure_date'),  search.departureDate],
                 [t('seat'),            selectedSeats.join(', ') || '—'],
                 [t('passenger'),       form.fullName || '—'],
-                [t('total'),           `${totalVnd.toLocaleString()}₫`],
+                [t('total'),           money(totalVnd)],
               ].map(([label, value]) => (
                 <View key={label} style={styles.priceRow}>
                   <Text style={styles.priceLabel}>{label}</Text>
@@ -621,6 +835,14 @@ const styles = StyleSheet.create({
   extraLegroomSeat: { borderColor: '#22C55E', backgroundColor: '#F0FDF4' },
   selectedSeatInfo: { marginTop: 8, flexDirection: 'row', justifyContent: 'space-between' },
   selectedSeatText: { fontSize: 12, fontWeight: '600', color: '#374151' },
+  baggageHint:   { fontSize: 12, color: '#6B7280', lineHeight: 18, marginBottom: 10 },
+  baggageGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  baggageOption: { width: '31.5%', minHeight: 92, borderRadius: 12, borderWidth: 1.5, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB', padding: 10, justifyContent: 'space-between' },
+  baggageOptionActive: { backgroundColor: '#0064D2', borderColor: '#0064D2' },
+  baggageKg:     { fontSize: 15, fontWeight: '800', color: '#1A1A2E' },
+  baggageLabel:  { fontSize: 11, color: '#6B7280', marginTop: 4 },
+  baggagePrice:  { fontSize: 11, fontWeight: '700', color: '#0064D2', marginTop: 6 },
+  baggageTextActive: { color: '#fff' },
   priceRow:      { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   priceLabel:    { fontSize: 13, color: '#6B7280' },
   priceValue:    { fontSize: 13, color: '#1A1A2E', fontWeight: '500' },

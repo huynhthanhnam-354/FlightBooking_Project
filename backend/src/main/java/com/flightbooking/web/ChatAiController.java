@@ -32,8 +32,8 @@ public class ChatAiController {
 
         // Kiểm tra token trong bucket
         if (bucket.tryConsume(1)) {
-            String reply = chatAiService.generateReply(request.getMessage());
-            return ResponseEntity.ok(ChatResponse.builder().reply(reply).build());
+            ChatResponse response = chatAiService.generateResponse(request);
+            return ResponseEntity.ok(response);
         }
 
         // Nếu hết token, trả về lỗi 429

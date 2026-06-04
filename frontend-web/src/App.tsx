@@ -12,6 +12,9 @@ import BookingSeat from './pages/BookingSeat'
 import ComboList from './pages/ComboList'
 import PassengerForm from './pages/PassengerForm'
 import CheckoutPage from './pages/CheckoutPage'
+import ChatWidget from './components/ChatWidget'
+import SupportPage from './pages/SupportPage'
+import CheckInPage from './pages/CheckInPage'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
@@ -32,10 +35,13 @@ function App() {
               <Route path="/booking/checkout" element={<CheckoutPage />} />
               <Route path="/booking/confirmation" element={<BookingConfirmation />} />
               <Route path="/combos" element={<ComboList />} />
+              <Route path="/support" element={<SupportPage />} />
+              <Route path="/check-in" element={<CheckInPage />} />
               <Route path="/user-dashboard" element={<UserDashboard />} />
               <Route path="/admin" element={<AdminDashboard />} />
             </Routes>
           </main>
+          <ChatWidget />
           <ToastContainer position="bottom-right" />
         </div>
       </Router>
