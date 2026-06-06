@@ -28,15 +28,14 @@ public class RefreshTokenService {
 
     @Transactional
     public RefreshToken createRefreshToken(Long userId) {
-        RefreshToken refreshToken = RefreshToken.builder()
-                .user(userRepository.findById(userId).get())
-                .expiryDate(Instant.now().plusMillis(refreshTokenDurationMs))
-                .token(UUID.randomUUID().toString())
-                .build();
+        RefreshToken refreshToken = refreshTokenRepository.findByUserId(userId)
+                .orElseGet(() -> RefreshToken.builder()
+                        .user(userRepository.findById(userId).get())
+                        .build());
 
-        // Xóa token cũ của user nếu có (đảm bảo 1 user 1 refresh token tại 1 thời điểm - tùy policy)
-        refreshTokenRepository.deleteByUser(refreshToken.getUser());
-        
+        refreshToken.setExpiryDate(Instant.now().plusMillis(refreshTokenDurationMs));
+        refreshToken.setToken(UUID.randomUUID().toString());
+
         return refreshTokenRepository.save(refreshToken);
     }
 

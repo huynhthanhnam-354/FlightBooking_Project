@@ -110,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (res: AuthResponse) => {
     const u = userFromAuthResponse(res);
-    await saveAuthToken(res.token);
+    await saveAuthToken(res.accessToken);
     await persistUser(u);
   }, [persistUser]);
 

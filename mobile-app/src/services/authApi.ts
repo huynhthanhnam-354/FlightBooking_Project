@@ -2,7 +2,8 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
 
 export type AuthResponse = {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
   tokenType: string;
   email: string;
   fullName: string;

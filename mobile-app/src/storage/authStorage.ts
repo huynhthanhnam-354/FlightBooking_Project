@@ -4,6 +4,7 @@ const TOKEN_KEY = 'skybook_auth_token';
 const PROFILE_KEY = 'skybook_user_profile';
 
 export async function saveAuthToken(token: string): Promise<void> {
+  if (!token) throw new Error('Missing auth token from server response.');
   await AsyncStorage.setItem(TOKEN_KEY, token);
 }
 
