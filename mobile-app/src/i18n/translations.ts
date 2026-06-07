@@ -147,7 +147,7 @@ type TranslationKeys = {
 // 🇻🇳 TIẾNG VIỆT
 // ─────────────────────────────────────────────
 const vi: TranslationKeys = {
-  welcome_title: 'Xin chào! Chào mừng đến với\nSkyBook.',
+  welcome_title: 'Chào mừng đến với\nFlightBooking',
   welcome_subtitle: 'Ứng dụng đặt vé máy bay nhanh chóng & tiện lợi.',
   preferred_currency: 'Tiền tệ ưa thích', choose_currency: 'Chọn tiền tệ',
   preferred_language: 'Ngôn ngữ ưa thích', choose_language: 'Chọn ngôn ngữ',
@@ -275,7 +275,7 @@ const vi: TranslationKeys = {
 // 🇬🇧 ENGLISH
 // ─────────────────────────────────────────────
 const en: TranslationKeys = {
-  welcome_title: 'Hello! Welcome to\nSkyBook.',
+  welcome_title: 'Welcome to\nFlightBooking',
   welcome_subtitle: 'Fast & easy flight ticket booking app.',
   preferred_currency: 'Preferred Currency', choose_currency: 'Choose currency',
   preferred_language: 'Preferred Language', choose_language: 'Choose language',
@@ -403,7 +403,7 @@ const en: TranslationKeys = {
 // 🇰🇷 한국어 (KOREAN)
 // ─────────────────────────────────────────────
 const ko: TranslationKeys = {
-  welcome_title: '안녕하세요! SkyBook에\n오신 것을 환영합니다.',
+  welcome_title: 'FlightBooking에\n오신 것을 환영합니다.',
   welcome_subtitle: '빠르고 편리한 항공권 예약 앱.',
   preferred_currency: '선호 통화', choose_currency: '통화 선택',
   preferred_language: '선호 언어', choose_language: '언어 선택',
@@ -531,7 +531,7 @@ const ko: TranslationKeys = {
 // 🇯🇵 日本語 (JAPANESE)
 // ─────────────────────────────────────────────
 const ja: TranslationKeys = {
-  welcome_title: 'こんにちは！SkyBookへ\nようこそ。',
+  welcome_title: 'FlightBookingへ\nようこそ。',
   welcome_subtitle: '快速・便利な航空券予約アプリ。',
   preferred_currency: '希望通貨', choose_currency: '通貨を選択',
   preferred_language: '希望言語', choose_language: '言語を選択',
@@ -659,7 +659,7 @@ const ja: TranslationKeys = {
 // 🇨🇳 中文 (CHINESE)
 // ─────────────────────────────────────────────
 const zh: TranslationKeys = {
-  welcome_title: '你好！欢迎来到\nSkyBook。',
+  welcome_title: '欢迎来到\nFlightBooking。',
   welcome_subtitle: '快速便捷的机票预订应用。',
   preferred_currency: '首选货币', choose_currency: '选择货币',
   preferred_language: '首选语言', choose_language: '选择语言',
@@ -787,7 +787,7 @@ const zh: TranslationKeys = {
 // 🇹🇭 ภาษาไทย (THAI)
 // ─────────────────────────────────────────────
 const th: TranslationKeys = {
-  welcome_title: 'สวัสดี! ยินดีต้อนรับสู่\nSkyBook',
+  welcome_title: 'ยินดีต้อนรับสู่\nFlightBooking',
   welcome_subtitle: 'แอปจองตั๋วเครื่องบินที่รวดเร็วและสะดวก',
   preferred_currency: 'สกุลเงินที่ต้องการ', choose_currency: 'เลือกสกุลเงิน',
   preferred_language: 'ภาษาที่ต้องการ', choose_language: 'เลือกภาษา',
@@ -915,7 +915,7 @@ const th: TranslationKeys = {
 // 🌎 ESPAÑOL (SPANISH)
 // ─────────────────────────────────────────────
 const es: TranslationKeys = {
-  welcome_title: '¡Hola! Bienvenido a\nSkyBook.',
+  welcome_title: 'Bienvenido a\nFlightBooking.',
   welcome_subtitle: 'App de reserva de vuelos rápida y conveniente.',
   preferred_currency: 'Moneda preferida', choose_currency: 'Elegir moneda',
   preferred_language: 'Idioma preferido', choose_language: 'Elegir idioma',

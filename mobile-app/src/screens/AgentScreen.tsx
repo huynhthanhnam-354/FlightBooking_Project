@@ -168,7 +168,7 @@ export default function AgentScreen() {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#0064D2" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>SkyBook Assistant</Text>
+        <Text style={styles.headerTitle}>FlightBook Assistant</Text>
         <Text style={styles.headerSub}>Tu van tim chuyen bay va dat ve</Text>
       </View>
 

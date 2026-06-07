@@ -46,7 +46,7 @@ export default function LoginScreen() {
           <View style={styles.logoCircle}>
             <AppIcon name="airplane" size={40} color="#fff" />
           </View>
-          <Text style={styles.appName}>SkyBook</Text>
+          <Text style={styles.appName}>FlightBook</Text>
           <Text style={styles.tagline}>Đặt vé nhanh - Bay ngay hôm nay</Text>
         </View>
 

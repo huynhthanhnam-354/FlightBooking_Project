@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -10,7 +10,6 @@ import { LanguageProvider, useLanguage } from './src/context/LanguageContext';
 import { SearchProvider } from './src/context/SearchContext';
 import { AuthProvider } from './src/context/AuthContext';
 import { useAuth } from './src/context/AuthContext';
-import { getOnboardingDone } from './src/storage/appPreferences';
 import WelcomeScreen  from './src/screens/WelcomeScreen';
 import HomeScreen     from './src/screens/HomeScreen';
 import SearchScreen   from './src/screens/SearchScreen';
@@ -69,24 +68,8 @@ function MainTabs() {
 
 function AppNavigator() {
   const { user, hydrated } = useAuth();
-  const [prefsReady, setPrefsReady] = useState(false);
-  const [onboardingDone, setOnboardingDone] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const done = await getOnboardingDone();
-      if (alive) {
-        setOnboardingDone(done);
-        setPrefsReady(true);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  if (!hydrated || !prefsReady) {
+  if (!hydrated) {
     return (
       <View style={styles.loadingRoot}>
         <ActivityIndicator size="large" color="#0064D2" />
@@ -94,7 +77,7 @@ function AppNavigator() {
     );
   }
 
-  const initialRouteName = user ? 'Main' : onboardingDone ? 'Login' : 'Welcome';
+  const initialRouteName = user ? 'Main' : 'Welcome';
   const navigatorKey = user ? 'auth' : `guest-${initialRouteName}`;
 
   return (
