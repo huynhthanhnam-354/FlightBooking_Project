@@ -1,0 +1,139 @@
+import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { FaPlane, FaHotel, FaSuitcase, FaChevronRight, FaTicketAlt } from 'react-icons/fa';
+import { DEALS_DATA, getThemeRGBA } from '../data/dealsData';
+
+/**
+ * SpecialDeals Component
+ * A premium, voucher-style deals section inspired by Traveloka.
+ * Features category-based filtering and high-impact visual hierarchy.
+ */
+const SpecialDeals = () => {
+  const [activeCategory, setActiveTab] = useState('all');
+
+  const categories = [
+    { id: 'all', label: 'Tất cả', icon: FaTicketAlt },
+    { id: 'flight', label: 'Chuyến bay', icon: FaPlane },
+    { id: 'hotel', label: 'Khách sạn', icon: FaHotel },
+    { id: 'combo', label: 'Combo tiết kiệm', icon: FaSuitcase },
+  ];
+
+  const filteredDeals = useMemo(() => {
+    if (activeCategory === 'all') return DEALS_DATA;
+    return DEALS_DATA.filter(deal => deal.category === activeCategory);
+  }, [activeCategory]);
+
+  return (
+    <section className="max-w-7xl mx-auto px-6 py-16 bg-white">
+      {/* 1. Header & Category Tabs Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+        <div className="space-y-2">
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Ưu đãi độc quyền</h2>
+          <p className="text-slate-500 font-medium">Săn deal hời, vi vu khắp thế giới cùng Flight Booking</p>
+        </div>
+        
+        <div className="flex flex-wrap gap-3">
+          {categories.map((cat) => {
+            const Icon = cat.icon;
+            const isAct = activeCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveTab(cat.id)}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-300 border-2 ${
+                  isAct 
+                    ? 'bg-brand-primary border-brand-primary text-white shadow-premium' 
+                    : 'bg-slate-50 border-transparent text-slate-600 hover:bg-slate-100 hover:text-brand-primary'
+                }`}
+              >
+                <Icon size={14} className={isAct ? 'text-brand-secondary' : 'text-slate-400'} />
+                {cat.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 2. Deals Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {filteredDeals.map((deal) => (
+          <Link 
+            to={deal.ctaLink} 
+            key={deal.id}
+            className="group relative flex h-44 bg-white rounded-soft-lg overflow-hidden border border-slate-100 shadow-sm hover:shadow-premium hover:-translate-y-1.5 transition-all duration-500"
+          >
+            {/* Split Layout: Left side (Image) */}
+            <div className="relative w-2/5 h-full overflow-hidden">
+              <img 
+                src={deal.image} 
+                alt={deal.title} 
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              />
+              {/* Inner border / Overlay for contrast */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+              <div className="absolute bottom-3 left-3">
+                 <span className="bg-white/20 backdrop-blur-md text-[10px] text-white px-2 py-1 rounded-md font-bold uppercase tracking-wider">
+                    {deal.category}
+                 </span>
+              </div>
+            </div>
+
+            {/* Split Layout: Right side (Voucher Content) */}
+            <div className="flex-1 p-5 flex flex-col justify-between relative bg-white">
+              {/* Decorative "Voucher Notch" using CSS circles */}
+              <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-r border-slate-100 hidden md:block" />
+              
+              <div className="space-y-1">
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight line-clamp-1">{deal.title}</h3>
+                <p className="text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed">{deal.subTitle}</p>
+              </div>
+
+              <div className="mt-auto">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xs font-bold text-slate-400">Giảm đến</span>
+                  <span className="text-3xl font-black text-brand-secondary tracking-tighter">
+                    {deal.discountPercentage}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                   <div className="flex gap-1">
+                      {deal.meta.tags.slice(0, 2).map(tag => (
+                        <span key={tag} className="text-[9px] font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase">{tag}</span>
+                      ))}
+                   </div>
+                   <div className="text-brand-primary font-black text-xs flex items-center gap-1 group-hover:gap-2 transition-all">
+                      Săn ngay <FaChevronRight size={8} />
+                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Badge */}
+            {deal.status === 'hot' && (
+              <div className="absolute -top-1 -right-1">
+                 <div className="bg-rose-500 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl shadow-lg uppercase tracking-widest">
+                    Hot Deal
+                 </div>
+              </div>
+            )}
+          </Link>
+        ))}
+      </div>
+
+      {/* 3. Footer Action Button */}
+      <div className="mt-16 flex justify-center">
+        <Link 
+          to="/deals"
+          className="group flex items-center gap-4 px-10 py-4 rounded-full border-2 border-slate-100 bg-slate-50 text-brand-primary font-black text-sm tracking-wide hover:bg-white hover:border-brand-primary hover:shadow-premium transition-all duration-300"
+        >
+          XEM TẤT CẢ ƯU ĐÃI
+          <div className="w-6 h-6 bg-brand-primary text-white rounded-full flex items-center justify-center group-hover:translate-x-2 transition-all duration-300">
+             <FaChevronRight size={10} />
+          </div>
+        </Link>
+      </div>
+    </section>
+  );
+};
+
+export default SpecialDeals;

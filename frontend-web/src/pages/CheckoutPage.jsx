@@ -48,7 +48,7 @@ export default function CheckoutPage() {
     idCard: '',
   })
 
-  const [errors, setErrors] = useState<any>({})
+  const [errors, setErrors] = useState({})
   const [baggage, setBaggage] = useState('none')
   const [meal, setMeal] = useState('none')
   const [insurance, setInsurance] = useState(true)
@@ -70,7 +70,7 @@ export default function CheckoutPage() {
     return () => clearInterval(timer)
   }, [timeLeft, navigate])
 
-  const formatTime = (seconds: number) => {
+  const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
@@ -86,7 +86,7 @@ export default function CheckoutPage() {
   const total = subtotal + baggageFee + mealFee + insuranceFee + serviceFee - discount
 
   const validate = () => {
-    const newErrors: any = {}
+    const newErrors = {}
     if (!formData.name) newErrors.name = 'Họ tên không được để trống'
     if (!formData.phone) newErrors.phone = 'Số điện thoại không được để trống'
     if (!formData.email) newErrors.email = 'Email không hợp lệ'
@@ -154,7 +154,7 @@ export default function CheckoutPage() {
           setIsProcessing(false)
         }, 1500)
       }
-    } catch (err: any) {
+    } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Có lỗi xảy ra khi xử lý thanh toán')
       setIsProcessing(false)
     }

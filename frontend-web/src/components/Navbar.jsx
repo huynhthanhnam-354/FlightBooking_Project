@@ -1,121 +1,149 @@
-import { useAuth } from '../context/AuthContext'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { useEffect, useRef, useState } from 'react'
-import { FaChevronDown } from 'react-icons/fa'
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { FaPlane, FaUserCircle, FaBars, FaTimes } from 'react-icons/fa';
 
-function Navbar() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const menuRef = useRef(null)
+/**
+ * Navbar component for FlightBook AI
+ * Following Senior Frontend standards: Semantic HTML, Pixel-perfect alignment, and Modern UX.
+ */
+const Navbar = () => {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
 
-  const hideNav = location.pathname.includes('dashboard') || location.pathname.includes('admin')
-
-  if (hideNav) return null;
-
+  // Change background on scroll for a "Glassmorphism" effect
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setMenuOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [])
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-  const handleLogout = () => {
-    logout()
-    navigate('/')
-    setMenuOpen(false)
-  }
+  const navLinks = [
+    { name: 'Trang chủ', path: '/' },
+    { name: 'Chuyến bay', path: '/booking' },
+    { name: 'Combo du lịch', path: '/combos' },
+    { name: 'Hỗ trợ', path: '/support' },
+  ];
+
+  const isActive = (path) => location.pathname === path;
+  const isHomePage = location.pathname === '/';
 
   return (
-    <header className="bg-white shadow sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
-          <div className="flex items-center gap-6">
-            <Link to="/" className="flex items-center gap-3 text-sky-600 font-bold text-xl">
-              <span className="text-2xl">✈️</span>
-              <span>Flight Booking</span>
-            </Link>
-
-            {!hideNav && (
-              <nav className="hidden md:flex gap-6 text-slate-700 font-medium">
-                <Link to="/" className="hover:text-sky-600 transition">Trang chủ</Link>
-                <Link to="/booking" className="hover:text-sky-600 transition">Vé máy bay</Link>
-                <Link to="/combos" className="hover:text-sky-600 transition">Combo</Link>
-              </nav>
-            )}
+    <header 
+      className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${
+        isScrolled 
+          ? 'bg-white/90 backdrop-blur-lg shadow-premium py-3' 
+          : isHomePage ? 'bg-transparent py-5' : 'bg-white shadow-sm py-3'
+      }`}
+    >
+      <nav className="max-w-7xl mx-auto px-6 md:px-large flex items-center justify-between">
+        
+        {/* Left: Logo Section */}
+        <Link to="/" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 bg-brand-primary rounded-soft-lg flex items-center justify-center shadow-premium group-hover:rotate-12 transition-transform duration-300">
+            <FaPlane className="text-white text-lg rotate-45" />
           </div>
-
-          <div className="flex items-center gap-3">
-            {user ? (
-              <div className="relative" ref={menuRef}>
-                <button
-                  onClick={() => setMenuOpen((prev) => !prev)}
-                  className="flex items-center gap-3 rounded-full border border-slate-200 bg-white p-1 pr-4 hover:shadow-md transition-all"
-                >
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-600 to-indigo-600 text-white flex items-center justify-center shadow-md">
-                    {user.fullName?.[0]?.toUpperCase() || 'U'}
-                  </div>
-                  <div className="hidden sm:flex flex-col text-left">
-                    <span className="text-sm font-semibold text-slate-800">{user.fullName}</span>
-                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">{user.role === 'ADMIN' ? 'Quản trị viên' : 'Hành khách'}</span>
-                  </div>
-                  <FaChevronDown className={`text-slate-400 text-xs transition-transform duration-300 ${menuOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {menuOpen && (
-                  <div className="absolute right-0 mt-3 w-56 rounded-2xl border border-slate-100 bg-white shadow-2xl ring-1 ring-slate-900/5 overflow-hidden z-50 py-2">
-                    <div className="px-4 py-2 border-bottom border-slate-50 mb-1">
-                      <p className="text-xs text-slate-400">Tài khoản</p>
-                    </div>
-                    {user.role === 'ADMIN' && (
-                      <Link
-                        to="/admin"
-                        className="block px-4 py-2 text-sm text-slate-700 hover:bg-sky-50 hover:text-sky-700 transition"
-                        onClick={() => setMenuOpen(false)}
-                      >
-                        Admin Dashboard
-                      </Link>
-                    )}
-                    <Link
-                      to="/user-dashboard"
-                      className="block px-4 py-2 text-sm text-slate-700 hover:bg-sky-50 hover:text-sky-700 transition"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      User Dashboard
-                    </Link>
-                    <Link
-                      to="/bookings"
-                      className="block px-4 py-2 text-sm text-slate-700 hover:bg-sky-50 hover:text-sky-700 transition"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      Chuyến bay của tôi
-                    </Link>
-                    <div className="h-px bg-slate-100 my-2" />
-                    <button
-                      onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
-                    >
-                      Đăng xuất
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link to="/login" className="px-3 py-1 text-sm text-slate-700 hover:text-sky-600">Đăng nhập</Link>
-                <Link to="/register" className="px-3 py-1 bg-sky-600 text-white rounded text-sm">Đăng ký</Link>
-              </div>
-            )}
+          <div className="flex flex-col">
+            <span className={`text-xl font-black tracking-tighter leading-none ${
+              !isScrolled && isHomePage ? 'text-white' : 'text-brand-primary'
+            }`}>
+              Flight<span className="text-brand-secondary"> Booking</span>
+            </span>
+            <span className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${
+              !isScrolled && isHomePage ? 'text-white/60' : 'text-slate-400'
+            }`}>Premium Travel</span>
           </div>
+        </Link>
+
+        {/* Center: Navigation Links (Desktop) */}
+        <ul className="hidden md:flex items-center gap-8">
+          {navLinks.map((link) => (
+            <li key={link.path}>
+              <Link
+                to={link.path}
+                className={`text-sm font-medium tracking-wide transition-all duration-300 relative py-2 group ${
+                  isScrolled || !isHomePage
+                    ? isActive(link.path) ? 'text-brand-primary' : 'text-slate-600 hover:text-brand-primary'
+                    : 'text-white/90 hover:text-white'
+                }`}
+              >
+                {link.name}
+                {/* Modern active indicator line */}
+                <span className={`absolute bottom-0 left-0 h-0.5 bg-brand-secondary transition-all duration-300 ${
+                  isActive(link.path) ? 'w-full' : 'w-0 group-hover:w-full'
+                }`} />
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        {/* Right: CTA Section */}
+        <div className="hidden md:flex items-center gap-small">
+          <Link 
+            to="/login" 
+            className={`px-6 py-2.5 text-sm font-medium transition-all duration-300 rounded-soft-sm ${
+              isScrolled || !isHomePage ? 'text-slate-700 hover:text-brand-primary hover:bg-slate-50' : 'text-white hover:bg-white/10'
+            }`}
+          >
+            Đăng nhập
+          </Link>
+          <Link 
+            to="/register" 
+            className="px-6 py-2.5 bg-brand-primary text-white text-sm font-bold rounded-soft-sm shadow-premium hover:bg-brand-primary/90 hover:-translate-y-0.5 transition-all duration-300"
+          >
+            Đăng ký
+          </Link>
+        </div>
+
+        {/* Mobile Menu Toggle */}
+        <button 
+          className="md:hidden text-slate-800 p-2"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
+        </button>
+      </nav>
+
+      {/* Mobile Menu Overlay */}
+      <div className={`fixed inset-0 bg-white z-[90] flex flex-col p-10 transition-all duration-500 md:hidden ${
+        isMobileMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+      }`}>
+        <div className="flex justify-between items-center mb-10">
+           <span className="text-2xl font-black text-brand-primary">Menu</span>
+           <button onClick={() => setIsMobileMenuOpen(false)}><FaTimes size={28} /></button>
+        </div>
+        <ul className="space-y-6">
+          {navLinks.map((link) => (
+            <li key={link.path}>
+              <Link
+                to={link.path}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`text-2xl font-black ${isActive(link.path) ? 'text-brand-secondary' : 'text-slate-800'}`}
+              >
+                {link.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-auto space-y-4">
+          <Link 
+            to="/login" 
+            className="block w-full py-4 text-center font-bold text-slate-800 border-2 border-slate-100 rounded-soft-lg"
+          >
+            Đăng nhập
+          </Link>
+          <Link 
+            to="/register" 
+            className="block w-full py-4 text-center font-bold text-white bg-brand-primary rounded-soft-lg"
+          >
+            Bắt đầu ngay
+          </Link>
         </div>
       </div>
     </header>
-  )
-}
+  );
+};
 
-export default Navbar
+export default Navbar;

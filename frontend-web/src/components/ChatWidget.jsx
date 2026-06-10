@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FaRobot } from 'react-icons/fa'
 import { FiSend, FiX } from 'react-icons/fi'
 import api from '../services/api'
 
@@ -127,31 +126,38 @@ export default function ChatWidget() {
   ]
 
   return (
-    <div className="fixed right-5 bottom-5 z-50">
+    <div className="fixed bottom-20 right-20 z-50">
       {!open ? (
         <button
           type="button"
-          aria-label="Mo tro ly AI"
+          aria-label="Open Sky AI assistant"
           onClick={() => setOpen(true)}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-600 text-white shadow-lg shadow-sky-700/25 transition hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-sky-600 text-white shadow-2xl shadow-sky-900/20 transition duration-300 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-300 focus:ring-offset-2 focus:ring-offset-transparent"
         >
-          <FaRobot size={20} />
+          <span className="sr-only">Open Sky AI Assistant</span>
+          <svg viewBox="0 0 24 24" className="h-7 w-7 fill-current" aria-hidden="true">
+            <path d="M12 2.5c-3.9 0-7 3.1-7 7v1.6C4.9 12.4 4 13.8 4 15.4V17c0 2.2 1.8 4 4 4h8c2.2 0 4-1.8 4-4v-1.6c0-1.6-.9-3-2.3-3.3V9.5c0-3.9-3.1-7-7-7zM8.5 9.5a1 1 0 110 2 1 1 0 010-2zm7 0a1 1 0 110 2 1 1 0 010-2z" />
+            <path d="M9.7 16.1c.4-.6 1.1-1 1.8-1h1c.7 0 1.4.4 1.8 1l.3.5H9.4l.3-.5z" />
+          </svg>
         </button>
       ) : (
-        <section className="flex h-[520px] max-h-[calc(100vh-7rem)] w-[min(360px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <section className="transform-gpu transition-all duration-300 ease-out flex h-[520px] max-h-[calc(100vh-7rem)] w-[min(360px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10">
           <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-600 text-white">
-                <FaRobot size={16} />
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-600 text-white shadow-sm shadow-sky-600/20">
+                <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+                  <path d="M12 2.5c-3.9 0-7 3.1-7 7v1.6C4.9 12.4 4 13.8 4 15.4V17c0 2.2 1.8 4 4 4h8c2.2 0 4-1.8 4-4v-1.6c0-1.6-.9-3-2.3-3.3V9.5c0-3.9-3.1-7-7-7zM8.5 9.5a1 1 0 110 2 1 1 0 010-2zm7 0a1 1 0 110 2 1 1 0 010-2z" />
+                  <path d="M9.7 16.1c.4-.6 1.1-1 1.8-1h1c.7 0 1.4.4 1.8 1l.3.5H9.4l.3-.5z" />
+                </svg>
               </div>
               <div>
-                <div className="text-sm font-semibold text-slate-900">Sky AI</div>
-                <div className="text-xs text-slate-500">FAQ, knowledge va ho tro booking</div>
+                <div className="text-sm font-semibold text-slate-900">Sky AI Assistant</div>
+                <div className="text-xs text-slate-500">Quick help for search, booking, and support</div>
               </div>
             </div>
             <button
               type="button"
-              aria-label="Dong tro ly AI"
+              aria-label="Close Sky AI assistant"
               onClick={() => setOpen(false)}
               className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
             >

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import SearchBar from '../components/SearchBar'
 import AIInsightsWidget from '../components/AIInsightsWidget'
 import AIDestinationExplorer from '../components/AIDestinationExplorer'
+import SpecialDeals from '../components/SpecialDeals'
 
 const DESTINATIONS = [
   {
@@ -40,21 +41,27 @@ function HomePage() {
 
   return (
     <div className="w-full">
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden min-h-[650px] flex items-center">
+        {/* Background Image with optimized black matte overlays */}
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroImage})` }} />
-        <div className="absolute inset-0 bg-black/40" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70" />
+        <div className="absolute inset-0 bg-black/20" />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-          <div className="mb-10 max-w-2xl text-white">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4">Tìm chuyến bay giá tốt — Nhanh chóng và tin cậy</h1>
-            <p className="text-base sm:text-lg lg:text-xl opacity-90">So sánh giá, đặt vé và quản lý hành trình của bạn ở cùng một nơi.</p>
+        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-32 w-full">
+          <div className="max-w-3xl text-white mb-8 animate-in fade-in slide-in-from-left-4 duration-1000">
+            <h1 className="text-5xl lg:text-7xl font-black mb-6 leading-[1.1] tracking-tighter">
+              Tìm chuyến bay giá tốt — <span className="text-brand-secondary">Nhanh chóng</span> và tin cậy
+            </h1>
+            <p className="text-lg lg:text-2xl text-slate-100 opacity-90 max-w-xl leading-relaxed">
+              So sánh giá, đặt vé và quản lý hành trình của bạn ở cùng một nơi với sự hỗ trợ của AI.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 items-start lg:grid-cols-3">
-            <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 gap-8 items-start lg:grid-cols-12">
+            <div className="lg:col-span-8">
               <SearchBar onInsightsChange={setSearchContext} />
             </div>
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-4 h-full">
               <AIInsightsWidget searchContext={searchContext} />
             </div>
           </div>
@@ -62,6 +69,8 @@ function HomePage() {
       </section>
 
       <AIDestinationExplorer />
+
+      <SpecialDeals />
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-8">

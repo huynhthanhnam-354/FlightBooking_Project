@@ -6,7 +6,7 @@ import FlightCard from '../components/FlightCard'
 import FlightCardSkeleton from '../components/FlightCardSkeleton'
 import SpecialOffers from '../components/SpecialOffers'
 import DatePriceSlider from '../components/DatePriceSlider'
-import PriceRangeSlider from '../components/PriceRangeSlider'
+import FilterSidebar from '../components/FilterSidebar'
 import PriceTrendPredictor from '../components/PriceTrendPredictor'
 import PricePredictor from '../components/PricePredictor'
 import { MOCK_FLIGHTS } from '../data/mockFlights'
@@ -159,109 +159,38 @@ function SearchPage() {
 	return (
 		<div className="dashboard-container">
 			<div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-				<aside className="filters-panel lg:col-span-1">
-					<div className="filter-card lg:sticky lg:top-24">
-						<div className="filter-heading border-b border-slate-100 pb-2 mb-4">Bộ lọc</div>
+<aside className="lg:col-span-1">
+				<FilterSidebar
+					priceBounds={results.length ? priceBounds : fallbackBounds}
+					minPrice={results.length ? minPrice : fallbackBounds.min}
+					maxPrice={results.length ? maxPrice : fallbackBounds.max}
+					onMinPriceChange={setMinPrice}
+					onMaxPriceChange={setMaxPrice}
+					airlines={AIRLINES}
+					selectedAirlines={selectedAirlines}
+					onToggleAirline={toggleAirline}
+					selectedStops={selectedStops}
+					onToggleStop={(value) => setSelectedStops(prev => prev.includes(value) ? prev.filter(x => x !== value) : [...prev, value])}
+					selectedAmenities={selectedAmenities}
+					onToggleAmenity={(value) => setSelectedAmenities(prev => prev.includes(value) ? prev.filter(x => x !== value) : [...prev, value])}
+					onApply={applyFilters}
+					onReset={resetFilters}
+					disabled={!results.length}
+				/>
+			</aside>
 
-						<div className="mb-6">
-							<div className="text-sm font-bold text-slate-700 mb-3">Khoảng giá (VNĐ)</div>
-							<div className="px-2">
-								<PriceRangeSlider
-									min={results.length ? priceBounds.min : fallbackBounds.min}
-									max={results.length ? priceBounds.max : fallbackBounds.max}
-									valueMin={results.length ? minPrice : fallbackBounds.min}
-									valueMax={results.length ? maxPrice : fallbackBounds.max}
-									onChangeMin={setMinPrice}
-									onChangeMax={setMaxPrice}
-									disabled={!results.length}
-								/>
-							</div>
-							<div className="text-[11px] font-medium text-slate-500 mt-3 flex justify-between bg-slate-50 p-2 rounded-lg border border-slate-100">
-								<span>{(results.length ? priceBounds.min : fallbackBounds.min).toLocaleString()}₫</span>
-								<span className="text-slate-300">—</span>
-								<span>{(results.length ? priceBounds.max : fallbackBounds.max).toLocaleString()}₫</span>
-							</div>
-						</div>
+			<main className="lg:col-span-3">
+				<FlightSearchForm onSearch={handleSearch} />
 
-						{/* Special Offers block immediately after Price Filter */}
-						<div className="mb-6 rounded-xl overflow-hidden border border-sky-100 shadow-sm">
-							<SpecialOffers flights={MOCK_FLIGHTS} />
-						</div>
+				<div className="mt-6">
+					<PricePredictor
+						from={searchParams.from || 'Hà Nội'}
+						to={searchParams.to || 'Hồ Chí Minh'}
+						currentPrice={results.length > 0 ? Math.min(...results.map(f => f.price)) : 1250000}
+					/>
+				</div>
 
-						<div className="mb-6">
-							<div className="text-sm font-bold text-slate-700 mb-3">Hãng hàng không</div>
-							<div className="space-y-3">
-								{AIRLINES.map(a => (
-									<label key={a.code} className="flex items-center justify-between group cursor-pointer">
-										<div className="flex items-center gap-3">
-											<input 
-												type="checkbox" 
-												className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
-												checked={selectedAirlines.includes(a.name)} 
-												onChange={() => toggleAirline(a.name)} 
-											/>
-											<div className="flex items-center gap-2">
-												<img src={a.logo} alt={a.name} className="w-6 h-6 rounded-full object-cover border border-slate-100 shadow-sm" />
-												<span className="text-sm font-medium text-slate-600 group-hover:text-sky-600 transition-colors">{a.name}</span>
-											</div>
-										</div>
-										<span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">{a.code}</span>
-									</label>
-								))}
-							</div>
-						</div>
-
-						<div className="mb-6">
-							<div className="text-sm font-bold text-slate-700 mb-3">Số điểm dừng</div>
-							<div className="space-y-2">
-								<label className="flex items-center gap-2 cursor-pointer group">
-									<input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-sky-600" checked={selectedStops.includes('0')} onChange={() => setSelectedStops(prev => prev.includes('0') ? prev.filter(x => x !== '0') : [...prev, '0'])} /> 
-									<span className="text-sm text-slate-600 group-hover:text-sky-600">Bay thẳng</span>
-								</label>
-								<label className="flex items-center gap-2 cursor-pointer group">
-									<input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-sky-600" checked={selectedStops.includes('1')} onChange={() => setSelectedStops(prev => prev.includes('1') ? prev.filter(x => x !== '1') : [...prev, '1'])} /> 
-									<span className="text-sm text-slate-600 group-hover:text-sky-600">1 điểm dừng</span>
-								</label>
-								<label className="flex items-center gap-2 cursor-pointer group">
-									<input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-sky-600" checked={selectedStops.includes('2plus')} onChange={() => setSelectedStops(prev => prev.includes('2plus') ? prev.filter(x => x !== '2plus') : [...prev, '2plus'])} /> 
-									<span className="text-sm text-slate-600 group-hover:text-sky-600">2+ điểm dừng</span>
-								</label>
-							</div>
-						</div>
-
-						<div className="mb-6">
-							<div className="text-sm font-bold text-slate-700 mb-3">Tiện ích</div>
-							<div className="space-y-2">
-								<label className="flex items-center gap-2 cursor-pointer group">
-									<input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-sky-600" checked={selectedAmenities.includes('wifi')} onChange={() => setSelectedAmenities(prev => prev.includes('wifi') ? prev.filter(x => x !== 'wifi') : [...prev, 'wifi'])} /> 
-									<span className="text-sm text-slate-600 group-hover:text-sky-600">Wifi</span>
-								</label>
-								<label className="flex items-center gap-2 cursor-pointer group">
-									<input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-sky-600" checked={selectedAmenities.includes('meal')} onChange={() => setSelectedAmenities(prev => prev.includes('meal') ? prev.filter(x => x !== 'meal') : [...prev, 'meal'])} /> 
-									<span className="text-sm text-slate-600 group-hover:text-sky-600">Suất ăn</span>
-								</label>
-							</div>
-						</div>
-
-						<div className="flex gap-2 pt-4 border-t border-slate-100">
-							<button onClick={applyFilters} className="flex-1 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors shadow-sm shadow-sky-200">Áp dụng</button>
-							<button onClick={resetFilters} className="px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 font-medium rounded-xl transition-colors">Xoá</button>
-						</div>
-					</div>
-				</aside>
-
-				<main className="lg:col-span-3">
-					<FlightSearchForm onSearch={handleSearch} />
-
-					<div className="mt-6">
-						<PricePredictor 
-							from={searchParams.from || 'Hà Nội'} 
-							to={searchParams.to || 'Hồ Chí Minh'}
-							currentPrice={results.length > 0 ? Math.min(...results.map(f => f.price)) : 1250000}
-						/>
-					</div>
-
-					<div className="mt-6">
+				<div className="mt-6">
 						<DatePriceSlider 
 							flights={flights} 
 							selectedDate={selectedDate}
