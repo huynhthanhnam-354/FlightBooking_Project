@@ -11,49 +11,50 @@ export default function PassengerForm() {
   
   const selectedFlight = useBookingStore((state) => state.selectedFlight)
   const passengerCount = useBookingStore((state) => state.searchParams.passengers)
+  const selectedSeats = useBookingStore((state) => state.selectedSeats)
   
   const flight = selectedFlight || location.state?.flight || null
   const passengers = passengerCount || location.state?.passengers || 1
 
   function handleFormSubmit(booking) {
-    navigate('/checkout', { state: { booking } })
+    navigate('/booking/checkout', { state: { booking } })
   }
 
   const steps = [
     { id: 1, name: 'Chọn chuyến', status: 'complete' },
     { id: 2, name: 'Chọn chỗ ngồi', status: 'complete' },
-    { id: 3, name: 'Điền thông tin', status: 'active' },
+    { id: 3, name: 'Thông tin', status: 'active' },
     { id: 4, name: 'Thanh toán', status: 'upcoming' },
   ]
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-8 pb-12">
+    <div className="min-h-screen bg-slate-50 pt-8 pb-20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Steps Progress Bar */}
-        <div className="mb-10">
-          <div className="flex items-center justify-center gap-2 sm:gap-4 max-w-4xl mx-auto">
+        <div className="mb-12">
+          <div className="flex items-center justify-center gap-2 sm:gap-4 max-w-3xl mx-auto">
             {steps.map((step, idx) => (
               <React.Fragment key={step.id}>
-                <div className="flex flex-col items-center gap-2 group">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                <div className="flex flex-col items-center gap-3 group">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 transition-all duration-500 ${
                     step.status === 'active' 
-                      ? 'bg-sky-600 border-sky-600 text-white shadow-lg shadow-sky-200 scale-110' 
+                      ? 'bg-sky-600 border-sky-600 text-white shadow-xl shadow-sky-100 scale-110 rotate-3' 
                       : step.status === 'complete'
-                        ? 'bg-emerald-100 border-emerald-500 text-emerald-600'
+                        ? 'bg-emerald-500 border-emerald-500 text-white'
                         : 'bg-white border-slate-200 text-slate-400'
                   }`}>
-                    {step.status === 'complete' ? <FiCheck className="stroke-[3]" size={18} /> : <span className="font-bold text-sm">{step.id}</span>}
+                    {step.status === 'complete' ? <FiCheck className="stroke-[4]" size={20} /> : <span className="font-black text-sm">{step.id}</span>}
                   </div>
-                  <span className={`text-xs font-bold whitespace-nowrap ${
-                    step.status === 'active' ? 'text-sky-600' : step.status === 'complete' ? 'text-emerald-600' : 'text-slate-400 opacity-60'
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${
+                    step.status === 'active' ? 'text-sky-600' : step.status === 'complete' ? 'text-emerald-600' : 'text-slate-400'
                   }`}>
                     {step.name}
                   </span>
                 </div>
                 {idx < steps.length - 1 && (
-                  <div className={`h-0.5 flex-1 min-w-[20px] sm:min-w-[40px] -mt-6 transition-colors duration-500 ${
-                    step.status === 'complete' ? 'bg-emerald-400' : 'bg-slate-200'
+                  <div className={`h-1 flex-1 min-w-[20px] sm:min-w-[60px] -mt-8 rounded-full transition-all duration-700 ${
+                    step.status === 'complete' ? 'bg-emerald-500' : 'bg-slate-200'
                   }`} />
                 )}
               </React.Fragment>
@@ -62,7 +63,7 @@ export default function PassengerForm() {
         </div>
 
         {flight ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
             <div className="lg:col-span-8">
               <BookingForm 
                 flight={flight} 
@@ -71,9 +72,11 @@ export default function PassengerForm() {
               />
             </div>
             <aside className="lg:col-span-4">
-              <div className="sticky top-24">
-                <BookingSummary flight={flight} passengers={passengers} />
-              </div>
+              <BookingSummary 
+                flight={flight} 
+                passengers={passengers} 
+                selectedSeats={selectedSeats}
+              />
             </aside>
           </div>
         ) : (

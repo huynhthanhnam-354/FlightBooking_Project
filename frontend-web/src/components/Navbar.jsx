@@ -12,6 +12,8 @@ function Navbar() {
 
   const hideNav = location.pathname.includes('dashboard') || location.pathname.includes('admin')
 
+  if (hideNav) return null;
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -61,7 +63,7 @@ function Navbar() {
                   </div>
                   <div className="hidden sm:flex flex-col text-left">
                     <span className="text-sm font-semibold text-slate-800">{user.fullName}</span>
-                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">{user.role === 'admin' ? 'Quản trị viên' : 'Hành khách'}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">{user.role === 'ADMIN' ? 'Quản trị viên' : 'Hành khách'}</span>
                   </div>
                   <FaChevronDown className={`text-slate-400 text-xs transition-transform duration-300 ${menuOpen ? 'rotate-180' : ''}`} />
                 </button>
@@ -70,7 +72,7 @@ function Navbar() {
                     <div className="px-4 py-2 border-bottom border-slate-50 mb-1">
                       <p className="text-xs text-slate-400">Tài khoản</p>
                     </div>
-                    {user.role === 'admin' && (
+                    {user.role === 'ADMIN' && (
                       <Link
                         to="/admin"
                         className="block px-4 py-2 text-sm text-slate-700 hover:bg-sky-50 hover:text-sky-700 transition"

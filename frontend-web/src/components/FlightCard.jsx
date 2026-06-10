@@ -70,7 +70,7 @@ export default function FlightCard({ flight, onOpenDetails }) {
         </div>
         <div className="flex gap-2">
               <button onClick={handleOpenDetails} className="px-3 py-2 border rounded text-slate-700 hover:bg-slate-50">Chi tiết</button>
-          <Link to={`/booking?id=${id}`} state={{ flight }} className="px-4 py-2 bg-orange-500 text-white rounded">Chọn chuyến</Link>
+          <Link to={`/booking/seat?id=${id}`} state={{ flight }} className="px-4 py-2 bg-orange-500 text-white rounded">Chọn chuyến</Link>
         </div>
       </div>
     </div>

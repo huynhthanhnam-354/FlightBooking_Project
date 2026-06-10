@@ -1,7 +1,8 @@
 import React from "react";
+import { FaPlane, FaUsers, FaChair, FaInfoCircle } from 'react-icons/fa';
 
-export default function BookingSummary({ flight, passengers = 1 }) {
-  if (!flight) return <div className="bg-white p-4 rounded shadow">Không có chuyến được chọn.</div>;
+export default function BookingSummary({ flight, passengers = 1, selectedSeats = [] }) {
+  if (!flight) return <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">Không có chuyến được chọn.</div>;
 
   const priceNumber = Number(String(flight.price).replace(/[^0-9]/g, "")) || 0;
   const subtotal = priceNumber * passengers;
@@ -10,31 +11,69 @@ export default function BookingSummary({ flight, passengers = 1 }) {
   const total = subtotal + tax + serviceFee;
 
   return (
-    <aside className="bg-white p-4 rounded shadow space-y-4">
-      <div>
-        <div className="text-lg font-semibold">Tóm tắt đặt vé</div>
-        <div className="text-sm text-slate-500">{flight.airline} · {flight.flightNumber}</div>
+    <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden sticky top-24">
+      <div className="bg-slate-900 p-6 text-white">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <FaPlane className="rotate-45 text-sky-400" />
+          Tóm tắt đặt vé
+        </h3>
+        <p className="text-slate-400 text-sm mt-1">{flight.airline} • {flight.flightNumber}</p>
       </div>
 
-      <div className="text-sm">
-        <div className="flex justify-between py-1"><div className="text-slate-600">Giá mỗi khách</div><div>{priceNumber.toLocaleString()}₫</div></div>
-        <div className="flex justify-between py-1"><div className="text-slate-600">Hành khách ({passengers})</div><div>{subtotal.toLocaleString()}₫</div></div>
-        <div className="flex justify-between py-1"><div className="text-slate-600">Thuế (10%)</div><div>{tax.toLocaleString()}₫</div></div>
-        <div className="flex justify-between py-1"><div className="text-slate-600">Phí dịch vụ</div><div>{serviceFee.toLocaleString()}₫</div></div>
-      </div>
+      <div className="p-6 space-y-6">
+        <div className="space-y-3 pb-6 border-b border-dashed border-slate-200">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-slate-500 flex items-center gap-2"><FaUsers /> Hành khách</span>
+            <span className="font-bold text-slate-800">{passengers} người</span>
+          </div>
+          
+          {selectedSeats.length > 0 && (
+            <div className="flex justify-between items-start text-sm">
+              <span className="text-slate-500 flex items-center gap-2 mt-0.5"><FaChair /> Chỗ ngồi</span>
+              <div className="flex flex-wrap justify-end gap-1 max-w-[120px]">
+                {selectedSeats.map(seat => (
+                  <span key={seat} className="bg-sky-50 text-sky-700 px-2 py-0.5 rounded text-[10px] font-bold border border-sky-100">
+                    {seat}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
-      <div className="border-t pt-3">
-        <div className="flex justify-between items-center">
-          <div className="text-slate-600">Tổng phải trả</div>
-          <div className="text-2xl font-bold">{total.toLocaleString()}₫</div>
+        <div className="space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Giá cơ bản</span>
+            <span className="text-slate-800 font-medium">{subtotal.toLocaleString()}₫</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Thuế & Phí (10%)</span>
+            <span className="text-slate-800 font-medium">{tax.toLocaleString()}₫</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Phí dịch vụ</span>
+            <span className="text-slate-800 font-medium">{serviceFee.toLocaleString()}₫</span>
+          </div>
+        </div>
+
+        <div className="pt-6 border-t border-slate-100">
+          <div className="flex justify-between items-end">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Tổng thanh toán</p>
+              <p className="text-3xl font-black text-slate-900 tracking-tighter">
+                {total.toLocaleString()}<span className="text-sm ml-0.5">₫</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-amber-50 rounded-2xl p-4 flex gap-3 items-start border border-amber-100">
+          <FaInfoCircle className="text-amber-500 mt-1 shrink-0" size={16} />
+          <p className="text-xs text-amber-700 leading-relaxed font-medium">
+            Giá vé cuối cùng có thể thay đổi tùy thuộc vào dịch vụ bổ sung bạn chọn ở bước sau.
+          </p>
         </div>
       </div>
-
-      <button className="w-full py-3 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl shadow-lg shadow-sky-600/20 transition-all active:scale-[0.98] mt-2">
-        Tiếp tục điền thông tin
-      </button>
-
-      <div className="text-xs text-slate-500">Giá chỉ mang tính tham khảo — thanh toán sẽ được xử lý ở bước tiếp theo.</div>
-    </aside>
+    </div>
   );
 }

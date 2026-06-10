@@ -1,5 +1,4 @@
-import axios, { InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { Flight, Booking, User } from '../types/flight';
+import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
@@ -10,18 +9,12 @@ const api = axios.create({
   },
 });
 
-interface AuthData extends User {
-  accessToken: string;
-  refreshToken: string;
-  tokenType: string;
-}
-
 // Interceptor cho Request: Thêm Access Token vào Header
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  (config) => {
     const rawUser = localStorage.getItem('fb_user');
     if (rawUser) {
-      const user: AuthData = JSON.parse(rawUser);
+      const user = JSON.parse(rawUser);
       if (user.accessToken) {
         config.headers.Authorization = `Bearer ${user.accessToken}`;
       }
@@ -33,7 +26,7 @@ api.interceptors.request.use(
 
 // Interceptor cho Response: Xử lý lỗi 401 (Hết hạn token)
 api.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
@@ -45,7 +38,7 @@ api.interceptors.response.use(
         const rawUser = localStorage.getItem('fb_user');
         if (!rawUser) throw new Error('No user data');
         
-        const user: AuthData = JSON.parse(rawUser);
+        const user = JSON.parse(rawUser);
         const refreshToken = user.refreshToken;
 
         if (!refreshToken) {
@@ -53,14 +46,14 @@ api.interceptors.response.use(
         }
 
         // Gọi API cấp lại Access Token mới
-        const rs = await axios.post<{ accessToken: string }>(`${API_BASE_URL}/auth/refresh-token`, {
+        const rs = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
           refreshToken: refreshToken,
         });
 
         const { accessToken } = rs.data;
 
         // Cập nhật Token mới vào LocalStorage
-        const updatedUser: AuthData = { ...user, accessToken };
+        const updatedUser = { ...user, accessToken };
         localStorage.setItem('fb_user', JSON.stringify(updatedUser));
 
         // Thử lại request ban đầu với token mới
@@ -81,19 +74,19 @@ api.interceptors.response.use(
 );
 
 export const authApi = {
-  login: (credentials: any) => api.post<AuthData>('/auth/login', credentials),
-  register: (userData: any) => api.post<AuthData>('/auth/register', userData),
-  refreshToken: (token: string) => api.post<{ accessToken: string }>('/auth/refresh-token', { refreshToken: token }),
+  login: (credentials) => api.post('/auth/login', credentials),
+  register: (userData) => api.post('/auth/register', userData),
+  refreshToken: (token) => api.post('/auth/refresh-token', { refreshToken: token }),
 };
 
 export const bookingApi = {
-  create: (bookingData: any) => api.post<Booking>('/bookings', bookingData),
-  getMine: () => api.get<Booking[]>('/bookings/me'),
-  cancel: (id: number) => api.post<Booking>(`/bookings/${id}/cancel`),
+  create: (bookingData) => api.post('/bookings', bookingData),
+  getMine: () => api.get('/bookings/me'),
+  cancel: (id) => api.post(`/bookings/${id}/cancel`),
 };
 
 export const paymentApi = {
-  createVnPayUrl: (bookingId: number) => api.post<{ paymentUrl: string }>(`/payments/vnpay/create-url?bookingId=${bookingId}`),
+  createVnPayUrl: (bookingId) => api.post(`/payments/vnpay/create-url?bookingId=${bookingId}`),
 };
 
 export default api;

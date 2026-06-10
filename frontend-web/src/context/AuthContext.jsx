@@ -1,24 +1,9 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { User } from "../types/flight";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
-interface AuthData extends User {
-  accessToken: string;
-  refreshToken: string;
-  tokenType: string;
-}
+const AuthContext = createContext(null);
 
-interface AuthContextType {
-  user: AuthData | null;
-  loading: boolean;
-  loginSuccess: (authData: AuthData) => void;
-  logout: () => void;
-  updateAccessToken: (newToken: string) => void;
-}
-
-const AuthContext = createContext<AuthContextType | null>(null);
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthData | null>(null);
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,7 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  const loginSuccess = (authData: AuthData) => {
+  const loginSuccess = (authData) => {
     setUser(authData);
     localStorage.setItem("fb_user", JSON.stringify(authData));
   };
@@ -43,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("fb_user");
   };
 
-  const updateAccessToken = (newToken: string) => {
+  const updateAccessToken = (newToken) => {
     setUser(prev => {
       if (!prev) return null;
       const updated = { ...prev, accessToken: newToken };

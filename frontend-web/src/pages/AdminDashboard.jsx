@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { Navigate } from 'react-router-dom';
 import { 
   FiHome, 
   FiAirplay, 
@@ -351,13 +353,18 @@ function SystemSettings() {
 }
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const chartPoints = "0,80 50,40 100,60 150,20 200,50 250,30 300,10";
   const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
 
+  if (!user || user.role !== 'ADMIN') {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
-    <div className="w-full min-h-screen bg-slate-50 z-50 absolute top-0 left-0 flex font-sans text-slate-900">
-      <aside className="w-64 bg-slate-900 text-white flex flex-col fixed inset-y-0 left-0 z-50">
+    <div className="w-full min-h-screen bg-slate-50 flex font-sans text-slate-900">
+      <aside className="w-64 bg-slate-900 text-white flex flex-col fixed top-0 left-0 h-screen z-50">
         <div className="p-6 flex items-center gap-3 border-b border-slate-800">
           <div className="w-10 h-10 bg-sky-500 rounded-xl flex items-center justify-center shadow-lg"><FiAirplay className="text-white text-xl" /></div>
           <div><h1 className="font-bold text-lg leading-none">FlightBook</h1><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Admin Panel</p></div>
@@ -373,7 +380,7 @@ export default function AdminDashboard() {
         <div className="p-6 border-t border-slate-800">
           <div className="bg-slate-800/50 rounded-2xl p-4 flex items-center gap-3">
             <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center border border-slate-600"><FiUser className="text-slate-400" /></div>
-            <div className="flex-1 min-w-0"><p className="text-xs font-bold truncate">Admin HTNB</p><p className="text-[10px] text-slate-500 truncate">System Controller</p></div>
+            <div className="flex-1 min-w-0"><p className="text-xs font-bold truncate">{user.fullName || 'Admin'}</p><p className="text-[10px] text-slate-500 truncate">System Controller</p></div>
           </div>
         </div>
       </aside>
@@ -382,8 +389,10 @@ export default function AdminDashboard() {
         <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-40 shadow-sm">
           <div className="flex items-center gap-4"><h2 className="text-xl font-extrabold text-slate-800">Hệ thống Quản trị - FlightBook AI</h2><div className="px-2.5 py-0.5 rounded-full bg-sky-50 text-sky-600 text-[10px] font-bold border border-sky-100">v1.0.0 Live</div></div>
           <div className="flex items-center gap-3 cursor-pointer group">
-            <div className="text-right hidden sm:block"><p className="text-sm font-bold text-slate-800">Admin HTNB</p><p className="text-[10px] text-slate-500">Online</p></div>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border-2 border-white shadow-md flex items-center justify-center text-white font-bold">AD</div>
+            <div className="text-right hidden sm:block"><p className="text-sm font-bold text-slate-800">{user.fullName || 'Admin'}</p><p className="text-[10px] text-slate-500">Online</p></div>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border-2 border-white shadow-md flex items-center justify-center text-white font-bold">
+              {user.fullName?.[0]?.toUpperCase() || 'AD'}
+            </div>
           </div>
         </header>
 

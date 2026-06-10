@@ -1,32 +1,4 @@
 import { create } from 'zustand'
-import { Flight, PassengerInfo } from '../types/flight'
-
-interface SearchParams {
-  from: string;
-  to: string;
-  date: string;
-  passengers: number;
-  tripType: 'roundtrip' | 'oneway';
-  cabinClass: 'economy' | 'business';
-}
-
-interface BookingState {
-  searchParams: SearchParams;
-  selectedFlight: Flight | null;
-  selectedReturnFlight: Flight | null;
-  selectedSeats: string[];
-  passengerInfo: PassengerInfo;
-  totalPrice: number;
-  
-  setSearchParams: (params: Partial<SearchParams>) => void;
-  setSelectedFlight: (flight: Flight | null) => void;
-  setSelectedReturnFlight: (flight: Flight | null) => void;
-  setSelectedSeats: (seats: string[]) => void;
-  toggleSeat: (seatId: string) => void;
-  updatePassengerInfo: (info: Partial<PassengerInfo>) => void;
-  setTotalPrice: (price: number) => void;
-  resetStore: () => void;
-}
 
 const initialState = {
   searchParams: {
@@ -34,8 +6,8 @@ const initialState = {
     to: '',
     date: '',
     passengers: 1,
-    tripType: 'roundtrip' as const,
-    cabinClass: 'economy' as const
+    tripType: 'roundtrip',
+    cabinClass: 'economy'
   },
   selectedFlight: null,
   selectedReturnFlight: null,
@@ -48,7 +20,7 @@ const initialState = {
   totalPrice: 0
 }
 
-export const useBookingStore = create<BookingState>((set) => ({
+export const useBookingStore = create((set) => ({
   ...initialState,
 
   setSearchParams: (params) => set((state) => ({

@@ -29,7 +29,7 @@ export default function SpecialOffers({ flights = [] }) {
             </div>
             <div className="text-right">
               <div className="text-lg font-bold text-sky-600">{(o.price || 0).toLocaleString()}₫</div>
-              <Link to={`/booking?id=${o.id}`} state={{ flight: o }} className="inline-block mt-2 px-3 py-1 rounded bg-sky-600 text-white text-sm">Đặt ngay</Link>
+              <Link to={`/booking/seat?id=${o.id}`} state={{ flight: o }} className="inline-block mt-2 px-3 py-1 rounded bg-sky-600 text-white text-sm">Đặt ngay</Link>
             </div>
           </div>
         ))}
