@@ -8,7 +8,6 @@ import SpecialOffers from '../components/SpecialOffers'
 import DatePriceSlider from '../components/DatePriceSlider'
 import FilterSidebar from '../components/FilterSidebar'
 import PriceTrendPredictor from '../components/PriceTrendPredictor'
-import PricePredictor from '../components/PricePredictor'
 import { MOCK_FLIGHTS } from '../data/mockFlights'
 import { useBookingStore } from '../store/bookingStore'
 
@@ -181,14 +180,6 @@ function SearchPage() {
 
 			<main className="lg:col-span-3">
 				<FlightSearchForm onSearch={handleSearch} />
-
-				<div className="mt-6">
-					<PricePredictor
-						from={searchParams.from || 'Hà Nội'}
-						to={searchParams.to || 'Hồ Chí Minh'}
-						currentPrice={results.length > 0 ? Math.min(...results.map(f => f.price)) : 1250000}
-					/>
-				</div>
 
 				<div className="mt-6">
 						<DatePriceSlider 

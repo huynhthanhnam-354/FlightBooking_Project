@@ -63,11 +63,14 @@ const SpecialDeals = () => {
             className="group relative flex h-44 bg-white rounded-soft-lg overflow-hidden border border-slate-100 shadow-sm hover:shadow-premium hover:-translate-y-1.5 transition-all duration-500"
           >
             {/* Split Layout: Left side (Image) */}
-            <div className="relative w-2/5 h-full overflow-hidden">
+            <div className="relative w-2/5 h-full overflow-hidden bg-slate-100">
               <img 
                 src={deal.image} 
                 alt={deal.title} 
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                onError={(e) => {
+                  e.target.src = 'https://images.unsplash.com/photo-1436491865332-7a61a109c05d?auto=format&fit=crop&w=600&q=80';
+                }}
               />
               {/* Inner border / Overlay for contrast */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
@@ -79,30 +82,31 @@ const SpecialDeals = () => {
             </div>
 
             {/* Split Layout: Right side (Voucher Content) */}
-            <div className="flex-1 p-5 flex flex-col justify-between relative bg-white">
+            <div className="flex-1 p-5 flex flex-col justify-between relative bg-white min-w-0">
               {/* Decorative "Voucher Notch" using CSS circles */}
               <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-r border-slate-100 hidden md:block" />
               
               <div className="space-y-1">
-                <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight line-clamp-1">{deal.title}</h3>
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight truncate">{deal.title}</h3>
                 <p className="text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed">{deal.subTitle}</p>
               </div>
 
-              <div className="mt-auto">
+              <div className="space-y-3">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xs font-bold text-slate-400">Giảm đến</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Giảm đến</span>
                   <span className="text-3xl font-black text-brand-secondary tracking-tighter">
                     {deal.discountPercentage}%
                   </span>
                 </div>
-                <div className="flex items-center justify-between mt-2">
-                   <div className="flex gap-1">
-                      {deal.meta.tags.slice(0, 2).map(tag => (
-                        <span key={tag} className="text-[9px] font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase">{tag}</span>
+                
+                <div className="flex items-center justify-between gap-2 border-t border-slate-50 pt-3">
+                   <div className="flex gap-1 overflow-hidden">
+                      {deal.meta?.tags?.slice(0, 2).map(tag => (
+                        <span key={tag} className="text-[9px] font-black bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded border border-slate-100 uppercase whitespace-nowrap">{tag}</span>
                       ))}
                    </div>
-                   <div className="text-brand-primary font-black text-xs flex items-center gap-1 group-hover:gap-2 transition-all">
-                      Săn ngay <FaChevronRight size={8} />
+                   <div className="text-brand-primary font-black text-[10px] flex items-center gap-1 group-hover:gap-2 transition-all shrink-0 uppercase tracking-widest">
+                      Săn ngay <FaChevronRight size={7} />
                    </div>
                 </div>
               </div>

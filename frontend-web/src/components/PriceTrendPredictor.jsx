@@ -34,15 +34,12 @@ const buildSummary = data => {
   }
 }
 
-const summary = buildSummary(trendData)
-
 const formatCurrency = value => value.toLocaleString('vi-VN') + '₫'
 const formatYAxis = value => `${(value / 1000000).toFixed(1)}M`
 
-const renderPriceDot = ({ cx, cy, stroke, payload }) => (
+const renderPriceDot = ({ cx, cy }) => (
   <g>
-    <circle cx={cx} cy={cy} r={7} fill="#1E90FF" stroke="#0F172A" strokeWidth={3} />
-    <circle cx={cx} cy={cy} r={3} fill="#ffffff" />
+    <circle cx={cx} cy={cy} r={6} fill="#2563eb" stroke="#ffffff" strokeWidth={2} />
   </g>
 )
 
@@ -50,148 +47,153 @@ const CustomTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null
   const point = payload[0].payload
   return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-950/95 p-3 text-sm text-slate-100 shadow-xl shadow-slate-950/20">
-      <div className="text-xs uppercase tracking-[0.28em] text-slate-400">Ngày</div>
-      <div className="mt-2 text-lg font-semibold text-white">{point.label}</div>
-      <div className="mt-1 text-slate-400">Giá dự kiến: {formatCurrency(point.price)}</div>
-      <div className="mt-3 text-slate-300">{point.insight}</div>
+    <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-xl shadow-slate-200/50">
+      <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Dự báo ngày</div>
+      <div className="mt-1 text-base font-bold text-slate-900">{point.label}</div>
+      <div className="mt-2 flex items-center gap-2">
+        <div className="h-2 w-2 rounded-full bg-blue-600" />
+        <span className="text-sm font-bold text-blue-600">{formatCurrency(point.price)}</span>
+      </div>
+      <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
+        {point.insight}
+      </div>
     </div>
   )
 }
 
 export default function PriceTrendPredictor({ routeLabel = 'Hà Nội → Hồ Chí Minh' }) {
-  const { currentPrice, minWeek, maxWeek, forecastChange } = useMemo(
+  const { currentPrice, minWeek, maxWeek } = useMemo(
     () => buildSummary(trendData),
     []
   )
 
   return (
-    <section className="rounded-[32px] bg-[#1A2B3D] p-6 shadow-[0_36px_64px_-40px_rgba(10,25,47,0.8)]">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="max-w-2xl">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">AI Price Trend Predictor</p>
-          <h2 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">Giá vé AI dự báo cho {routeLabel}</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-            Tính toán dựa trên hành vi đặt chỗ, xu hướng giá và sự thay đổi cung cầu để xác định thời điểm đặt vé đáng tin cậy nhất.
+    <section className="rounded-[2.5rem] bg-sky-50 p-8 shadow-sm border border-blue-100/50">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-3xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest mb-4">
+            ✨ AI Price Intelligence
+          </div>
+          <h2 className="text-3xl font-black text-slate-900 leading-tight tracking-tighter sm:text-4xl">
+            Xu hướng giá vé cho <span className="text-blue-600">{routeLabel}</span>
+          </h2>
+          <p className="mt-4 max-w-2xl text-base font-medium text-slate-500 leading-relaxed">
+            Hệ thống AI phân tích hàng triệu dữ liệu chuyến bay để dự báo biến động giá, giúp bạn chọn thời điểm đặt vé tối ưu nhất.
           </p>
         </div>
 
-        <div className="relative inline-flex items-center rounded-full border border-cyan-500/20 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100 shadow-[0_10px_30px_-20px_rgba(56,189,248,0.9)] md:ml-4">
-          <span className="animate-pulse rounded-full bg-cyan-400 px-2 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-slate-950 shadow-sm">
-            AI Advises: BUY NOW
-          </span>
+        <div className="flex flex-col items-start lg:items-end gap-3">
+          <div className="inline-flex items-center gap-3 rounded-2xl bg-emerald-50 border border-emerald-200 px-5 py-3 text-emerald-700 shadow-sm">
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+            </div>
+            <span className="text-sm font-black uppercase tracking-widest">
+              AI ADVISES: BUY NOW
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-[1.8fr_1fr]">
-        <div className="rounded-[28px] bg-slate-950/95 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-6">
-          <div className="flex items-center justify-between gap-4">
+      <div className="mt-10 grid gap-8 lg:grid-cols-12">
+        {/* Main Chart Area */}
+        <div className="lg:col-span-8 rounded-[2rem] bg-white/80 backdrop-blur-md p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Xu hướng giá</p>
-              <p className="mt-2 text-sm text-slate-400">Biểu đồ giá vùng dự báo cho 7 ngày tiếp theo</p>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">Biểu đồ dự báo 7 ngày</h3>
+              <p className="text-sm font-medium text-slate-400 mt-1">Dựa trên dữ liệu thị trường thực tế</p>
             </div>
-            <div className="rounded-3xl border border-slate-700 bg-slate-900/80 px-4 py-2 text-xs uppercase tracking-[0.24em] text-slate-300">
-              Trusted AI signal
+            <div className="flex items-center gap-4">
+               <div className="flex items-center gap-2">
+                 <div className="w-3 h-3 rounded-full bg-blue-600" />
+                 <span className="text-[10px] font-black text-slate-500 uppercase">Giá dự kiến</span>
+               </div>
             </div>
           </div>
 
-          <div className="mt-6 h-[320px] w-full">
+          <div className="h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#1E90FF" stopOpacity={0.85} />
-                    <stop offset="100%" stopColor="#1E90FF" stopOpacity={0.08} />
+                  <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid vertical={false} stroke="#334155" strokeDasharray="3 3" />
+                <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="label"
                   tickLine={false}
                   axisLine={false}
-                  tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 500 }}
-                  tickMargin={12}
+                  tick={{ fill: '#64748b', fontSize: 11, fontWeight: 700 }}
+                  tickMargin={15}
                 />
                 <YAxis
-                  width={64}
                   tickFormatter={formatYAxis}
                   tickLine={false}
                   axisLine={false}
-                  tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 500 }}
+                  tick={{ fill: '#64748b', fontSize: 11, fontWeight: 700 }}
                   domain={['auto', 'auto']}
                 />
-                <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#60a5fa', strokeWidth: 2, opacity: 0.18 }} />
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#2563eb', strokeWidth: 1, strokeDasharray: '4 4' }} />
                 <Area
                   type="monotone"
                   dataKey="price"
-                  stroke="#1E90FF"
+                  stroke="#2563eb"
                   strokeWidth={3}
-                  fill="url(#priceGradient)"
+                  fill="url(#colorPrice)"
                   activeDot={renderPriceDot}
                   dot={renderPriceDot}
+                  animationDuration={2000}
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <aside className="rounded-[28px] border border-slate-700/80 bg-slate-900/95 p-6 text-slate-100 shadow-[0_30px_60px_-40px_rgba(15,23,42,0.9)]">
-          <div className="space-y-5">
-            <div className="rounded-[24px] bg-slate-950/90 p-5 shadow-sm">
-              <div className="text-xs uppercase tracking-[0.3em] text-slate-500">Current Price</div>
-              <div className="mt-3 text-3xl font-semibold text-white">{formatCurrency(currentPrice)}</div>
-              <div className="mt-2 text-sm text-slate-400">So với mức thấp nhất trong tuần</div>
+        {/* Info Panels */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
+          <div className="rounded-[2rem] bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Giá hiện tại</p>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-4xl font-black text-slate-900 tracking-tighter">{formatCurrency(currentPrice)}</span>
             </div>
-
-            <div className="grid gap-4 rounded-[24px] bg-slate-950/90 p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-white">Minimum of the Week</p>
-                  <p className="mt-1 text-sm text-slate-400">{formatCurrency(minWeek)}</p>
-                </div>
-                <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">
-                  Optimal point
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-white">Peak range</p>
-                  <p className="mt-1 text-sm text-slate-400">{formatCurrency(maxWeek)}</p>
-                </div>
-                <span className="rounded-full bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-sky-300">
-                  Demand surge
-                </span>
-              </div>
-            </div>
-
-            <div className="rounded-[24px] bg-slate-950/90 p-5 shadow-sm">
-              <div className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-300">Short-term Forecast</div>
-              <ul className="mt-4 space-y-4 text-sm">
-                <li className="flex gap-3">
-                  <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
-                  <div>
-                    <p className="font-semibold text-white">Momentum is positive</p>
-                    <p className="text-slate-400">AI sees a rising trend after the weekly low.</p>
-                  </div>
-                </li>
-                <li className="flex gap-3">
-                  <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-sky-400" />
-                  <div>
-                    <p className="font-semibold text-white">Best booking window</p>
-                    <p className="text-slate-400">Prices are strongest around 16/06 with higher demand.</p>
-                  </div>
-                </li>
-                <li className="flex gap-3">
-                  <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-amber-400" />
-                  <div>
-                    <p className="font-semibold text-white">Confidence</p>
-                    <p className="text-slate-400">Short-term forecast is high-confidence based on AI scoring.</p>
-                  </div>
-                </li>
-              </ul>
+            <div className="mt-4 p-3 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+              Mức giá tốt nhất để đặt ngay hôm nay
             </div>
           </div>
-        </aside>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-[2rem] bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white text-center">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Thấp nhất</p>
+              <p className="text-lg font-black text-emerald-600 tracking-tight">{formatCurrency(minWeek)}</p>
+            </div>
+            <div className="rounded-[2rem] bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white text-center">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Cao nhất</p>
+              <p className="text-lg font-black text-blue-900 tracking-tight">{formatCurrency(maxWeek)}</p>
+            </div>
+          </div>
+
+          <div className="flex-1 rounded-[2rem] bg-white p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
+            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6">Phân tích từ AI</h4>
+            <div className="space-y-6">
+              {[
+                { title: 'Đang trong chu kỳ tăng', color: 'bg-emerald-400', desc: 'AI nhận thấy giá đang bắt đầu xu hướng tăng sau mức đáy.' },
+                { title: 'Thời điểm vàng', color: 'bg-blue-400', desc: 'Các chuyến bay vào giữa tuần đang có mức giá ổn định nhất.' },
+                { title: 'Độ tin cậy cao', color: 'bg-amber-400', desc: 'Dự báo dựa trên 95% độ chính xác của dữ liệu lịch sử.' }
+              ].map((item, idx) => (
+                <div key={idx} className="flex gap-4">
+                  <div className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${item.color} shadow-sm`} />
+                  <div>
+                    <p className="text-sm font-black text-slate-800 tracking-tight">{item.title}</p>
+                    <p className="mt-1 text-xs font-medium text-slate-500 leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   )
