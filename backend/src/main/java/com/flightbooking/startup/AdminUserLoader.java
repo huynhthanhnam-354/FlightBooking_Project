@@ -21,15 +21,13 @@ public class AdminUserLoader implements CommandLineRunner {
     @Override
     public void run(String... args) {
         String email = "admin@skybook.local";
-        if (appUserRepository.existsByEmailIgnoreCase(email)) {
-            return;
-        }
-        appUserRepository.save(AppUser.builder()
-                .email(email)
-                .passwordHash(passwordEncoder.encode("Admin123!"))
-                .fullName("SkyBook Admin")
-                .phone(null)
-                .role(Role.ADMIN)
-                .build());
+        AppUser user = appUserRepository.findByEmailIgnoreCase(email).orElse(new AppUser());
+        
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode("Admin123!"));
+        user.setFullName("SkyBook Admin");
+        user.setRole(Role.ADMIN);
+        
+        appUserRepository.save(user);
     }
 }

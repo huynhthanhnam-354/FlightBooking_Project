@@ -21,8 +21,12 @@ export default function LoginPage() {
       // Lưu thông tin vào Context & LocalStorage
       loginSuccess(response.data);
       
-      // Chuyển đến trang chủ
-      navigate("/");
+      // Chuyển hướng dựa trên Role
+      if (response.data.role === 'ADMIN') {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại.");
     }
