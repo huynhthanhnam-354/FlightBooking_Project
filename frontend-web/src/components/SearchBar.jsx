@@ -125,9 +125,26 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
 
   function submit(e) {
     e.preventDefault()
+    
+    // Trích xuất mã IATA từ chuỗi (ví dụ: "Hà Nội (HAN)" -> "HAN")
+    const getCode = (str, code) => {
+      if (code) return code;
+      const match = (str || "").match(/\((.*?)\)/);
+      return match ? match[1] : str;
+    };
+
     const payload = isAIMode
       ? { searchMode: 'ai', query: aiQuery, tripType, passengers, cabinClass }
-      : { tripType, from, to, departDate, returnDate: tripType === 'oneway' ? null : returnDate, passengers, cabinClass }
+      : { 
+          tripType, 
+          from: getCode(from, fromCode), 
+          to: getCode(to, toCode), 
+          date: departDate, // Đổi tên cho đồng bộ với SearchPage
+          departDate, 
+          returnDate: tripType === 'oneway' ? null : returnDate, 
+          passengers, 
+          cabinClass 
+        }
     navigate('/search', { state: { initialSearch: payload } })
   }
 

@@ -154,12 +154,12 @@ public class PaymentServiceImpl implements PaymentService {
                         .customerName(booking.getPassengerName())
                         .customerEmail(booking.getPassengerEmail())
                         .flightCode(flight.getFlightNumber())
-                        .departureCity(flight.getOriginCode())
-                        .arrivalCity(flight.getDestinationCode())
+                        .departureCity(flight.getDepartureAirport())
+                        .arrivalCity(flight.getArrivalAirport())
                         .departureTime(flight.getDepartureAt())
                         .seatNumber(booking.getSeatNumber())
-                        .basePrice(BigDecimal.valueOf(flight.getBasePriceVnd()))
-                        .taxAmount(BigDecimal.valueOf(booking.getTotalPriceVnd() - flight.getBasePriceVnd()))
+                        .basePrice(BigDecimal.valueOf(flight.getPrice()))
+                        .taxAmount(BigDecimal.valueOf(booking.getTotalPriceVnd() - flight.getPrice()))
                         .totalPrice(BigDecimal.valueOf(booking.getTotalPriceVnd()))
                         .build();
 

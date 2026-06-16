@@ -3,36 +3,63 @@ package com.flightbooking.web;
 import com.flightbooking.service.FlightService;
 import com.flightbooking.web.dto.FlightResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
+/**
+ * Senior Developer Refactor: Fixed non-repeatable annotation errors and standardized logging.
+ */
 @RestController
-@RequestMapping("/api/flights")
+@RequestMapping("/api/v1/flights")
 @RequiredArgsConstructor
+@Slf4j
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class FlightController {
 
     private final FlightService flightService;
 
-    @GetMapping
-    public List<FlightResponse> search(
-            @RequestParam String origin,
-            @RequestParam String destination,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate departureDate
+    /**
+     * Search for flights based on route and optional date.
+     * Fixed: Removed duplicate @GetMapping and added ISO Date support.
+     */
+    @GetMapping("/search")
+    public ResponseEntity<?> search(
+            @RequestParam("departureAirport") String departureAirport,
+            @RequestParam("arrivalAirport") String arrivalAirport,
+            @RequestParam(value = "start", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime start,
+            @RequestParam(value = "end", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime end
     ) {
-        return flightService.search(origin, destination, departureDate);
+        try {
+            log.info("Searching flights from {} to {} between {} and {}", departureAirport, arrivalAirport, start, end);
+            List<FlightResponse> results = flightService.searchFlights(departureAirport, arrivalAirport, start, end);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            log.error("Error during flight search: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                        "error", "Search Failed",
+                        "message", "Đã có lỗi xảy ra trong quá trình tìm kiếm chuyến bay."
+                    ));
+        }
     }
 
+    /**
+     * Retrieve booked seats for a specific flight to prevent double booking.
+     */
     @GetMapping("/{id}/booked-seats")
-    public List<String> getBookedSeats(@PathVariable Long id) {
-        return flightService.getBookedSeats(id);
+    public ResponseEntity<?> getBookedSeats(@PathVariable Long id) {
+        try {
+            List<String> seats = flightService.getBookedSeats(id);
+            return ResponseEntity.ok(seats);
+        } catch (Exception e) {
+            log.error("Error retrieving booked seats for flight {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }

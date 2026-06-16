@@ -81,6 +81,8 @@ export const authApi = {
 
 export const bookingApi = {
   create: (bookingData) => api.post('/bookings', bookingData),
+  confirmMockPayment: (id) => api.post(`/bookings/${id}/payment/mock-confirm`),
+  paymentSuccess: (id) => api.post(`/bookings/payment-success?bookingId=${id}`),
   getMine: () => api.get('/bookings/me'),
   cancel: (id) => api.post(`/bookings/${id}/cancel`),
 };

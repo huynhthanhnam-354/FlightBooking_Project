@@ -18,7 +18,7 @@ services:
     build: ./backend
     container_name: flight-booking-backend
     ports:
-      - "8080:8080"
+      - "8081:8081"
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/flight_booking_db?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh
       SPRING_DATASOURCE_USERNAME: root

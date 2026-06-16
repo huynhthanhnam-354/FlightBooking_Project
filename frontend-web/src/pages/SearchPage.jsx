@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import api from '../services/api'
 import FlightSearchForm from '../components/FlightSearchForm'
 import FlightCard from '../components/FlightCard'
 import FlightCardSkeleton from '../components/FlightCardSkeleton'
@@ -8,7 +8,6 @@ import SpecialOffers from '../components/SpecialOffers'
 import DatePriceSlider from '../components/DatePriceSlider'
 import FilterSidebar from '../components/FilterSidebar'
 import PriceTrendPredictor from '../components/PriceTrendPredictor'
-import { MOCK_FLIGHTS } from '../data/mockFlights'
 import { useBookingStore } from '../store/bookingStore'
 
 const AIRLINES = [
@@ -24,28 +23,73 @@ function SearchPage() {
 	const searchParams = useBookingStore((state) => state.searchParams)
 	const setSearchParams = useBookingStore((state) => state.setSearchParams)
 
-	// TanStack Query Configuration
-	const { data: flights = [], isLoading: isQueryLoading, isError, error } = useQuery({
-		queryKey: ['flights', searchParams],
-		queryFn: async () => {
-			const { from, to } = searchParams
-			const fromLower = (from || '').toLowerCase()
-			const toLower = (to || '').toLowerCase()
-			
-			// Simulate network delay
-			await new Promise(resolve => setTimeout(resolve, 800))
-			
-			return MOCK_FLIGHTS.filter((f) => {
-				const depart = (f.depart || '').toLowerCase()
-				const arrive = (f.arrive || '').toLowerCase()
-				return (fromLower ? depart.includes(fromLower) : true) && (toLower ? arrive.includes(toLower) : true)
-			})
-		},
-		staleTime: 5 * 60 * 1000,
-		retry: 2,
-	})
-
+	// 1. DYNAMIC STATE FOR FLIGHTS, LOADING, AND ERROR
+	const [flights, setFlights] = useState([])
+	const [isLoading, setIsLoading] = useState(false)
+	const [error, setError] = useState(null)
 	const [results, setResults] = useState([])
+
+	// 2. FETCH FLIGHTS FROM BACKEND API USING STANDARDIZED API SERVICE
+	useEffect(() => {
+		const fetchFlights = async () => {
+			const { from, to, date } = searchParams
+			// Prevent search if route is not specified
+			if (!from || !to) return
+
+			setIsLoading(true)
+			setError(null)
+
+			try {
+				// 1. INTERCEPT & FORMAT DATE BOUNDARIES (ISO-8601)
+				// Current 'date' is YYYY-MM-DD from <input type="date" />
+				let start = null;
+				let end = null;
+				
+				if (date) {
+					start = `${date}T00:00:00`;
+					end = `${date}T23:59:59`;
+				}
+
+				// 2. PASS FORMATTED BOUNDARIES AS QUERY PARAMETERS
+				// Using the new API contract: departureAirport, arrivalAirport, start, end
+				const response = await api.get(`/v1/flights/search`, {
+					params: { 
+						departureAirport: from, 
+						arrivalAirport: to, 
+						start, 
+						end 
+					}
+				})
+
+				// 3. HANDLE RESPONSE SAFELY
+				const mappedFlights = response.data.map(f => {
+					const depDate = new Date(f.departureAt)
+					const arrDate = new Date(f.arrivalAt)
+					
+					return {
+						...f,
+						depart: depDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+						arrive: arrDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+						origin: f.departureAirport,
+						destination: f.arrivalAirport,
+						duration: f.durationMinutes ? `${Math.floor(f.durationMinutes / 60)}h ${f.durationMinutes % 60}m` : '2h 00m',
+						amenities: f.premiumCabin ? ['wifi', 'meal'] : ['meal']
+					}
+				})
+
+				setFlights(mappedFlights)
+				setResults(mappedFlights)
+			} catch (err) {
+				console.error('API Fetch Error:', err)
+				setError('Không thể kết nối tới máy chủ FlightBook. Vui lòng đảm bảo Backend (Port 8081) đang chạy.')
+			} finally {
+				setIsLoading(false)
+			}
+		}
+
+		fetchFlights()
+	}, [searchParams])
+
 	const [priceBounds, setPriceBounds] = useState(fallbackBounds)
 	const [minPrice, setMinPrice] = useState(fallbackBounds.min)
 	const [maxPrice, setMaxPrice] = useState(fallbackBounds.max)
@@ -65,9 +109,6 @@ function SearchPage() {
 			setPriceBounds({ min, max })
 			setMinPrice(min)
 			setMaxPrice(max)
-			setResults(flights)
-		} else {
-			setResults([])
 		}
 	}, [flights])
 
@@ -100,7 +141,6 @@ function SearchPage() {
 				if (!selectedTimes.includes(bucket)) return false
 			}
 
-			// stops filter
 			if (selectedStops.length > 0) {
 				const stops = Number(f.stops || 0)
 				const ok = selectedStops.some(s => {
@@ -112,7 +152,6 @@ function SearchPage() {
 				if (!ok) return false
 			}
 
-			// amenities filter
 			if (selectedAmenities.length > 0) {
 				const hasAll = selectedAmenities.every(a => (f.amenities || []).includes(a))
 				if (!hasAll) return false
@@ -153,35 +192,33 @@ function SearchPage() {
 		setSearchParams(criteria)
 	}
 
-	const isLoading = isQueryLoading || isFiltering;
-
 	return (
 		<div className="dashboard-container">
 			<div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-<aside className="lg:col-span-1">
-				<FilterSidebar
-					priceBounds={results.length ? priceBounds : fallbackBounds}
-					minPrice={results.length ? minPrice : fallbackBounds.min}
-					maxPrice={results.length ? maxPrice : fallbackBounds.max}
-					onMinPriceChange={setMinPrice}
-					onMaxPriceChange={setMaxPrice}
-					airlines={AIRLINES}
-					selectedAirlines={selectedAirlines}
-					onToggleAirline={toggleAirline}
-					selectedStops={selectedStops}
-					onToggleStop={(value) => setSelectedStops(prev => prev.includes(value) ? prev.filter(x => x !== value) : [...prev, value])}
-					selectedAmenities={selectedAmenities}
-					onToggleAmenity={(value) => setSelectedAmenities(prev => prev.includes(value) ? prev.filter(x => x !== value) : [...prev, value])}
-					onApply={applyFilters}
-					onReset={resetFilters}
-					disabled={!results.length}
-				/>
-			</aside>
+				<aside className="lg:col-span-1">
+					<FilterSidebar
+						priceBounds={results.length ? priceBounds : fallbackBounds}
+						minPrice={results.length ? minPrice : fallbackBounds.min}
+						maxPrice={results.length ? maxPrice : fallbackBounds.max}
+						onMinPriceChange={setMinPrice}
+						onMaxPriceChange={setMaxPrice}
+						airlines={AIRLINES}
+						selectedAirlines={selectedAirlines}
+						onToggleAirline={toggleAirline}
+						selectedStops={selectedStops}
+						onToggleStop={(value) => setSelectedStops(prev => prev.includes(value) ? prev.filter(x => x !== value) : [...prev, value])}
+						selectedAmenities={selectedAmenities}
+						onToggleAmenity={(value) => setSelectedAmenities(prev => prev.includes(value) ? prev.filter(x => x !== value) : [...prev, value])}
+						onApply={applyFilters}
+						onReset={resetFilters}
+						disabled={!results.length}
+					/>
+				</aside>
 
-			<main className="lg:col-span-3">
-				<FlightSearchForm onSearch={handleSearch} />
+				<main className="lg:col-span-3">
+					<FlightSearchForm onSearch={handleSearch} />
 
-				<div className="mt-6">
+					<div className="mt-6">
 						<DatePriceSlider 
 							flights={flights} 
 							selectedDate={selectedDate}
@@ -192,7 +229,6 @@ function SearchPage() {
 					<div className="mt-6">
 						<PriceTrendPredictor routeLabel={routeLabel} />
 					</div>
-
 
 					<div className="mt-4 flex items-center justify-between">
 						<div className="text-sm small-note">Hiển thị {results.length} kết quả</div>
@@ -208,26 +244,33 @@ function SearchPage() {
 					</div>
 
 					<div className="mt-4 results-list">
-						{isError ? (
-							<div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-[32px] text-center">
-								<h3 className="text-lg font-bold">Đã có lỗi xảy ra</h3>
-								<p>{error?.message || 'Không thể tải danh sách chuyến bay.'}</p>
-								<button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-xl">Thử lại</button>
+						{/* 3. LOADING AND ERROR STATES */}
+						{error ? (
+							<div className="bg-red-50 border border-red-200 text-red-700 p-10 rounded-[32px] text-center animate-in fade-in slide-in-from-top-4 duration-500 shadow-sm">
+								<div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">⚠️</div>
+								<h3 className="text-2xl font-black mb-3">Lỗi kết nối Backend</h3>
+								<p className="max-w-md mx-auto font-medium text-red-600/70 leading-relaxed">{error}</p>
+								<button 
+									onClick={() => window.location.reload()} 
+									className="mt-8 px-10 py-4 bg-red-600 text-white rounded-[20px] font-black text-sm hover:bg-red-700 transition-all shadow-xl shadow-red-600/30 active:scale-95"
+								>
+									Thử lại ngay
+								</button>
 							</div>
 						) : isLoading ? (
-						<div className="space-y-4">
-							{[1, 2, 3, 4, 5].map(index => (
-								<FlightCardSkeleton key={index} />
-							))}
-						</div>
-					) : results.length === 0 ? (
-							<div className="rounded-[32px] border border-slate-200 bg-slate-50 p-10 text-center shadow-sm">
+							<div className="space-y-4">
+								{[1, 2, 3].map(index => (
+									<FlightCardSkeleton key={index} />
+								))}
+							</div>
+						) : results.length === 0 ? (
+							<div className="rounded-[32px] border border-slate-200 bg-slate-50 p-16 text-center shadow-sm">
 								<div className="mx-auto mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-sky-500/10 text-4xl text-sky-600">✈️</div>
-								<h2 className="text-2xl font-semibold text-slate-900 mb-3">Không tìm thấy chuyến bay phù hợp</h2>
-								<p className="mx-auto max-w-xl text-slate-600 mb-6">Thử mở rộng ngày bay, điều chỉnh bộ lọc hoặc tìm các ngày khác để tìm chuyến bay tốt nhất cho bạn.</p>
-								<div className="flex flex-col sm:flex-row justify-center gap-3">
-									<button onClick={resetFilters} className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition">Xóa bộ lọc</button>
-									<button onClick={searchAlternativeDates} className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition">Tìm ngày khác</button>
+								<h2 className="text-2xl font-semibold text-slate-900 mb-3">Không tìm thấy chuyến bay</h2>
+								<p className="mx-auto max-w-xl text-slate-600 mb-8 font-medium">Chúng tôi không tìm thấy chuyến bay nào cho hành trình này. Vui lòng thử lại với các tiêu chí khác.</p>
+								<div className="flex flex-col sm:flex-row justify-center gap-4">
+									<button onClick={resetFilters} className="rounded-2xl bg-slate-900 px-8 py-3.5 text-sm font-black text-white hover:bg-slate-800 transition shadow-lg active:scale-95">Xóa bộ lọc</button>
+									<button onClick={searchAlternativeDates} className="rounded-2xl border border-slate-300 bg-white px-8 py-3.5 text-sm font-black text-slate-700 hover:bg-slate-100 transition active:scale-95">Tìm ngày khác</button>
 								</div>
 							</div>
 						) : (

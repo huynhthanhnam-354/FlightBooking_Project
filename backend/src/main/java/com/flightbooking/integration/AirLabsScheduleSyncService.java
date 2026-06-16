@@ -126,17 +126,17 @@ public class AirLabsScheduleSyncService {
         long price = Math.round(rawVnd * flightApiProperties.effectivePriceScale());
 
         Optional<Flight> existing = flightRepository
-                .findByOriginCodeAndDestinationCodeAndFlightNumberAndDepartureAt(depIata, arrIata, flightNo, dep);
+                .findByDepartureAirportAndArrivalAirportAndFlightNumberAndDepartureAt(depIata, arrIata, flightNo, dep);
         Flight f = existing.orElseGet(() -> Flight.builder()
-                .originCode(depIata)
-                .destinationCode(arrIata)
+                .departureAirport(depIata)
+                .arrivalAirport(arrIata)
                 .flightNumber(flightNo)
                 .build());
-        f.setAirlineName(airlineDisplayName(text(n, "airline_iata")));
+        f.setAirline(airlineDisplayName(text(n, "airline_iata")));
         f.setDepartureAt(dep);
         f.setArrivalAt(arr);
         f.setDurationMinutes(duration);
-        f.setBasePriceVnd(price);
+        f.setPrice(price);
         f.setPremiumCabin(false);
         flightRepository.save(f);
         return true;

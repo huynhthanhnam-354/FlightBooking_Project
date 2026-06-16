@@ -19,20 +19,17 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/**
- * Chuyến bay — bảng {@code flights}, đồng bộ catalog cho web/mobile.
- */
 @Entity
 @Table(
         name = "flights",
         indexes = {
-                @Index(name = "idx_flights_route_departure", columnList = "origin_code, destination_code, departure_at"),
+                @Index(name = "idx_flights_route_departure", columnList = "departure_airport, arrival_airport, departure_at"),
                 @Index(name = "idx_flights_departure", columnList = "departure_at")
         },
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_flights_route_number_departure",
-                        columnNames = {"origin_code", "destination_code", "flight_number", "departure_at"}
+                        columnNames = {"departure_airport", "arrival_airport", "flight_number", "departure_at"}
                 )
         }
 )
@@ -50,14 +47,17 @@ public class Flight {
     @Column(name = "flight_number", nullable = false, length = 20)
     private String flightNumber;
 
-    @Column(name = "airline_name", nullable = false, length = 120)
-    private String airlineName;
+    @Column(name = "airline", nullable = false, length = 120)
+    private String airline;
 
-    @Column(name = "origin_code", nullable = false, length = 8)
-    private String originCode;
+    @Column(name = "departure_airport", nullable = false, length = 8)
+    private String departureAirport;
 
-    @Column(name = "destination_code", nullable = false, length = 8)
-    private String destinationCode;
+    @Column(name = "arrival_airport", nullable = false, length = 8)
+    private String arrivalAirport;
+
+    @Column(name = "price", nullable = false)
+    private Long price;
 
     @Column(name = "departure_at", nullable = false)
     private LocalDateTime departureAt;
@@ -65,13 +65,9 @@ public class Flight {
     @Column(name = "arrival_at", nullable = false)
     private LocalDateTime arrivalAt;
 
-    @Column(name = "duration_minutes", nullable = false)
+    @Column(name = "duration_minutes")
     private Integer durationMinutes;
 
-    @Column(name = "base_price_vnd", nullable = false)
-    private Long basePriceVnd;
-
-    /** Hạng thương gia (true) / phổ thông (false) — filter "Business" trên app */
     @Column(name = "premium_cabin", nullable = false)
     @Builder.Default
     private boolean premiumCabin = false;

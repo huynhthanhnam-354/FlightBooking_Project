@@ -79,7 +79,13 @@ export default function FlightSearchForm({ onSearch }) {
 
   function submit(e) {
     e.preventDefault();
-    onSearch({ from, to, date, passengers });
+    // Gửi mã IATA (ví dụ: HAN, SGN) thay vì tên hiển thị để khớp với Backend
+    onSearch({ 
+      from: fromCode || from.match(/\((.*?)\)/)?.[1] || from, 
+      to: toCode || to.match(/\((.*?)\)/)?.[1] || to, 
+      date, 
+      passengers 
+    });
   }
 
   return (

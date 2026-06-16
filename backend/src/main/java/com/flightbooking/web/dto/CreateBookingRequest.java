@@ -8,17 +8,17 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 public record CreateBookingRequest(
-        @NotNull @Positive Long flightId,
-        @NotBlank @Size(max = 64) String seatNumber,
-        @NotBlank @Size(max = 200) String passengerName,
-        @Email @Size(max = 190) String passengerEmail,
+        @NotNull(message = "Flight ID is required") @Positive Long flightId,
+        @NotBlank(message = "Seat number is required") @Size(max = 64) String seatNumber,
+        @NotBlank(message = "Passenger name is required") @Size(max = 200) String passengerName,
+        @Email(message = "Invalid email format") @Size(max = 190) String passengerEmail,
         @Size(max = 32) String passengerPhone,
         @Size(max = 64) String passengerIdCard,
-        @NotNull @Positive @Max(9) Integer passengerCount,
+        @NotNull(message = "Passenger count is required") @Positive @Max(9) Integer passengerCount,
         @Size(max = 24) String tripType,
         @Size(max = 32) String paymentMethod,
         @Max(40) Integer baggageKg,
         Long baggageFeeVnd,
-        @NotNull @Positive Long totalPriceVnd
+        @NotNull(message = "Total price is required") @Positive Long totalPriceVnd
 ) {
 }

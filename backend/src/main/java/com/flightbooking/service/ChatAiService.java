@@ -122,11 +122,11 @@ public class ChatAiService {
                 .map(f -> String.format(
                         "- Chuyen bay %s cua %s: tu %s den %s, khoi hanh luc %s, gia %d VND",
                         f.getFlightNumber(),
-                        f.getAirlineName(),
-                        f.getOriginCode(),
-                        f.getDestinationCode(),
+                        f.getAirline(),
+                        f.getDepartureAirport(),
+                        f.getArrivalAirport(),
                         f.getDepartureAt(),
-                        f.getBasePriceVnd()
+                        f.getPrice()
                 ))
                 .collect(Collectors.joining("\n"));
 

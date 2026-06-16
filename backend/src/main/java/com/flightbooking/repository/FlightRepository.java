@@ -5,33 +5,45 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface FlightRepository extends JpaRepository<Flight, Long> {
 
-    List<Flight> findByOriginCodeAndDestinationCodeOrderByDepartureAtAsc(
-            String originCode,
-            String destinationCode
-    );
+    List<Flight> findByDepartureAirportAndArrivalAirport(String departureAirport, String arrivalAirport);
 
-    List<Flight> findByOriginCodeAndDestinationCodeAndDepartureAtBetweenOrderByDepartureAtAsc(
-            String originCode,
-            String destinationCode,
+    List<Flight> findByDepartureAirportAndArrivalAirportOrderByDepartureAtAsc(String departureAirport, String arrivalAirport);
+
+    List<Flight> findByDepartureAirportAndArrivalAirportAndDepartureAtBetweenOrderByDepartureAtAsc(
+            String departureAirport,
+            String arrivalAirport,
             LocalDateTime start,
             LocalDateTime end
     );
 
-    Optional<Flight> findByOriginCodeAndDestinationCodeAndFlightNumberAndDepartureAt(
-            String originCode,
-            String destinationCode,
+    Optional<Flight> findByDepartureAirportAndArrivalAirportAndFlightNumberAndDepartureAt(
+            String departureAirport,
+            String arrivalAirport,
             String flightNumber,
             LocalDateTime departureAt
     );
 
+    /**
+     * SENIOR DBA FIX: Pessimistic Write Lock to prevent double-booking of seats during high concurrency.
+     */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT f FROM Flight f WHERE f.id = :id")
-    Optional<Flight> findByIdForUpdate(Long id);
+    Optional<Flight> findByIdForUpdate(@Param("id") Long id);
+
+    /**
+     * SENIOR DEV FIX: Helper method for clean functional code and standard error handling.
+     */
+    default Flight getByIdOrThrow(Long id) {
+        return findById(id).orElseThrow(() -> new IllegalArgumentException("Không tìm thấy chuyến bay với ID: " + id));
+    }
 }

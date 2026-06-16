@@ -73,6 +73,17 @@ public class BookingController {
         return bookingService.confirmMockPayment(user.getUsername(), bookingId);
     }
 
+    /**
+     * Senior Full-Stack Fix: Explicit payment-success endpoint for flow clarity.
+     */
+    @PostMapping("/payment-success")
+    public BookingResponse paymentSuccess(
+            @AuthenticationPrincipal UserDetails user,
+            @RequestParam Long bookingId
+    ) {
+        return bookingService.confirmMockPayment(user.getUsername(), bookingId);
+    }
+
     @PostMapping("/{bookingId}/cancel")
     public BookingResponse cancel(
             @AuthenticationPrincipal UserDetails user,

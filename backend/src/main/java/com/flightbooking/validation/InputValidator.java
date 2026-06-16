@@ -5,8 +5,8 @@ import java.util.regex.Pattern;
 
 public final class InputValidator {
 
-    private static final Pattern GMAIL = Pattern.compile(
-            "^[A-Z0-9](?:[A-Z0-9._%+-]{0,62}[A-Z0-9])?@gmail\\.com$",
+    private static final Pattern EMAIL = Pattern.compile(
+            "^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,6}$",
             Pattern.CASE_INSENSITIVE
     );
     private static final Pattern PHONE = Pattern.compile("^(0[0-9]{9}|\\+84[0-9]{9})$");
@@ -22,24 +22,23 @@ public final class InputValidator {
     }
 
     public static String requireEmail(String raw) {
-        if (raw == null) {
-            throw new IllegalArgumentException("Invalid email address");
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException("Email không được để trống.");
         }
         String email = raw.trim().toLowerCase(Locale.ROOT);
-        if (!GMAIL.matcher(email).matches() || email.contains("..")) {
-            throw new IllegalArgumentException("Invalid email address");
+        if (!EMAIL.matcher(email).matches()) {
+            throw new IllegalArgumentException("Định dạng Email không hợp lệ.");
         }
         return email;
     }
 
     public static String requirePersonName(String raw) {
-        if (raw == null) {
-            throw new IllegalArgumentException("Invalid full name");
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException("Họ và tên không được để trống.");
         }
         String name = raw.trim().replaceAll("\\s+", " ");
-        if (!PERSON_NAME.matcher(name).matches()
-                || UNSAFE_NAME.matcher(name).find()) {
-            throw new IllegalArgumentException("Invalid full name");
+        if (!PERSON_NAME.matcher(name).matches() || UNSAFE_NAME.matcher(name).find()) {
+            throw new IllegalArgumentException("Họ và tên không hợp lệ.");
         }
         return name;
     }
@@ -50,7 +49,7 @@ public final class InputValidator {
         }
         String phone = raw.trim().replace(" ", "");
         if (!PHONE.matcher(phone).matches()) {
-            throw new IllegalArgumentException("Invalid phone number");
+            throw new IllegalArgumentException("Số điện thoại không hợp lệ.");
         }
         return phone;
     }
@@ -61,14 +60,14 @@ public final class InputValidator {
         }
         String id = raw.trim().toUpperCase(Locale.ROOT).replace(" ", "");
         if (!ID_CARD.matcher(id).matches()) {
-            throw new IllegalArgumentException("Invalid ID or passport number");
+            throw new IllegalArgumentException("Số CCCD hoặc hộ chiếu không hợp lệ.");
         }
         return id;
     }
 
     public static void requireStrongPassword(String raw) {
         if (raw == null || !STRONG_PASSWORD.matcher(raw).matches()) {
-            throw new IllegalArgumentException("Password must be 8-100 characters and include uppercase, lowercase, and a number");
+            throw new IllegalArgumentException("Mật khẩu phải từ 8-100 ký tự, bao gồm chữ hoa, chữ thường và chữ số.");
         }
     }
 }

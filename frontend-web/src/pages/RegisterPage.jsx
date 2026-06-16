@@ -1,17 +1,36 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import RegisterForm from "../components/RegisterForm";
 import { CiPlane } from "react-icons/ci";
+import { authApi } from "../services/api";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleRegister = async (userData) => {
-    console.log("Registration attempted:", userData);
-    // Logic for registration would go here
-    // After success, maybe auto-login or redirect to login
-    alert("Đăng ký thành công! Vui lòng đăng nhập.");
-    navigate("/login");
+    setError("");
+    setIsLoading(true);
+    try {
+      // Gửi yêu cầu đăng ký thực tế tới Backend
+      await authApi.register({
+        email: userData.email,
+        password: userData.password,
+        fullName: userData.fullName,
+        phone: userData.phone
+      });
+      
+      alert("Đăng ký thành công! Chào mừng bạn đến với FlightBook.");
+      navigate("/login");
+    } catch (err) {
+      console.error("Registration failed:", err);
+      // Hiển thị lỗi từ Backend (ví dụ: Email đã tồn tại)
+      const message = err.response?.data?.message || "Đăng ký thất bại. Email có thể đã tồn tại hoặc dữ liệu không hợp lệ.";
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -36,8 +55,15 @@ export default function RegisterPage() {
             <p className="text-sm text-slate-500">Khám phá thế giới cùng chúng tôi - Bắt đầu ngay hôm nay</p>
           </div>
 
+          {/* Hiển thị lỗi nếu có */}
+          {error && (
+            <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-2xl text-center font-bold">
+              {error}
+            </div>
+          )}
+
           {/* Registration Form */}
-          <RegisterForm onRegister={handleRegister} />
+          <RegisterForm onRegister={handleRegister} isLoading={isLoading} />
 
           {/* Link to Login */}
           <div className="pt-6 text-center border-t border-slate-100">

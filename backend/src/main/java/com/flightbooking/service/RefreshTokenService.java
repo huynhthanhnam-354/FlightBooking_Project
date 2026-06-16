@@ -3,12 +3,18 @@ package com.flightbooking.service;
 import com.flightbooking.model.RefreshToken;
 import com.flightbooking.repository.AppUserRepository;
 import com.flightbooking.repository.RefreshTokenRepository;
+import com.flightbooking.security.JwtService;
+import com.flightbooking.web.dto.TokenRefreshResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,6 +27,7 @@ public class RefreshTokenService {
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final AppUserRepository userRepository;
+    private final JwtService jwtService;
 
     public Optional<RefreshToken> findByToken(String token) {
         return refreshTokenRepository.findByToken(token);
@@ -45,6 +52,23 @@ public class RefreshTokenService {
             throw new RuntimeException("Refresh token was expired. Please make a new signin request");
         }
         return token;
+    }
+
+    @Transactional
+    public TokenRefreshResponse refreshAccessToken(String requestToken) {
+        return findByToken(requestToken)
+                .map(this::verifyExpiration)
+                .map(RefreshToken::getUser)
+                .map(user -> {
+                    UserDetails details = User.builder()
+                            .username(user.getEmail())
+                            .password(user.getPasswordHash())
+                            .authorities("ROLE_" + user.getRole().name())
+                            .build();
+                    String accessToken = jwtService.generateToken(details);
+                    return TokenRefreshResponse.of(accessToken, requestToken);
+                })
+                .orElseThrow(() -> new IllegalArgumentException("Refresh token is not in database!"));
     }
 
     @Transactional

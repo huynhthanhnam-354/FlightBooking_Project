@@ -19,19 +19,36 @@ public class GlobalExceptionHandler {
         String msg = ex.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.joining("; "));
-        return ResponseEntity.badRequest().body(Map.of("error", "Validation failed", "message", msg));
+        return ResponseEntity.badRequest().body(Map.of(
+            "error", "Validation failed", 
+            "message", msg
+        ));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegalArgument(IllegalArgumentException ex) {
-        return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        return ResponseEntity.badRequest().body(Map.of(
+            "error", "Bad Request",
+            "message", ex.getMessage()
+        ));
     }
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, String>> handleBadCredentials(BadCredentialsException ex) {
         String msg = (ex.getMessage() != null && !ex.getMessage().isBlank())
                 ? ex.getMessage()
-                : "Invalid email or password";
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", msg));
+                : "Email hoặc mật khẩu không chính xác.";
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+            "error", "Unauthorized",
+            "message", msg
+        ));
+    }
+    
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, String>> handleGeneral(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+            "error", "Internal Server Error",
+            "message", "Đã có lỗi hệ thống xảy ra. Vui lòng thử lại sau."
+        ));
     }
 }
