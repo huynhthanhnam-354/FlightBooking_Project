@@ -50,7 +50,7 @@ export default function LoginPage() {
                 <CiPlane size={32} className="text-white" />
               </div>
             </div>
-            <h1 className="text-3xl font-bold text-gray-800">SkyBooking</h1>
+            <h1 className="text-3xl font-bold text-gray-800">Flight Booking</h1>
             <p className="text-sm text-gray-500">Đặt chuyến bay của bạn ngay hôm nay</p>
           </div>
 

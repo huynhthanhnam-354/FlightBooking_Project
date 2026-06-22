@@ -51,7 +51,7 @@ export default function RegisterPage() {
                 <CiPlane size={36} className="text-white group-hover:scale-110 transition-transform" />
               </div>
             </div>
-            <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Tham gia FlightBook</h1>
+            <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Tham gia FlightBooking</h1>
             <p className="text-sm text-slate-500">Khám phá thế giới cùng chúng tôi - Bắt đầu ngay hôm nay</p>
           </div>
 
