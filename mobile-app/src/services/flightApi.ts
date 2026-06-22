@@ -5,13 +5,13 @@ import type { CatalogFlight } from '../data/flightCatalog';
 export type FlightDto = {
   id: number;
   flightNumber: string;
-  airlineName: string;
-  originCode: string;
-  destinationCode: string;
+  airline: string;
+  departureAirport: string;
+  arrivalAirport: string;
   departureAt: string;
   arrivalAt: string;
   durationMinutes: number;
-  basePriceVnd: number;
+  price: number;
   premiumCabin: boolean;
 };
 
@@ -43,23 +43,28 @@ export function ddMmYyyyToIsoDate(value: string): string | null {
 export function mapFlightDtoToCatalogFlight(f: FlightDto): CatalogFlight {
   return {
     id: String(f.id),
-    airline: f.airlineName,
+    airline: f.airline,
     code: f.flightNumber,
     dep: timeFromLocalDateTime(f.departureAt),
     arr: timeFromLocalDateTime(f.arrivalAt),
     duration: minutesToDurationLabel(f.durationMinutes),
-    priceVND: f.basePriceVnd,
+    priceVND: f.price,
     premium: f.premiumCabin,
   };
 }
 
 export async function searchFlightsApi(origin: string, destination: string, departureDate?: string): Promise<CatalogFlight[]> {
   const isoDate = departureDate ? ddMmYyyyToIsoDate(departureDate) : null;
-  const { data } = await axios.get<FlightDto[]>(`${API_BASE_URL}/api/flights`, {
+  const { data } = await axios.get<FlightDto[]>(`${API_BASE_URL}/api/v1/flights/search`, {
     params: {
-      origin: origin.trim().toUpperCase(),
-      destination: destination.trim().toUpperCase(),
-      ...(isoDate ? { departureDate: isoDate } : {}),
+      departureAirport: origin.trim().toUpperCase(),
+      arrivalAirport: destination.trim().toUpperCase(),
+      ...(isoDate
+        ? {
+            start: `${isoDate}T00:00:00`,
+            end: `${isoDate}T23:59:59`,
+          }
+        : {}),
     },
     timeout: 25000,
   });
