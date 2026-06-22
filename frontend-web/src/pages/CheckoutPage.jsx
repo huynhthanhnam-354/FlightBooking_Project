@@ -74,7 +74,7 @@ export default function CheckoutPage() {
         passengerPhone: formData.phone,
         passengerCount: passengers,
         totalPriceVnd: total,
-        paymentMethod: 'VNPAY-QR',
+        paymentMethod: 'MOCK_QR',
         tripType: 'ONE_WAY'
       }
       const res = await bookingApi.create(payload)
@@ -90,7 +90,6 @@ export default function CheckoutPage() {
     setShowQRModal(false)
     setIsLoading(true)
     try {
-      // Senior Full-Stack Fix: Using the explicit payment-success endpoint for clean demo flow
       await bookingApi.paymentSuccess(activeBookingId)
       toast.success('Thanh toán thành công!')
       
@@ -159,16 +158,16 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-slate-50 pb-20 font-sans text-slate-900">
       
-      {/* PROFESSIONAL VNPAY-QR MODAL */}
+      {/* MOCK QR PAYMENT MODAL */}
       {showQRModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-300">
           <div className="w-full max-w-4xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 duration-300">
             <div className="flex-1 p-12 bg-slate-50 border-r border-slate-100">
                <div className="flex items-center gap-4 mb-12">
-                  <div className="w-14 h-14 bg-[#005baa] rounded-2xl flex items-center justify-center text-white font-black italic text-2xl shadow-lg">VN</div>
+                  <div className="w-14 h-14 bg-[#005baa] rounded-2xl flex items-center justify-center text-white font-black italic text-2xl shadow-lg">QR</div>
                   <div>
-                    <h2 className="text-2xl font-black text-[#005baa] tracking-tighter">VNPAY<span className="text-red-600">QR</span></h2>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Đơn giản - Nhanh chóng - Bảo mật</p>
+                    <h2 className="text-2xl font-black text-[#005baa] tracking-tighter">QR<span className="text-red-600"> Demo</span></h2>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Thanh toán giả lập nội bộ</p>
                   </div>
                </div>
                <div className="space-y-8">
@@ -241,10 +240,10 @@ export default function CheckoutPage() {
           <section className="bg-white rounded-[2rem] p-10 shadow-sm border border-slate-100">
             <h2 className="text-xl font-black mb-8 text-slate-800 tracking-tight">Phương thức thanh toán</h2>
             <div className="p-8 rounded-[2rem] border-2 border-sky-600 bg-sky-50/20 flex items-center gap-8">
-               <div className="w-24 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center font-black italic text-2xl text-blue-700 border border-slate-100">VN<span className="text-red-500">PAY</span></div>
+               <div className="w-24 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center font-black italic text-2xl text-blue-700 border border-slate-100">QR<span className="text-red-500">PAY</span></div>
                <div className="flex-1 text-left">
-                  <p className="font-black text-slate-900 text-lg">Cổng thanh toán VNPAY-QR</p>
-                  <p className="text-sm font-medium text-slate-500 italic">Thanh toán an toàn qua Mobile Banking</p>
+                  <p className="font-black text-slate-900 text-lg">Thanh toán QR giả lập</p>
+                  <p className="text-sm font-medium text-slate-500 italic">Quét mã demo và xác nhận để hoàn tất đặt vé</p>
                </div>
             </div>
           </section>

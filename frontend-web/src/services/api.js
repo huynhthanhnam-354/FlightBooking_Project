@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_BASE_URL = '/api';
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -85,10 +85,6 @@ export const bookingApi = {
   paymentSuccess: (id) => api.post(`/bookings/payment-success?bookingId=${id}`),
   getMine: () => api.get('/bookings/me'),
   cancel: (id) => api.post(`/bookings/${id}/cancel`),
-};
-
-export const paymentApi = {
-  createVnPayUrl: (bookingId) => api.post(`/payments/vnpay/create-url?bookingId=${bookingId}`),
 };
 
 export default api;
