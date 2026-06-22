@@ -5,11 +5,13 @@ import com.flightbooking.web.dto.BaggageUpdateRequest;
 import com.flightbooking.web.dto.BookingResponse;
 import com.flightbooking.web.dto.CheckInRequest;
 import com.flightbooking.web.dto.CreateBookingRequest;
+import com.flightbooking.web.dto.PaymentSuccessRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,6 +27,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/bookings")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class BookingController {
 
     private final BookingService bookingService;
@@ -79,9 +82,17 @@ public class BookingController {
     @PostMapping("/payment-success")
     public BookingResponse paymentSuccess(
             @AuthenticationPrincipal UserDetails user,
-            @RequestParam Long bookingId
+            @RequestParam(required = false) Long bookingId,
+            @RequestBody(required = false) PaymentSuccessRequest request
     ) {
-        return bookingService.confirmMockPayment(user.getUsername(), bookingId);
+        Long id = bookingId;
+        if (id == null && request != null) {
+            id = request.bookingId();
+        }
+        if (id == null) {
+            throw new IllegalArgumentException("Booking ID is required");
+        }
+        return bookingService.confirmMockPayment(user.getUsername(), id);
     }
 
     @PostMapping("/{bookingId}/cancel")

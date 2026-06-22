@@ -1,31 +1,47 @@
 .seatmap-wrapper {
-  background: #f8fafc;
-  border-radius: 3rem;
-  padding: 3rem 1.5rem;
+  background: #f1f5f9;
+  border-radius: 4rem;
+  padding: 4rem 1.5rem;
   position: relative;
-  overflow: hidden;
-  box-shadow: inset 0 2px 20px rgba(0,0,0,0.02);
+  overflow: visible;
+  box-shadow: inset 0 2px 40px rgba(0,0,0,0.03);
 }
 
 /* Plane Fuselage Shape */
 .plane-fuselage {
-  max-width: 420px;
+  max-width: 360px; /* Snug fit for the seats */
   margin: 0 auto;
   background: white;
-  border-left: 2px solid #e2e8f0;
-  border-right: 2px solid #e2e8f0;
+  border-left: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
   position: relative;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+  box-shadow: 
+    -20px 0 30px -15px rgba(0,0,0,0.05),
+    20px 0 30px -15px rgba(0,0,0,0.05);
+}
+
+/* Fuselage Curve Effect */
+.plane-fuselage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, 
+    rgba(248,250,252,1) 0%, 
+    rgba(255,255,255,0) 15%, 
+    rgba(255,255,255,0) 85%, 
+    rgba(248,250,252,1) 100%);
+  pointer-events: none;
+  z-index: 5;
 }
 
 .plane-nose {
-  height: 120px;
+  height: 140px;
   background: white;
   border-top-left-radius: 50% 100%;
   border-top-right-radius: 50% 100%;
-  border: 2px solid #e2e8f0;
+  border: 1px solid #e2e8f0;
   border-bottom: none;
-  margin-bottom: -2px;
+  margin-bottom: -1px;
   position: relative;
   display: flex;
   align-items: center;
@@ -33,150 +49,191 @@
 }
 
 .cockpit {
-  width: 140px;
-  height: 40px;
+  width: 120px;
+  height: 36px;
   background: #0f172a;
   border-radius: 40px 40px 10px 10px;
   display: flex;
   gap: 4px;
   padding: 4px;
+  margin-top: 20px;
 }
 
 .cockpit-window {
   flex: 1;
   background: #1e293b;
-  border-radius: 30px 30px 5px 5px;
+  border-radius: 20px 20px 4px 4px;
 }
 
 .plane-tail {
-  height: 100px;
-  background: #f1f5f9;
-  border-bottom-left-radius: 20px;
-  border-bottom-right-radius: 20px;
-  border: 2px solid #e2e8f0;
+  height: 80px;
+  background: white;
+  border-bottom-left-radius: 40% 100%;
+  border-bottom-right-radius: 40% 100%;
+  border: 1px solid #e2e8f0;
   border-top: none;
+  margin-top: -1px;
 }
 
-/* Wing Sections */
+/* Wing Sections - More realistic */
 .plane-wings {
   position: absolute;
-  top: 40%;
+  top: 35%;
   left: 50%;
   transform: translateX(-50%);
-  width: 160%;
-  height: 180px;
-  background: linear-gradient(90deg, transparent 20%, #f1f5f9 20%, #f1f5f9 80%, transparent 80%);
+  width: 240%;
+  height: 200px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   z-index: -1;
-  opacity: 0.5;
-  clip-path: polygon(10% 20%, 90% 20%, 100% 100%, 0% 100%);
+  clip-path: polygon(15% 40%, 85% 40%, 100% 100%, 0% 100%);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.03);
 }
+
+.plane-wings::after {
+  content: '';
+  position: absolute;
+  bottom: 20px;
+  left: 10%;
+  right: 10%;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.02));
+}
+
+/* Interior Doors */
+.plane-door {
+  width: 4px;
+  height: 40px;
+  background: #cbd5e1;
+  position: absolute;
+  border-radius: 4px;
+  z-index: 10;
+}
+.door-left { left: -2px; }
+.door-right { right: -2px; }
 
 .exit-row-label {
   background: #fee2e2;
   color: #b91c1c;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
   text-transform: uppercase;
-  padding: 4px 12px;
+  padding: 3px 10px;
   border-radius: 20px;
-  margin: 1rem 0;
-  letter-spacing: 0.1em;
+  margin: 1.5rem 0;
+  letter-spacing: 0.15em;
+  border: 1px solid #fecaca;
 }
 
 .seat-row-container {
   display: grid;
-  grid-template-columns: 32px 1fr 32px;
+  grid-template-columns: 24px 1fr 24px;
   align-items: center;
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.5rem;
+  position: relative;
+  z-index: 10;
 }
 
 .seat-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr) 40px repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(3, 1fr) 30px repeat(3, 1fr);
+  gap: 6px;
   justify-items: center;
 }
 
 .seat-item {
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
-  border: 2px solid #e2e8f0;
+  border: 1.5px solid #e2e8f0;
   background: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: #64748b;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.seat-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
 }
 
 .seat-item:hover:not(.booked) {
-  transform: scale(1.1) translateY(-2px);
+  transform: scale(1.1);
   border-color: #0ea5e9;
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
-  z-index: 10;
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.15);
+  z-index: 20;
 }
 
 .seat-item.business {
-  width: 50px;
-  height: 50px;
+  width: 44px;
+  height: 44px;
   background: #f0f9ff;
   border-color: #bae6fd;
+  border-width: 2px;
 }
 
-.seat-item.selected {
-  background: #0ea5e9;
-  border-color: #0ea5e9;
-  color: white;
-  box-shadow: 0 0 15px rgba(14, 165, 233, 0.4);
-}
-
-.seat-item.booked {
-  background: #f1f5f9;
-  border-color: #f1f5f9;
-  color: #cbd5e1;
-  cursor: not-allowed;
+.seat-item.business .seat-label {
+  color: #0369a1;
 }
 
 .seat-item.extra-legroom {
   border-color: #10b981;
   background: #ecfdf5;
+  border-style: dashed;
+}
+
+.seat-item.extra-legroom .seat-label {
+  color: #047857;
+}
+
+.seat-item.selected {
+  background: #0ea5e9 !important;
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+}
+
+.seat-item.selected .seat-label {
+  color: white;
+}
+
+.seat-item.booked {
+  background: #f8fafc;
+  border-color: #f1f5f9;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.seat-item.booked .seat-label {
+  color: #cbd5e1;
 }
 
 .aisle-number {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
-  color: #94a3b8;
+  color: #cbd5e1;
   text-align: center;
 }
 
-.price-tag {
-  position: absolute;
-  bottom: -4px;
-  right: -4px;
-  background: #10b981;
-  color: white;
-  font-size: 8px;
-  padding: 1px 4px;
-  border-radius: 4px;
-  font-weight: 800;
-}
-
+/* Responsive Scaling */
 @media (max-width: 768px) {
+  .plane-fuselage {
+    max-width: 300px;
+  }
   .seat-grid {
-    grid-template-columns: repeat(3, 1fr) 20px repeat(3, 1fr);
+    grid-template-columns: repeat(3, 1fr) 15px repeat(3, 1fr);
     gap: 4px;
   }
   .seat-item {
-    width: 32px;
-    height: 32px;
-    font-size: 9px;
+    width: 30px;
+    height: 30px;
   }
   .seat-item.business {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
   }
 }

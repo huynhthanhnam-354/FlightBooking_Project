@@ -10,6 +10,25 @@ const formatCurrency = value => {
   return value
 }
 
+/**
+ * Parses and formats date strings into separate time and date components.
+ */
+const formatDateTime = (isoString) => {
+  if (!isoString) return { time: '--:--', date: '--/--/----' };
+  try {
+    const dateObj = new Date(isoString);
+    if (isNaN(dateObj.getTime())) {
+      const parts = String(isoString).split(' ');
+      return { time: parts[0] || '--:--', date: parts[1] || '' };
+    }
+    const time = dateObj.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const date = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return { time, date };
+  } catch (e) {
+    return { time: '--:--', date: '--/--/----' };
+  }
+};
+
 export default function FlightCard({ flight, onOpenDetails }) {
   const [showDetails, setShowDetails] = useState(false)
   const {
@@ -27,8 +46,8 @@ export default function FlightCard({ flight, onOpenDetails }) {
   } = flight
 
   const priceLabel = formatCurrency(price)
-  const departTime = String(depart).split(' ')[0]
-  const arriveTime = String(arrive).split(' ')[0]
+  const departInfo = formatDateTime(depart)
+  const arriveInfo = formatDateTime(arrive)
 
   const handleOpenDetails = () => {
     setShowDetails(true)
@@ -55,24 +74,30 @@ export default function FlightCard({ flight, onOpenDetails }) {
             </div>
 
             <div className="rounded-[28px] bg-slate-50 p-4 sm:p-5">
-              <div className="flex flex-col gap-4 sm:items-center sm:flex-row sm:justify-between">
-                <div className="flex items-center gap-3 text-slate-700">
-                  <span className="text-3xl font-semibold">{departTime}</span>
-                  <span className="text-lg text-orange-500">──</span>
-                  <span className="text-sm uppercase tracking-[0.24em] text-slate-500">{duration}</span>
-                  <span className="text-lg text-orange-500">──&gt;</span>
-                  <span className="text-3xl font-semibold">{arriveTime}</span>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">
+                   <span>{departInfo.date}</span>
+                   <span>{arriveInfo.date}</span>
+                </div>
+                <div className="flex items-center justify-between sm:justify-start sm:gap-6 text-slate-700">
+                  <span className="text-3xl font-semibold tabular-nums">{departInfo.time}</span>
+                  <div className="flex items-center gap-2 flex-1 sm:flex-none">
+                    <span className="text-lg text-orange-500 opacity-30">──</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400 whitespace-nowrap">{duration}</span>
+                    <span className="text-lg text-orange-500">──&gt;</span>
+                  </div>
+                  <span className="text-3xl font-semibold tabular-nums">{arriveInfo.time}</span>
                 </div>
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2 text-sm text-slate-500">
                 <div>
-                  <p className="font-semibold text-slate-900">{origin || depart}</p>
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Khởi hành</p>
+                  <p className="font-semibold text-slate-900">{origin}</p>
+                  <p className="text-[10px] uppercase font-black tracking-[0.22em] text-slate-400 mt-0.5">Khởi hành</p>
                 </div>
-                <div>
-                  <p className="font-semibold text-slate-900">{destination || arrive}</p>
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Hạ cánh</p>
+                <div className="sm:text-right">
+                  <p className="font-semibold text-slate-900">{destination}</p>
+                  <p className="text-[10px] uppercase font-black tracking-[0.22em] text-slate-400 mt-0.5">Hạ cánh</p>
                 </div>
               </div>
             </div>

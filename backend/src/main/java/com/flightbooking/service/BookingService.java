@@ -1,5 +1,4 @@
 package com.flightbooking.service;
-
 import com.flightbooking.dto.BookingDTO;
 import com.flightbooking.model.AppUser;
 import com.flightbooking.model.Booking;
@@ -42,6 +41,42 @@ public class BookingService {
     private final FlightService flightService;
     private final EmailService emailService;
     private final PnrGenerator pnrGenerator;
+
+    /**
+              * VÁ LỖI 1: Hàm checkSeatAvailability bị thiếu khiến Controller báo lỗi biên dịch
+              */
+    @Transactional(readOnly = true)
+    public boolean checkSeatAvailability(List<String> seatIds) {
+        if (seatIds == null || seatIds.isEmpty()) {
+            return true;
+        }
+        // Kiểm tra xem có ghế nào nằm trong danh sách đã bị đặt hay không
+        for (String seat : seatIds) {
+            long count = bookingRepository.findAll().stream()
+                    .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
+                    .filter(b -> parseSeatNumbers(b.getSeatNumber()).contains(seat.toUpperCase(Locale.ROOT)))
+                    .count();
+            if (count > 0) {
+                return false; // Đã có ít nhất 1 ghế bị đặt trước
+            }
+        }
+        return true;
+    }
+
+    /**
+         * VÁ LỖI 2: Hàm createBooking nhận CreateBookingRequest từ Controller
+         */
+    @Transactional
+    public Booking createBooking(CreateBookingRequest request) {
+        // Tạm thời lấy user mặc định từ hệ thống hoặc anonymous nếu không truyền email trực tiếp
+        // Để khớp luồng xử lý không bị null dữ liệu khi demo đặt vé nhanh
+        AppUser defaultUser = appUserRepository.findAll().stream().findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("No user found in system database"));
+        
+        BookingResponse response = create(defaultUser.getEmail(), request);
+        return bookingRepository.findById(response.id())
+                .orElseThrow(() -> new IllegalArgumentException("Failed to retreive created booking"));
+    }
 
     @Transactional
     public BookingResponse create(String userEmail, CreateBookingRequest request) {
@@ -120,6 +155,15 @@ public class BookingService {
         return bookingRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<BookingResponse> listSuccessfulBookingsForAdmin() {
+        return bookingRepository.findByStatusInOrderByCreatedAtDesc(
+                List.of(BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN, BookingStatus.COMPLETED)
+        ).stream()
+        .map(this::toResponse)
+        .toList();
     }
 
     @Transactional(readOnly = true)
@@ -227,10 +271,11 @@ public class BookingService {
         booking.setStatus(BookingStatus.CONFIRMED);
         PaymentTransaction payment = booking.getPaymentTransaction();
         if (payment != null) {
-            payment.setStatus(PaymentStatus.MOCK_CONFIRMED);
+            payment.setStatus(PaymentStatus.PAID);
             payment.setPaidAt(VietnamTime.nowLocal());
             payment.setProviderReference(booking.getPnr());
         }
+        bookingRepository.save(booking);
         return toResponse(booking);
     }
 
@@ -252,9 +297,10 @@ public class BookingService {
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setCancelledAt(VietnamTime.nowLocal());
         PaymentTransaction payment = booking.getPaymentTransaction();
-        if (payment != null && payment.getStatus() == PaymentStatus.MOCK_CONFIRMED) {
+        if (payment != null && (payment.getStatus() == PaymentStatus.MOCK_CONFIRMED || payment.getStatus() == PaymentStatus.PAID)) {
             payment.setStatus(PaymentStatus.REFUNDED);
         }
+        bookingRepository.save(booking);        
         return toResponse(booking);
     }
 

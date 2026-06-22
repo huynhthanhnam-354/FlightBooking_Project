@@ -10,62 +10,62 @@
 
 export const DEALS_DATA = [
   {
-    id: 'deal-jp-01',
+    id: 'deal-hg-01',
     category: 'flight',
-    title: 'Hương Sắc Nhật Bản',
-    subTitle: 'Khám phá vẻ đẹp cổ kính của Kyoto và nhịp sống Tokyo sôi động.',
+    title: 'HÀ GIANG HÙNG VĨ',
+    subTitle: 'Khám phá vẻ đẹp hoang sơ của cao nguyên đá và mùa hoa tam giác mạch.',
     discountPercentage: 35,
-    image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1200&q=80',
-    primaryColor: '#FFB7C5', // Sakura Pink - Emotional connection to Spring
-    ctaLink: '/booking?to=Tokyo',
+    image: 'https://images.unsplash.com/photo-1502101872923-d48509bff386?auto=format&fit=crop&w=800&q=80',
+    primaryColor: '#8D6E63', 
+    ctaLink: '/booking?to=HaGiang',
     status: 'hot',
     meta: {
-      tags: ['Seasonal', 'Culture', 'Direct Flight'],
+      tags: ['SEASONAL', 'CULTURE'],
       validUntil: '2026-06-30'
     }
   },
   {
-    id: 'deal-kr-02',
+    id: 'deal-pq-02',
     category: 'combo',
-    title: 'Seoul Heartbeat',
-    subTitle: 'Trải nghiệm K-Culture trọn gói: Chuyến bay & Khách sạn trung tâm.',
+    title: 'ĐẢO NGỌC PHÚ QUỐC',
+    subTitle: 'Trải nghiệm kỳ nghỉ thiên đường trọn gói: Chuyến bay & Resort ven biển.',
     discountPercentage: 50,
-    image: 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=1200&q=80',
-    primaryColor: '#4A90E2', // Deep Sky Blue - Modern and energetic
-    ctaLink: '/combos/seoul',
+    image: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=800&q=80',
+    primaryColor: '#00ACC1', 
+    ctaLink: '/combos/phuquoc',
     status: 'exclusive',
     meta: {
-      tags: ['Full Package', 'K-Food', 'Trending'],
+      tags: ['FULL PACKAGE', 'BEACH'],
       validUntil: '2026-07-15'
     }
   },
   {
-    id: 'deal-my-03',
+    id: 'deal-nt-03',
     category: 'hotel',
-    title: 'Biển Xanh Langkawi',
-    subTitle: 'Nghỉ dưỡng nhiệt đới tại Malaysia với các resort đẳng cấp quốc tế.',
+    title: 'NHA TRANG BIỂN HẸN',
+    subTitle: 'Tận hưởng bãi biển xanh ngắt với dải cát trắng mịn màng tại vịnh biển đẹp nhất Việt Nam.',
     discountPercentage: 25,
-    image: 'https://images.unsplash.com/photo-1552423314-cfdd9f6626bc?auto=format&fit=crop&w=1200&q=80',
-    primaryColor: '#00A693', // Persian Green - Calm and tropical
-    ctaLink: '/hotels?city=Langkawi',
+    image: 'https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=800&q=80',
+    primaryColor: '#00A693', 
+    ctaLink: '/hotels?city=NhaTrang',
     status: 'popular',
     meta: {
-      tags: ['Beach', 'Relax', 'Best Price'],
+      tags: ['BEACH', 'RELAX'],
       validUntil: '2026-08-01'
     }
   },
   {
-    id: 'deal-vn-04',
+    id: 'deal-sd-04',
     category: 'flight',
-    title: 'Đà Nẵng Gọi Tên',
-    subTitle: 'Bay thẳng đến thành phố của những cây cầu với ưu đãi sốc.',
+    title: 'SƠN ĐOÒNG BÍ ẨN',
+    subTitle: 'Khám phá hang động Sơn Đoòng - hang động tự nhiên lớn nhất thế giới ngay tại Việt Nam.',
     discountPercentage: 40,
-    image: 'https://images.unsplash.com/photo-1559592442-7e182c8c6f5d?auto=format&fit=crop&w=1200&q=80',
-    primaryColor: '#F2994A', // Brand Secondary Orange - Warm and inviting
-    ctaLink: '/booking?to=Danang',
+    image: 'https://images.unsplash.com/photo-1541014741259-df529411b96a?auto=format&fit=crop&w=800&q=80',
+    primaryColor: '#F2994A', 
+    ctaLink: '/booking?to=DongHoi',
     status: 'limited',
     meta: {
-      tags: ['Domestic', 'Weekend', 'Quick Trip'],
+      tags: ['DOMESTIC', 'ADVENTURE'],
       validUntil: '2026-06-25'
     }
   }

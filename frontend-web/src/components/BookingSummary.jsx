@@ -4,11 +4,19 @@ import { FaPlane, FaUsers, FaChair, FaInfoCircle } from 'react-icons/fa';
 export default function BookingSummary({ flight, passengers = 1, selectedSeats = [] }) {
   if (!flight) return <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">Không có chuyến được chọn.</div>;
 
+  const getSeatSurcharge = (seatId) => {
+    const row = parseInt(seatId.match(/\d+/)[0]);
+    if (row <= 2) return 500000; // Business
+    if (row === 6 || row === 7) return 150000; // Exit Row
+    return 0;
+  };
+
   const priceNumber = Number(String(flight.price).replace(/[^0-9]/g, "")) || 0;
   const subtotal = priceNumber * passengers;
-  const tax = Math.round(subtotal * 0.1);
+  const seatSurcharge = selectedSeats.reduce((sum, seat) => sum + getSeatSurcharge(seat), 0);
+  const tax = Math.round((subtotal + seatSurcharge) * 0.1);
   const serviceFee = 50000 * passengers;
-  const total = subtotal + tax + serviceFee;
+  const total = subtotal + seatSurcharge + tax + serviceFee;
 
   return (
     <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden sticky top-24">
@@ -30,7 +38,7 @@ export default function BookingSummary({ flight, passengers = 1, selectedSeats =
           {selectedSeats.length > 0 && (
             <div className="flex justify-between items-start text-sm">
               <span className="text-slate-500 flex items-center gap-2 mt-0.5"><FaChair /> Chỗ ngồi</span>
-              <div className="flex flex-wrap justify-end gap-1 max-w-[120px]">
+              <div className="flex flex-wrap justify-end gap-1 max-w-[150px]">
                 {selectedSeats.map(seat => (
                   <span key={seat} className="bg-sky-50 text-sky-700 px-2 py-0.5 rounded text-[10px] font-bold border border-sky-100">
                     {seat}
@@ -46,6 +54,12 @@ export default function BookingSummary({ flight, passengers = 1, selectedSeats =
             <span className="text-slate-500">Giá cơ bản</span>
             <span className="text-slate-800 font-medium">{subtotal.toLocaleString()}₫</span>
           </div>
+          {seatSurcharge > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">Phí chọn chỗ ngồi</span>
+              <span className="text-emerald-600 font-bold">+{seatSurcharge.toLocaleString()}₫</span>
+            </div>
+          )}
           <div className="flex justify-between text-sm">
             <span className="text-slate-500">Thuế & Phí (10%)</span>
             <span className="text-slate-800 font-medium">{tax.toLocaleString()}₫</span>
@@ -70,7 +84,7 @@ export default function BookingSummary({ flight, passengers = 1, selectedSeats =
         <div className="bg-amber-50 rounded-2xl p-4 flex gap-3 items-start border border-amber-100">
           <FaInfoCircle className="text-amber-500 mt-1 shrink-0" size={16} />
           <p className="text-xs text-amber-700 leading-relaxed font-medium">
-            Giá vé cuối cùng có thể thay đổi tùy thuộc vào dịch vụ bổ sung bạn chọn ở bước sau.
+            Giá vé cuối cùng đã bao gồm các dịch vụ bổ sung bạn đã chọn.
           </p>
         </div>
       </div>

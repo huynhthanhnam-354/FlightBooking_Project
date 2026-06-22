@@ -23,6 +23,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     long countByStatus(BookingStatus status);
 
+    List<Booking> findByStatusInOrderByCreatedAtDesc(List<BookingStatus> statuses);
+
     boolean existsByPnr(String pnr);
 
     Optional<Booking> findByPnrIgnoreCase(String pnr);

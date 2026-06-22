@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+
 import { api } from '../services/api';
 import {
   FiActivity,
@@ -17,6 +18,14 @@ import {
   FiSend,
   FiTag,
   FiXCircle,
+
+import { Navigate, useNavigate } from 'react-router-dom';
+import api, { bookingApi } from '../services/api';
+import { 
+  FiHome, FiAirplay, FiBook, FiBarChart2, FiSettings, FiSearch, FiBell, FiUser, FiDollarSign, FiTag, FiActivity, FiClock,
+  FiMoreVertical, FiCheckCircle, FiAlertCircle, FiPlus, FiEdit2, FiTrash2, FiFilter, FiCheck, FiTrendingDown, FiTrendingUp,
+  FiDownload, FiCalendar, FiSliders, FiArrowRight
+
 } from 'react-icons/fi';
 import {
   CartesianGrid,
@@ -29,8 +38,26 @@ import {
 } from 'recharts';
 import { toast } from 'react-toastify';
 
+ 
 const money = (value) => `${Number(value || 0).toLocaleString('vi-VN')} VND`;
 const dateText = (value) => (value ? new Date(value).toLocaleString('vi-VN') : '-');
+
+/**
+ * 1. Bookings Management Component (Updated for Real Data)
+ */
+function BookingsManagement({ bookings, stats }) {
+  const [searchTerm, setSearchParams] = useState('');
+  
+  const filtered = useMemo(() => 
+    bookings.filter(b => 
+      b.pnr.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      b.passengerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (b.passengerPhone && b.passengerPhone.includes(searchTerm)) ||
+      (b.flight?.flightNumber && b.flight.flightNumber.toLowerCase().includes(searchTerm.toLowerCase()))
+    ),
+    [bookings, searchTerm]
+  );
+ 
 
 const statusMeta = {
   CONFIRMED: { label: 'Da thanh toan', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -127,6 +154,7 @@ function BookingsTable({ bookings }) {
         </label>
       </div>
 
+
       <div className="overflow-x-auto">
         <table className="w-full min-w-[960px] text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -160,6 +188,78 @@ function BookingsTable({ bookings }) {
             ))}
           </tbody>
         </table>
+=======
+      <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+        <div className="px-10 py-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
+          <h3 className="text-xl font-black text-slate-800 tracking-tight">Hệ thống đặt vé</h3>
+          <div className="relative">
+            <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input 
+              placeholder="Tìm PNR, tên khách, SĐT hoặc chuyến bay..." 
+              value={searchTerm}
+              onChange={e => setSearchParams(e.target.value)}
+              className="pl-11 pr-6 py-3 bg-white border border-slate-200 rounded-2xl text-sm w-80 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none transition-all font-medium" 
+            />
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="text-[10px] text-slate-400 uppercase font-black tracking-[0.2em] border-b border-slate-50 bg-white">
+                <th className="px-10 py-6">STT</th>
+                <th className="px-6 py-6">Mã Đặt Vé (PNR)</th>
+                <th className="px-6 py-6">Khách hàng</th>
+                <th className="px-6 py-6">Số điện thoại</th>
+                <th className="px-6 py-6">Chuyến bay</th>
+                <th className="px-6 py-6">Ghế chọn</th>
+                <th className="px-6 py-6 text-right">Tổng tiền</th>
+                <th className="px-6 py-6 text-center">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50 bg-white">
+              {filtered.map((item, idx) => (
+                <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group">
+                  <td className="px-10 py-6 text-sm font-medium text-slate-500">{idx + 1}</td>
+                  <td className="px-6 py-6 font-mono text-sm font-black text-sky-600 uppercase tracking-tighter">#{item.pnr}</td>
+                  <td className="px-6 py-6">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-slate-800 leading-tight">{item.passengerName}</span>
+                      <span className="text-[10px] text-slate-400 font-medium tracking-tight mt-0.5">{item.passengerEmail || item.userEmail}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-6 text-sm text-slate-600 font-medium">{item.passengerPhone || '—'}</td>
+                  <td className="px-6 py-6">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-slate-800 leading-none">{item.flight?.flightNumber || '—'}</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase mt-1">{item.flight?.departureAirport} → {item.flight?.arrivalAirport}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-6 text-sm font-bold text-slate-700">{item.seatNumber || 'Auto'}</td>
+                  <td className="px-6 py-6 text-sm font-black text-slate-900 tabular-nums text-right">{item.totalPriceVnd?.toLocaleString()}₫</td>
+                  <td className="px-6 py-6 text-center">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                      item.status === 'CONFIRMED' || item.status === 'CHECKED_IN' || item.status === 'COMPLETED'
+                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                        : item.status === 'PENDING_PAYMENT'
+                        ? 'bg-amber-50 text-amber-600 border-amber-100'
+                        : 'bg-rose-50 text-rose-600 border-rose-100'
+                    }`}>
+                      {item.status === 'CONFIRMED' || item.status === 'CHECKED_IN' || item.status === 'COMPLETED' ? 'Đã thanh toán' :
+                       item.status === 'PENDING_PAYMENT' ? 'Chờ thanh toán' : 'Đã hủy'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filtered.length === 0 && (
+              <div className="p-32 text-center text-slate-400 italic font-medium bg-white">
+                 <FiBook size={48} className="mx-auto mb-4 opacity-5" />
+                 Không tìm thấy dữ liệu đặt vé phù hợp.
+              </div>
+          )}
+        </div>
+
       </div>
 
       {filtered.length === 0 ? (
@@ -427,10 +527,30 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
+
     if (user?.role === 'ADMIN') {
       void fetchData();
     }
   }, [user?.role]);
+
+    const fetchData = async () => {
+      try {
+        const [bookingsRes, summaryRes] = await Promise.all([
+            api.get('/admin/dashboard/bookings'),
+            api.get('/admin/bookings/summary')
+        ]);
+        setBookings(bookingsRes.data);
+        setSummary(summaryRes.data);
+      } catch (err) {
+        console.error("Admin Dashboard fetch error:", err);
+        toast.error("Không thể kết nối tới Server Admin.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (user?.role === 'ADMIN') fetchData();
+  }, [user]);
+ 
 
   if (!user || user.role !== 'ADMIN') {
     return <Navigate to="/login" replace />;

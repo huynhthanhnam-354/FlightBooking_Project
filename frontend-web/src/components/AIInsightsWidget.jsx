@@ -5,19 +5,19 @@ import { FiRefreshCcw } from 'react-icons/fi'
 const insightItems = [
   {
     id: 'weather',
-    title: 'Weather Alert',
+    title: 'Dự báo thời tiết',
     icon: AiOutlineCloud,
     description: 'Kiểm tra điều kiện thời tiết cho điểm đến của bạn trước khi đặt vé.',
   },
   {
     id: 'price',
-    title: 'Price Trend',
+    title: 'Xu hướng giá vé',
     icon: AiOutlineBarChart,
     description: 'Dự đoán xu hướng giá và giúp bạn quyết định: đợi hay đặt ngay.',
   },
   {
     id: 'combo',
-    title: 'Vacation Combo',
+    title: 'Gói ưu đãi du lịch',
     icon: AiOutlineGift,
     description: 'Gợi ý combo chuyến bay + khách sạn / trải nghiệm phù hợp với lộ trình của bạn.',
   },
@@ -61,7 +61,7 @@ export default function AIInsightsWidget({ searchContext }) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="inline-flex items-center gap-2 rounded-3xl bg-brand-primary px-3 py-2 text-sm font-semibold text-white shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-brand-secondary animate-pulse" /> AI Insights
+              <span className="w-2 h-2 rounded-full bg-brand-secondary animate-pulse" /> Gợi ý hành trình từ AI
             </div>
           </div>
           <button
@@ -74,7 +74,7 @@ export default function AIInsightsWidget({ searchContext }) {
           </button>
         </div>
 
-        <h3 className="mt-4 text-xl font-bold text-brand-primary tracking-tight">Gợi ý hành trình</h3>
+        <h3 className="mt-4 text-xl font-bold text-brand-primary tracking-tight">Trợ lý ảo AI</h3>
         <p className="mt-2 text-xs text-slate-500 leading-relaxed">
           {searchContext?.to
             ? `Phân tích cho chặng ${searchContext.from} → ${destination}.`
@@ -106,7 +106,7 @@ export default function AIInsightsWidget({ searchContext }) {
 
         <div className="mt-6 rounded-2xl bg-brand-primary/5 p-4 border border-brand-primary/10 animate-in fade-in zoom-in duration-300">
           <div className="flex items-center justify-between mb-3">
-             <span className="text-[10px] font-black uppercase tracking-widest text-brand-primary/60">Chi tiết AI</span>
+             <span className="text-[10px] font-black uppercase tracking-widest text-brand-primary/60">PHÂN TÍCH CHI TIẾT TỪ AI</span>
              <span className="h-1.5 w-1.5 rounded-full bg-brand-secondary" />
           </div>
           <ul className="space-y-3">

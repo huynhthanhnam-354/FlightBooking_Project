@@ -63,13 +63,15 @@ const SpecialDeals = () => {
             className="group relative flex h-44 bg-white rounded-soft-lg overflow-hidden border border-slate-100 shadow-sm hover:shadow-premium hover:-translate-y-1.5 transition-all duration-500"
           >
             {/* Split Layout: Left side (Image) */}
-            <div className="relative w-2/5 h-full overflow-hidden bg-slate-100">
+            <div className="relative w-2/5 h-full overflow-hidden bg-slate-200">
               <img 
+                key={deal.image}
                 src={deal.image} 
                 alt={deal.title} 
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                 onError={(e) => {
-                  e.target.src = 'https://images.unsplash.com/photo-1436491865332-7a61a109c05d?auto=format&fit=crop&w=600&q=80';
+                  e.target.onerror = null; // Prevent infinite loops
+                  e.target.src = 'https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&w=800&q=80'; // Reliable generic travel fallback
                 }}
               />
               {/* Inner border / Overlay for contrast */}

@@ -46,7 +46,7 @@ public class ChatAiService {
         String message = request.getMessage() == null ? "" : request.getMessage().trim();
         if (message.isBlank()) {
             return ChatResponse.builder()
-                    .reply("Vui long nhap cau hoi de tro ly AI ho tro ban.")
+                    .reply("Vui lòng nhập câu hỏi để trợ lý AI hỗ trợ bạn.")
                     .build();
         }
 
@@ -63,12 +63,12 @@ public class ChatAiService {
         }
 
         return ChatResponse.builder()
-                .reply(generateOpenAiReply(message))
+                .reply(generateOpenAiReply(message, request.getContext()))
                 .build();
     }
 
     public String generateReply(String userMessage) {
-        return generateOpenAiReply(userMessage);
+        return generateOpenAiReply(userMessage, null);
     }
 
     private ChatResponse callN8n(ChatRequest request, String message) {
@@ -115,12 +115,12 @@ public class ChatAiService {
         }
     }
 
-    private String generateOpenAiReply(String userMessage) {
+    private String generateOpenAiReply(String userMessage, Map<String, Object> requestContext) {
         List<Flight> flights = flightRepository.findAll();
 
-        String context = flights.stream()
+        String flightContext = flights.stream()
                 .map(f -> String.format(
-                        "- Chuyen bay %s cua %s: tu %s den %s, khoi hanh luc %s, gia %d VND",
+                        "- Chuyến bay %s của %s: từ %s đến %s, khởi hành lúc %s, giá %d VND",
                         f.getFlightNumber(),
                         f.getAirline(),
                         f.getDepartureAirport(),
@@ -130,17 +130,31 @@ public class ChatAiService {
                 ))
                 .collect(Collectors.joining("\n"));
 
+        StringBuilder systemPrompt = new StringBuilder();
+        systemPrompt.append("You are a smart travel assistant. You must analyze the flight segment (e.g., HAN to SGN) and provide the response strictly in Vietnamese. ")
+                    .append("Format the output as short, highly action-oriented bullet points. Do not include any English or markdown wrappers outside the requested list structure.\n\n");
+
+        if (requestContext != null && !requestContext.isEmpty()) {
+            systemPrompt.append("Thông tin hành trình hiện tại:\n");
+            requestContext.forEach((k, v) -> {
+                if (v != null) {
+                    systemPrompt.append(String.format("- %s: %s\n", k, String.valueOf(v)));
+                }
+            });
+            systemPrompt.append("\n");
+        }
+
+        systemPrompt.append("Dữ liệu chuyến bay thực tế:\n").append(flightContext).append("\n\n");
+        systemPrompt.append("Hãy trả lời lịch sự, ngắn gọn. Chỉ sử dụng dữ liệu đã cung cấp. ")
+                    .append("Nếu không tìm thấy chuyến bay phù hợp hoàn toàn, hãy gợi ý các phương án gần nhất và đề nghị hỗ trợ.");
+
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", model);
 
         List<Map<String, String>> messages = new ArrayList<>();
         messages.add(Map.of(
                 "role", "system",
-                "content", "Ban la tro ly ao cua FlightBook AI. "
-                        + "Duoi day la danh sach cac chuyen bay hien co:\n" + context + "\n"
-                        + "Hay tra loi lich su, ngan gon, uu tien tieng Viet. "
-                        + "Chi su dung du lieu chuyen bay da cung cap de tra loi. "
-                        + "Neu khong tim thay thong tin phu hop, hay noi ro va de nghi tao yeu cau ho tro."
+                "content", systemPrompt.toString()
         ));
         messages.add(Map.of("role", "user", "content", userMessage));
         requestBody.put("messages", messages);
@@ -159,15 +173,15 @@ public class ChatAiService {
                 List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
                 if (!choices.isEmpty()) {
                     Map<String, Object> firstChoice = choices.get(0);
-                    Map<String, String> message = (Map<String, String>) firstChoice.get("message");
-                    return message.get("content");
+                    Map<String, String> aiMessage = (Map<String, String>) firstChoice.get("message");
+                    return aiMessage.get("content");
                 }
             }
         } catch (Exception e) {
-            return "He thong AI dang ban. Vui long thu lai sau. (AI: " + e.getMessage() + ")";
+            return "Hệ thống AI đang bận. Vui lòng thử lại sau. (AI Error: " + e.getMessage() + ")";
         }
 
-        return "Toi khong the xu ly yeu cau nay ngay bay gio.";
+        return "Tôi không thể xử lý yêu cầu này ngay bây giờ.";
     }
 
     private static String valueOrDefault(String value, String fallback) {

@@ -1,7 +1,6 @@
 package com.flightbooking.web;
 
 import com.flightbooking.service.BookingService;
-import com.flightbooking.web.dto.BookingAdminSummaryResponse;
 import com.flightbooking.web.dto.BookingResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,21 +12,16 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin/bookings")
+@RequestMapping("/api/admin/dashboard")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
-public class AdminBookingController {
+public class AdminDashboardController {
 
     private final BookingService bookingService;
 
-    @GetMapping
-    public List<BookingResponse> allBookings() {
-        return bookingService.listAllForAdmin();
-    }
-
-    @GetMapping("/summary")
-    public BookingAdminSummaryResponse summary() {
-        return bookingService.adminSummary();
+    @GetMapping("/bookings")
+    public List<BookingResponse> getSuccessfulBookings() {
+        return bookingService.listSuccessfulBookingsForAdmin();
     }
 }

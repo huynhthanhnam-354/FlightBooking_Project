@@ -35,11 +35,28 @@ export const useBookingStore = create((set) => ({
     return { selectedSeats: newSeats };
   }),
 
-  toggleSeat: (seatId) => set((state) => ({
-    selectedSeats: state.selectedSeats.includes(seatId)
-      ? state.selectedSeats.filter(s => s !== seatId)
-      : [...state.selectedSeats, seatId]
-  })),
+  toggleSeat: (seatId) => set((state) => {
+    const isSelected = state.selectedSeats.includes(seatId);
+    const passengerCount = state.searchParams.passengers || 1;
+
+    // 1. Nếu đang chọn lại ghế đã chọn -> Bỏ chọn (Dùng cho cả 1 hoặc nhiều khách)
+    if (isSelected) {
+      return { selectedSeats: state.selectedSeats.filter(s => s !== seatId) };
+    }
+
+    // 2. Nếu là 1 khách -> Tự động thay thế ghế cũ bằng ghế mới
+    if (passengerCount === 1) {
+      return { selectedSeats: [seatId] };
+    }
+
+    // 3. Nếu nhiều khách -> Kiểm tra giới hạn
+    if (state.selectedSeats.length < passengerCount) {
+      return { selectedSeats: [...state.selectedSeats, seatId] };
+    }
+
+    // 4. Vượt quá giới hạn (sẽ được xử lý hiển thị Toast ở Component)
+    return state;
+  }),
 
   updatePassengerInfo: (info) => set((state) => ({
     passengerInfo: { ...state.passengerInfo, ...info }

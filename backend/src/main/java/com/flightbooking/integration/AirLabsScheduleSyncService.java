@@ -40,54 +40,58 @@ public class AirLabsScheduleSyncService {
         if (!flightApiProperties.isConfigured()) {
             return;
         }
-        String base = flightApiProperties.baseUrl().replaceAll("/+$", "");
-        URI uri = UriComponentsBuilder.fromUriString(base + "/schedules")
-                .queryParam("dep_iata", originIata)
-                .queryParam("arr_iata", destinationIata)
-                .queryParam("api_key", flightApiProperties.key().trim())
-                .queryParam("limit", 50)
-                .build()
-                .toUri();
-
-        RestClient client = RestClient.builder().build();
-        String body = client.get()
-                .uri(uri)
-                .retrieve()
-                .body(String.class);
-
-        JsonNode root;
         try {
-            root = objectMapper.readTree(body);
-        } catch (JsonProcessingException e) {
-            log.warn("AirLabs invalid JSON for {}→{}: {}", originIata, destinationIata, e.getMessage());
-            return;
-        }
-        if (root.has("error")) {
-            String msg = root.path("error").toString();
-            log.warn("AirLabs error for {}→{}: {}", originIata, destinationIata, msg);
-            return;
-        }
-        JsonNode rows = root.path("response");
-        if (!rows.isArray()) {
-            if (root.isArray()) {
-                rows = root;
-            } else {
-                log.warn("AirLabs unexpected JSON for {}→{}", originIata, destinationIata);
+            String base = flightApiProperties.baseUrl().replaceAll("/+$", "");
+            URI uri = UriComponentsBuilder.fromUriString(base + "/schedules")
+                    .queryParam("dep_iata", originIata)
+                    .queryParam("arr_iata", destinationIata)
+                    .queryParam("api_key", flightApiProperties.key().trim())
+                    .queryParam("limit", 50)
+                    .build()
+                    .toUri();
+
+            RestClient client = RestClient.builder().build();
+            String body = client.get()
+                    .uri(uri)
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode root;
+            try {
+                root = objectMapper.readTree(body);
+            } catch (JsonProcessingException e) {
+                log.warn("AirLabs invalid JSON for {}→{}: {}", originIata, destinationIata, e.getMessage());
                 return;
             }
-        }
-        int saved = 0;
-        for (JsonNode node : rows) {
-            try {
-                if (upsertOne(node, originIata, destinationIata)) {
-                    saved++;
-                }
-            } catch (Exception e) {
-                log.debug("Skip schedule row: {}", e.getMessage());
+            if (root.has("error")) {
+                String msg = root.path("error").toString();
+                log.warn("AirLabs error for {}→{}: {}", originIata, destinationIata, msg);
+                return;
             }
-        }
-        if (saved > 0) {
-            log.info("AirLabs: synced {} schedules for {}→{}", saved, originIata, destinationIata);
+            JsonNode rows = root.path("response");
+            if (!rows.isArray()) {
+                if (root.isArray()) {
+                    rows = root;
+                } else {
+                    log.warn("AirLabs unexpected JSON for {}→{}", originIata, destinationIata);
+                    return;
+                }
+            }
+            int saved = 0;
+            for (JsonNode node : rows) {
+                try {
+                    if (upsertOne(node, originIata, destinationIata)) {
+                        saved++;
+                    }
+                } catch (Exception e) {
+                    log.debug("Skip schedule row: {}", e.getMessage());
+                }
+            }
+            if (saved > 0) {
+                log.info("AirLabs: synced {} schedules for {}→{}", saved, originIata, destinationIata);
+            }
+        } catch (Exception e) {
+            log.error("AirLabs API sync failed for {}→{} (using local cache): {}", originIata, destinationIata, e.getMessage());
         }
     }
 
