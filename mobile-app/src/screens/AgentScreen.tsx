@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AppIcon from '../components/AppIcon';
-import { AgentMessage, AgentSuggestion, sendMessageToAgent } from '../services/agent';
+import { AgentAction, AgentMessage, AgentSuggestion, sendMessageToAgent } from '../services/agent';
 import { useLanguage } from '../context/LanguageContext';
 import { useSearch } from '../context/SearchContext';
 import { AI_DESTINATION_FILTERS, AI_DESTINATIONS, AIDestination, AIDestinationFilter } from '../data/aiDestinations';
@@ -38,6 +38,7 @@ export default function AgentScreen() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<AgentSuggestion[]>([]);
+  const [actions, setActions] = useState<AgentAction[]>([]);
   const [activeDestinationFilter, setActiveDestinationFilter] = useState<AIDestinationFilter>('season');
   const [destinationPrices, setDestinationPrices] = useState<Record<string, DestinationPrice>>({});
   const [pricesLoading, setPricesLoading] = useState(false);
@@ -45,6 +46,7 @@ export default function AgentScreen() {
   useEffect(() => {
     setMessages([makeMessage('assistant', t('agent_intro'))]);
     setSuggestions([]);
+    setActions([]);
   }, [language, t]);
 
   const visibleDestinations = useMemo(
@@ -132,6 +134,7 @@ export default function AgentScreen() {
       }, language);
       setMessages((prev) => [makeMessage('assistant', response.reply), ...prev]);
       setSuggestions(response.suggestions);
+      setActions(response.actions);
     } catch (_err) {
       setMessages((prev) => [makeMessage('assistant', t('agent_service_error')), ...prev]);
     } finally {
@@ -164,11 +167,35 @@ export default function AgentScreen() {
     handleSend(suggestion.label);
   }
 
+  function handleActionPress(action: AgentAction) {
+    const route = String(action.route || '').trim();
+    if (route.includes('check-in')) {
+      navigation.navigate('HelpTopic', { topic: 'checkin' });
+      return;
+    }
+    if (route.includes('support')) {
+      navigation.navigate('HelpTopic', { topic: 'support' });
+      return;
+    }
+    if (route.includes('booking') || route.includes('flight')) {
+      navigation.navigate('Flights');
+      return;
+    }
+    const id = String(action.type || action.label || '').toLowerCase();
+    if (id.includes('navigate') && action.label) {
+      handleSend(action.label);
+      return;
+    }
+    if (action.label) {
+      handleSend(action.label);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#0064D2" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>FlightBook Assistant</Text>
+        <Text style={styles.headerTitle}>Fly AI Assistant</Text>
         <Text style={styles.headerSub}>Tu van tim chuyen bay va dat ve</Text>
       </View>
 
@@ -262,6 +289,16 @@ export default function AgentScreen() {
       />
 
       <View style={styles.suggestionWrap}>
+        {actions.map((action, index) => (
+          <TouchableOpacity
+            key={`${action.type || 'action'}-${action.label || index}-${index}`}
+            style={[styles.suggestionChip, styles.actionChip]}
+            onPress={() => handleActionPress(action)}
+            disabled={loading}
+          >
+            <Text style={[styles.suggestionText, styles.actionText]}>{action.label || action.route || action.type}</Text>
+          </TouchableOpacity>
+        ))}
         {suggestions.map((s, index) => (
           <TouchableOpacity
             key={`${s.id || 'suggestion'}-${s.label || index}-${index}`}
@@ -333,6 +370,8 @@ const styles = StyleSheet.create({
   suggestionWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 12, paddingTop: 4, paddingBottom: 8 },
   suggestionChip: { backgroundColor: '#EAF2FF', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
   suggestionText: { color: '#1D4ED8', fontSize: 12, fontWeight: '600' },
+  actionChip: { backgroundColor: '#0064D2' },
+  actionText: { color: '#fff' },
   inputBar: { flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB', gap: 8 },
   input: { flex: 1, borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#1A1A2E', backgroundColor: '#F9FAFB' },
   sendBtn: { width: 42, height: 42, borderRadius: 10, backgroundColor: '#0064D2', alignItems: 'center', justifyContent: 'center' },

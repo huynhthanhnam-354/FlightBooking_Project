@@ -17,6 +17,7 @@ public record SupportTicketResponse(
         SupportTicketStatus status,
         Instant createdAt,
         Instant updatedAt,
-        Instant resolvedAt
+        Instant resolvedAt,
+        SupportWorkflowResponse workflow
 ) {
 }

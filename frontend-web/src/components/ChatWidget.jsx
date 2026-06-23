@@ -6,7 +6,7 @@ import api from '../services/api'
 const initialMessage = {
   id: 1,
   from: 'ai',
-  text: 'Xin chao, toi la tro ly Sky AI. Ban can tim chuyen bay, hoi FAQ hay can ho tro ve booking?',
+  text: 'Xin chao, toi la tro ly Fly AI. Ban can tim chuyen bay, hoi FAQ hay can ho tro ve booking?',
 }
 
 function getSessionId() {
@@ -35,6 +35,28 @@ function normalizeSuggestions(items) {
     .filter((item) => item.label.trim())
 }
 
+function normalizeActions(items) {
+  if (!Array.isArray(items)) return []
+  return items
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') return null
+      const type = String(item.type || '').trim()
+      const label = String(item.label || item.route || type || `Action ${index + 1}`).trim()
+      const route = String(item.route || '').trim()
+      return {
+        type,
+        label,
+        route,
+        payload: item.payload && typeof item.payload === 'object' ? item.payload : {},
+      }
+    })
+    .filter(Boolean)
+}
+
+function normalizeCards(items) {
+  return Array.isArray(items) ? items.filter((item) => item && typeof item === 'object') : []
+}
+
 export default function ChatWidget() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -55,8 +77,7 @@ export default function ChatWidget() {
     }
   }, [messages, loading])
 
-  function handleSuggestionAction(suggestion) {
-    const id = suggestion?.id || suggestion?.label || ''
+  function navigateById(id) {
     const routeMap = {
       checkin: '/check-in',
       support: '/support',
@@ -77,10 +98,30 @@ export default function ChatWidget() {
     if (route) {
       setOpen(false)
       navigate(route)
+      return true
+    }
+    return false
+  }
+
+  function handleSuggestionAction(suggestion) {
+    const id = suggestion?.id || suggestion?.label || ''
+
+    if (navigateById(id)) return
+
+    sendMessage(suggestion?.label || id)
+  }
+
+  function handleAction(action) {
+    if (action?.route) {
+      setOpen(false)
+      navigate(action.route, { state: action.payload || {} })
       return
     }
 
-    sendMessage(suggestion?.label || id)
+    const id = action?.type || action?.label || ''
+    if (navigateById(id)) return
+
+    if (action?.label) sendMessage(action.label)
   }
 
   async function sendMessage(text) {
@@ -97,6 +138,10 @@ export default function ChatWidget() {
         sessionId,
         platform: 'web',
         language: 'vi',
+        context: {
+          page: window.location.pathname,
+          href: window.location.href,
+        },
       })
 
       setMessages((items) => [
@@ -106,6 +151,8 @@ export default function ChatWidget() {
           from: 'ai',
           text: data?.reply || 'Toi chua co cau tra loi phu hop.',
           suggestions: normalizeSuggestions(data?.suggestions),
+          actions: normalizeActions(data?.actions),
+          cards: normalizeCards(data?.cards),
         },
       ])
     } catch (error) {
@@ -130,11 +177,11 @@ export default function ChatWidget() {
       {!open ? (
         <button
           type="button"
-          aria-label="Open Sky AI assistant"
+          aria-label="Open Fly AI assistant"
           onClick={() => setOpen(true)}
           className="flex h-14 w-14 items-center justify-center rounded-full bg-sky-600 text-white shadow-2xl shadow-sky-900/20 transition duration-300 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-300 focus:ring-offset-2 focus:ring-offset-transparent"
         >
-          <span className="sr-only">Open Sky AI Assistant</span>
+          <span className="sr-only">Open Fly AI Assistant</span>
           <svg viewBox="0 0 24 24" className="h-7 w-7 fill-current" aria-hidden="true">
             <path d="M12 2.5c-3.9 0-7 3.1-7 7v1.6C4.9 12.4 4 13.8 4 15.4V17c0 2.2 1.8 4 4 4h8c2.2 0 4-1.8 4-4v-1.6c0-1.6-.9-3-2.3-3.3V9.5c0-3.9-3.1-7-7-7zM8.5 9.5a1 1 0 110 2 1 1 0 010-2zm7 0a1 1 0 110 2 1 1 0 010-2z" />
             <path d="M9.7 16.1c.4-.6 1.1-1 1.8-1h1c.7 0 1.4.4 1.8 1l.3.5H9.4l.3-.5z" />
@@ -151,13 +198,13 @@ export default function ChatWidget() {
                 </svg>
               </div>
               <div>
-                <div className="text-sm font-semibold text-slate-900">Sky AI Assistant</div>
+                <div className="text-sm font-semibold text-slate-900">Fly AI Assistant</div>
                 <div className="text-xs text-slate-500">Quick help for search, booking, and support</div>
               </div>
             </div>
             <button
               type="button"
-              aria-label="Close Sky AI assistant"
+              aria-label="Close Fly AI assistant"
               onClick={() => setOpen(false)}
               className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
             >
@@ -194,12 +241,37 @@ export default function ChatWidget() {
                     ))}
                   </div>
                 ) : null}
+                {message.from === 'ai' && message.actions?.length ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {message.actions.map((action, index) => (
+                      <button
+                        key={`${action.type || 'action'}-${action.label || index}-${index}`}
+                        type="button"
+                        onClick={() => handleAction(action)}
+                        className="rounded-full bg-sky-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-sky-700"
+                      >
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                {message.from === 'ai' && message.cards?.length ? (
+                  <div className="mt-2 space-y-2">
+                    {message.cards.map((card, index) => (
+                      <div key={`card-${index}`} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+                        {card.title ? <div className="font-semibold text-slate-900">{card.title}</div> : null}
+                        {card.subtitle ? <div className="mt-1">{card.subtitle}</div> : null}
+                        {card.priceVnd ? <div className="mt-1 font-semibold text-sky-700">{Number(card.priceVnd).toLocaleString('vi-VN')}đ</div> : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ))}
 
             {loading ? (
               <div className="max-w-[84%] rounded-2xl rounded-bl-sm bg-white px-3 py-2 text-xs text-slate-500 shadow-sm">
-                Sky AI dang tra loi...
+                Fly AI dang tra loi...
               </div>
             ) : null}
           </div>

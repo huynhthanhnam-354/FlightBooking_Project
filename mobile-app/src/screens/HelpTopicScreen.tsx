@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,7 +19,11 @@ import { getHelpTopic, type HelpTopicId } from '../content/helpTopics';
 import AppIcon from '../components/AppIcon';
 import { checkInBookingApi, listMyBookingsApi, updateBookingBaggageApi, type BookingDto } from '../services/bookingApi';
 import { formatAuthError } from '../services/authApi';
-import { createSupportTicketApi } from '../services/supportTicketApi';
+import {
+  createSupportTicketApi,
+  listMySupportTicketsApi,
+  type SupportTicketDto,
+} from '../services/supportTicketApi';
 import { formatPrice } from '../utils/price';
 
 const BAGGAGE_PACKAGES = [
@@ -88,6 +92,11 @@ const HELP_EN = {
   sending_support: 'Sending request...', support_failed_title: 'Could not create support request',
   missing_message_title: 'Missing description', missing_message_msg: 'Please briefly describe the issue you need help with.',
   ticket_created_title: 'Support request created', ticket_code: 'Case code', issue_group: 'Group',
+  my_requests: 'My support requests', refresh: 'Refresh', no_support_requests: 'No support requests yet.',
+  your_message: 'Your message', admin_reply: 'Admin reply', waiting_admin_reply: 'Waiting for an admin reply.',
+  support_load_failed: 'Could not load your support requests.', updated: 'Updated',
+  ticket_status_open: 'Open', ticket_status_in_progress: 'In progress', ticket_status_resolved: 'Resolved', ticket_status_closed: 'Closed',
+  action_search_flights: 'Find a replacement flight', action_open_bookings: 'Open my bookings', action_open_baggage: 'Open baggage options',
   faq_payment_q: 'I paid but my ticket is still pending payment.', faq_payment_a: 'Please check again after a few minutes. If it still fails, send a request with PNR and payment method.',
   faq_change_q: 'Can I change the flight date after booking?', faq_change_a: 'Yes if the airline and fare rules allow it. Fees depend on fare conditions and price difference.',
   faq_baggage_q: 'Where can I buy baggage after booking?', faq_baggage_a: 'Go to Utilities > Baggage, choose a kg package, and apply it to an existing booking.',
@@ -135,6 +144,11 @@ const HELP_TEXT: Record<string, Partial<typeof HELP_EN>> = {
     sending_support: 'Đang gửi yêu cầu...', support_failed_title: 'Không tạo được yêu cầu hỗ trợ',
     missing_message_title: 'Thiếu nội dung', missing_message_msg: 'Vui lòng mô tả ngắn gọn vấn đề cần hỗ trợ.',
     ticket_created_title: 'Đã tạo yêu cầu hỗ trợ', ticket_code: 'Mã yêu cầu', issue_group: 'Nhóm',
+    my_requests: 'Yêu cầu của tôi', refresh: 'Tải lại', no_support_requests: 'Bạn chưa có yêu cầu hỗ trợ nào.',
+    your_message: 'Nội dung bạn gửi', admin_reply: 'Phản hồi của admin', waiting_admin_reply: 'Đang chờ admin phản hồi.',
+    support_load_failed: 'Không tải được danh sách yêu cầu hỗ trợ.', updated: 'Cập nhật',
+    ticket_status_open: 'Mới', ticket_status_in_progress: 'Đang xử lý', ticket_status_resolved: 'Đã xử lý', ticket_status_closed: 'Đã đóng',
+    action_search_flights: 'Tìm chuyến bay thay thế', action_open_bookings: 'Mở booking của tôi', action_open_baggage: 'Mở tiện ích hành lý',
     faq_payment_q: 'Tôi đã thanh toán nhưng vé vẫn chờ thanh toán?', faq_payment_a: 'Hãy kiểm tra lại sau vài phút. Nếu vẫn lỗi, gửi yêu cầu kèm PNR và phương thức thanh toán.',
     faq_change_q: 'Có thể đổi ngày bay sau khi đặt không?', faq_change_a: 'Có thể nếu hãng và hạng vé cho phép. Phí đổi phụ thuộc điều kiện vé và chênh lệch giá.',
     faq_baggage_q: 'Mua thêm hành lý sau khi đặt vé ở đâu?', faq_baggage_a: 'Vào Tiện ích > Hành lý, chọn gói kg và áp dụng vào booking đã đặt.',
@@ -374,7 +388,7 @@ function BaggageFeature({ navigation }: { navigation: any }) {
             <View key={booking.id} style={styles.bookingPick}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.bookingRoute}>
-                  {booking.flight.originCode} {'->'} {booking.flight.destinationCode}
+                  {booking.flight.departureAirport} {'->'} {booking.flight.arrivalAirport}
                 </Text>
                 <Text style={styles.bookingMeta}>
                   {booking.pnr} - {h('currently_has')} {booking.baggageKg ?? 0} kg
@@ -528,7 +542,7 @@ function CheckinFeature({ navigation }: { navigation: any }) {
             <TouchableOpacity key={booking.id} style={styles.bookingPick} onPress={() => fillBooking(booking)}>
               <View>
                 <Text style={styles.bookingRoute}>
-                  {booking.flight.originCode} {'->'} {booking.flight.destinationCode}
+                  {booking.flight.departureAirport} {'->'} {booking.flight.arrivalAirport}
                 </Text>
                 <Text style={styles.bookingMeta}>
                   {booking.pnr} - {booking.passengerName}
@@ -576,6 +590,21 @@ function SupportFeature({ navigation }: { navigation: any }) {
   const [openFaq, setOpenFaq] = useState<string | null>(SUPPORT_FAQ[0].qKey);
   const [submitting, setSubmitting] = useState(false);
   const [openingExternal, setOpeningExternal] = useState(false);
+  const [tickets, setTickets] = useState<SupportTicketDto[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [ticketsError, setTicketsError] = useState<string | null>(null);
+
+  const loadTickets = useCallback(async () => {
+    setTicketsLoading(true);
+    setTicketsError(null);
+    try {
+      setTickets(await listMySupportTicketsApi());
+    } catch (e) {
+      setTicketsError(formatAuthError(e));
+    } finally {
+      setTicketsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -594,6 +623,36 @@ function SupportFeature({ navigation }: { navigation: any }) {
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    void loadTickets();
+  }, [loadTickets]);
+
+  const ticketStatusLabel = (status: SupportTicketDto['status']) => {
+    const keys: Record<SupportTicketDto['status'], keyof typeof HELP_EN> = {
+      OPEN: 'ticket_status_open',
+      IN_PROGRESS: 'ticket_status_in_progress',
+      RESOLVED: 'ticket_status_resolved',
+      CLOSED: 'ticket_status_closed',
+    };
+    return h(keys[status]);
+  };
+
+  const openCustomerAction = (action: NonNullable<NonNullable<SupportTicketDto['workflow']>['customerAction']>) => {
+    if (action === 'SEARCH_FLIGHTS') {
+      navigation.navigate('Main', { screen: 'Flights' });
+    } else if (action === 'OPEN_BOOKINGS') {
+      navigation.navigate('Main', { screen: 'Profile', params: { initialTab: 'bookings' } });
+    } else if (action === 'OPEN_BAGGAGE') {
+      navigation.navigate('HelpTopic', { topic: 'baggage' });
+    }
+  };
+
+  const customerActionLabel = (action: NonNullable<NonNullable<SupportTicketDto['workflow']>['customerAction']>) => {
+    if (action === 'SEARCH_FLIGHTS') return h('action_search_flights');
+    if (action === 'OPEN_BAGGAGE') return h('action_open_baggage');
+    return h('action_open_bookings');
+  };
 
   const openExternalUrl = async (url: string, fallbackTitle: string, fallbackMessage: string) => {
     if (openingExternal) return;
@@ -643,6 +702,7 @@ function SupportFeature({ navigation }: { navigation: any }) {
         `${h('ticket_code')}: ${ticket.code}\n${h('issue_group')}: ${h((SUPPORT_CATEGORIES.find((c) => c.id === selectedCategory)?.labelKey ?? 'support_cat_change') as keyof typeof HELP_EN)}\nPNR: ${ticket.pnr || '-'}`,
       );
       setMessage('');
+      await loadTickets();
     } catch (e) {
       Alert.alert(h('support_failed_title'), formatAuthError(e));
     } finally {
@@ -678,6 +738,63 @@ function SupportFeature({ navigation }: { navigation: any }) {
       </View>
 
       <View style={styles.card}>
+        <View style={styles.supportHistoryHeader}>
+          <Text style={[styles.cardTitle, { marginBottom: 0 }]}>{h('my_requests')}</Text>
+          <TouchableOpacity style={styles.refreshTicketsBtn} onPress={() => void loadTickets()} disabled={ticketsLoading}>
+            {ticketsLoading ? <ActivityIndicator size="small" color="#0064D2" /> : <Text style={styles.refreshTicketsText}>{h('refresh')}</Text>}
+          </TouchableOpacity>
+        </View>
+
+        {ticketsLoading && tickets.length === 0 ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color="#0064D2" />
+            <Text style={styles.mutedText}>{h('my_requests')}...</Text>
+          </View>
+        ) : ticketsError ? (
+          <View>
+            <Text style={styles.ticketError}>{h('support_load_failed')}</Text>
+            <Text style={styles.mutedText}>{ticketsError}</Text>
+          </View>
+        ) : tickets.length === 0 ? (
+          <Text style={styles.mutedText}>{h('no_support_requests')}</Text>
+        ) : (
+          tickets.map((ticket) => (
+            <View key={ticket.id} style={styles.supportTicketCard}>
+              <View style={styles.supportTicketTopRow}>
+                <Text style={styles.supportTicketCode}>#{ticket.code}</Text>
+                <View style={[styles.ticketStatusBadge, ticket.status === 'RESOLVED' && styles.ticketStatusResolved]}>
+                  <Text style={styles.ticketStatusText}>{ticketStatusLabel(ticket.status)}</Text>
+                </View>
+              </View>
+              <Text style={styles.supportTicketMeta}>
+                {ticket.category.toUpperCase()} · PNR: {ticket.pnr || '-'}
+              </Text>
+              <Text style={styles.supportTicketUpdated}>
+                {h('updated')}: {new Date(ticket.updatedAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
+              </Text>
+
+              <Text style={styles.ticketSectionLabel}>{h('your_message')}</Text>
+              <Text style={styles.ticketMessage}>{ticket.message}</Text>
+
+              <View style={[styles.adminReplyBox, !ticket.adminReply && styles.adminReplyPending]}>
+                <Text style={styles.adminReplyLabel}>{h('admin_reply')}</Text>
+                <Text style={styles.adminReplyText}>{ticket.adminReply?.trim() || h('waiting_admin_reply')}</Text>
+                {ticket.adminReply && ticket.workflow?.customerAction ? (
+                  <TouchableOpacity
+                    style={styles.ticketActionBtn}
+                    onPress={() => openCustomerAction(ticket.workflow!.customerAction!)}
+                  >
+                    <Text style={styles.ticketActionText}>{customerActionLabel(ticket.workflow.customerAction)}</Text>
+                    <AppIcon name="chevronRight" size={16} color="#fff" />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+
+      <View style={styles.card}>
         <Text style={styles.cardTitle}>{h('choose_issue')}</Text>
         <View style={styles.supportCategoryGrid}>
           {SUPPORT_CATEGORIES.map((category) => (
@@ -709,7 +826,7 @@ function SupportFeature({ navigation }: { navigation: any }) {
             <TouchableOpacity key={booking.id} style={styles.bookingPick} onPress={() => setPnr(booking.pnr)}>
               <View>
                 <Text style={styles.bookingRoute}>
-                  {booking.flight.originCode} {'->'} {booking.flight.destinationCode}
+                  {booking.flight.departureAirport} {'->'} {booking.flight.arrivalAirport}
                 </Text>
                 <Text style={styles.bookingMeta}>
                   {booking.pnr} - {booking.status}
@@ -776,13 +893,13 @@ function BoardingPass({ booking, h }: { booking: BookingDto; h: (key: keyof type
   return (
     <View style={styles.boardingPass}>
       <View style={styles.boardingHeader}>
-        <Text style={styles.boardingAirline}>{flight.airlineName}</Text>
+        <Text style={styles.boardingAirline}>{flight.airline}</Text>
         <Text style={styles.boardingStatus}>{h('checked_in')}</Text>
       </View>
       <View style={styles.boardingRoute}>
-        <Text style={styles.airportCode}>{flight.originCode}</Text>
+        <Text style={styles.airportCode}>{flight.departureAirport}</Text>
         <AppIcon name="airplane" size={20} color="#fff" />
-        <Text style={styles.airportCode}>{flight.destinationCode}</Text>
+        <Text style={styles.airportCode}>{flight.arrivalAirport}</Text>
       </View>
       <View style={styles.boardingInfoGrid}>
         <BoardingInfo label="PNR" value={booking.pnr} />
@@ -934,6 +1051,48 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   quickSupportText: { color: '#1A1A2E', fontWeight: '800', fontSize: 12 },
+  supportHistoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  refreshTicketsBtn: { minWidth: 58, minHeight: 28, alignItems: 'center', justifyContent: 'center' },
+  refreshTicketsText: { color: '#0064D2', fontSize: 12, fontWeight: '800' },
+  ticketError: { color: '#DC2626', fontSize: 13, fontWeight: '700', marginBottom: 4 },
+  supportTicketCard: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    backgroundColor: '#F9FAFB',
+  },
+  supportTicketTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  supportTicketCode: { flex: 1, color: '#0064D2', fontSize: 14, fontWeight: '900' },
+  ticketStatusBadge: { backgroundColor: '#FEF3C7', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
+  ticketStatusResolved: { backgroundColor: '#D1FAE5' },
+  ticketStatusText: { color: '#374151', fontSize: 10, fontWeight: '900' },
+  supportTicketMeta: { color: '#374151', fontSize: 12, fontWeight: '700', marginTop: 8 },
+  supportTicketUpdated: { color: '#9CA3AF', fontSize: 11, marginTop: 3 },
+  ticketSectionLabel: { color: '#6B7280', fontSize: 11, fontWeight: '800', marginTop: 12, marginBottom: 4 },
+  ticketMessage: { color: '#1A1A2E', fontSize: 13, lineHeight: 19 },
+  adminReplyBox: { backgroundColor: '#ECFDF5', borderRadius: 10, padding: 11, marginTop: 12 },
+  adminReplyPending: { backgroundColor: '#F3F4F6' },
+  adminReplyLabel: { color: '#047857', fontSize: 11, fontWeight: '900', marginBottom: 5 },
+  adminReplyText: { color: '#1F2937', fontSize: 13, lineHeight: 19 },
+  ticketActionBtn: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#0064D2',
+    borderRadius: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginTop: 10,
+  },
+  ticketActionText: { color: '#fff', fontSize: 12, fontWeight: '900' },
   supportCategoryGrid: { gap: 8 },
   supportCategory: {
     borderWidth: 1.5,

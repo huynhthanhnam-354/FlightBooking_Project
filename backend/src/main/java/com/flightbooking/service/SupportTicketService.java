@@ -2,6 +2,7 @@ package com.flightbooking.service;
 
 import com.flightbooking.model.AppUser;
 import com.flightbooking.model.Booking;
+import com.flightbooking.model.BookingStatus;
 import com.flightbooking.model.SupportTicket;
 import com.flightbooking.model.SupportTicketStatus;
 import com.flightbooking.repository.AppUserRepository;
@@ -12,6 +13,7 @@ import com.flightbooking.web.dto.CreateSupportTicketRequest;
 import com.flightbooking.web.dto.SupportTicketResponse;
 import com.flightbooking.web.dto.SupportTicketSummaryResponse;
 import com.flightbooking.web.dto.SupportTicketUpdateRequest;
+import com.flightbooking.web.dto.SupportWorkflowResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -122,8 +124,138 @@ public class SupportTicketService {
                 ticket.getStatus(),
                 VietnamTime.toInstant(ticket.getCreatedAt()),
                 VietnamTime.toInstant(ticket.getUpdatedAt()),
-                ticket.getResolvedAt() == null ? null : VietnamTime.toInstant(ticket.getResolvedAt())
+                ticket.getResolvedAt() == null ? null : VietnamTime.toInstant(ticket.getResolvedAt()),
+                workflowFor(ticket)
         );
+    }
+
+    private SupportWorkflowResponse workflowFor(SupportTicket ticket) {
+        Booking booking = ticket.getBooking();
+        String category = ticket.getCategory() == null ? "" : ticket.getCategory().toLowerCase(Locale.ROOT);
+        if (booking == null) {
+            return workflow(
+                    "MISSING_BOOKING",
+                    null,
+                    "Không tìm thấy booking thuộc tài khoản từ PNR đã cung cấp.",
+                    List.of("Yêu cầu khách kiểm tra lại PNR.", "Gắn đúng booking rồi đánh giá lại yêu cầu."),
+                    null
+            );
+        }
+
+        BookingStatus status = booking.getStatus();
+        boolean moreThan24Hours = booking.getFlight() != null
+                && booking.getFlight().getDepartureAt() != null
+                && booking.getFlight().getDepartureAt().isAfter(VietnamTime.nowLocal().plusHours(24));
+
+        return switch (category) {
+            case "change" -> {
+                if (status == BookingStatus.CONFIRMED && moreThan24Hours) {
+                    yield workflow(
+                            "ELIGIBLE", status.name(),
+                            "Booking đã thanh toán và chuyến bay còn trên 24 giờ.",
+                            List.of("Khách chọn chuyến bay thay thế.", "Admin kiểm tra chỗ và chênh lệch giá.", "Xác nhận thay đổi sau khi khách đồng ý chi phí."),
+                            "SEARCH_FLIGHTS"
+                    );
+                }
+                yield workflow(
+                        "INELIGIBLE", status.name(),
+                        moreThan24Hours
+                                ? "Chỉ booking đã thanh toán mới đủ điều kiện yêu cầu đổi lịch."
+                                : "Chuyến bay còn không quá 24 giờ nên không đủ điều kiện đổi trực tuyến.",
+                        List.of("Thông báo lý do cho khách.", "Khách có thể liên hệ hotline nếu cần xem xét ngoại lệ."),
+                        null
+                );
+            }
+            case "refund" -> {
+                if (status == BookingStatus.PENDING_PAYMENT) {
+                    yield workflow(
+                            "ELIGIBLE", status.name(),
+                            "Booking chưa thanh toán nên khách có thể hủy trực tiếp.",
+                            List.of("Mở lịch sử booking.", "Chọn Hủy vé và xác nhận."),
+                            "OPEN_BOOKINGS"
+                    );
+                }
+                if (status == BookingStatus.CONFIRMED && moreThan24Hours) {
+                    yield workflow(
+                            "MANUAL_REVIEW", status.name(),
+                            "Booking đã thanh toán; cần admin kiểm tra điều kiện giá vé và phí hoàn.",
+                            List.of("Kiểm tra điều kiện hạng vé.", "Tính phí hoàn/hủy.", "Gửi số tiền hoàn dự kiến để khách xác nhận."),
+                            null
+                    );
+                }
+                yield workflow(
+                        "INELIGIBLE", status.name(),
+                        "Trạng thái booking hoặc thời gian khởi hành không cho phép tự hoàn/hủy.",
+                        List.of("Thông báo lý do cho khách.", "Chuyển hotline nếu cần xem xét ngoại lệ."),
+                        null
+                );
+            }
+            case "payment" -> {
+                if (status == BookingStatus.PENDING_PAYMENT) {
+                    yield workflow(
+                            "ELIGIBLE", status.name(),
+                            "Booking đang chờ thanh toán.",
+                            List.of("Mở lịch sử booking.", "Chọn Thanh toán và hoàn tất giao dịch.", "Tải lại nếu trạng thái chưa cập nhật."),
+                            "OPEN_BOOKINGS"
+                    );
+                }
+                yield workflow(
+                        "INELIGIBLE", status.name(),
+                        status == BookingStatus.CONFIRMED
+                                ? "Booking đã được thanh toán thành công."
+                                : "Booking không còn ở trạng thái chờ thanh toán.",
+                        List.of("Kiểm tra trạng thái booking hiển thị cho khách.", "Đối soát thủ công nếu khách báo đã bị trừ tiền."),
+                        null
+                );
+            }
+            case "baggage" -> {
+                if (status == BookingStatus.PENDING_PAYMENT) {
+                    yield workflow(
+                            "ELIGIBLE", status.name(),
+                            "Booking chưa thanh toán nên còn có thể cập nhật hành lý trong app.",
+                            List.of("Mở Tiện ích Hành lý.", "Chọn gói kg và booking.", "Xác nhận trước khi thanh toán."),
+                            "OPEN_BAGGAGE"
+                    );
+                }
+                if (status == BookingStatus.CONFIRMED && moreThan24Hours) {
+                    yield workflow(
+                            "MANUAL_REVIEW", status.name(),
+                            "Booking đã thanh toán; admin cần kiểm tra khả năng mua thêm với hãng.",
+                            List.of("Kiểm tra hạn mức hành lý hiện tại.", "Báo phí mua thêm.", "Cập nhật booking sau khi khách xác nhận."),
+                            null
+                    );
+                }
+                yield workflow(
+                        "INELIGIBLE", status.name(),
+                        "Trạng thái booking hoặc thời gian khởi hành không cho phép mua thêm hành lý trực tuyến.",
+                        List.of("Thông báo lý do cho khách.", "Hướng dẫn hỏi tại quầy nếu chuyến bay sắp khởi hành."),
+                        null
+                );
+            }
+            default -> workflow(
+                    "MANUAL_REVIEW", status.name(),
+                    "Nhóm hỗ trợ chưa có quy tắc tự động.",
+                    List.of("Admin đọc nội dung và xử lý thủ công."),
+                    null
+            );
+        };
+    }
+
+    private static SupportWorkflowResponse workflow(
+            String decision,
+            String bookingStatus,
+            String reason,
+            List<String> steps,
+            String customerAction
+    ) {
+        String prefix = switch (decision) {
+            case "ELIGIBLE" -> "Yêu cầu của bạn đủ điều kiện xử lý. ";
+            case "INELIGIBLE" -> "Yêu cầu hiện chưa đủ điều kiện xử lý. ";
+            case "MISSING_BOOKING" -> "Chúng tôi chưa xác định được booking liên quan. ";
+            default -> "Yêu cầu cần được kiểm tra thủ công. ";
+        };
+        String suggestedReply = prefix + reason + "\n\nCác bước tiếp theo:\n- " + String.join("\n- ", steps);
+        return new SupportWorkflowResponse(decision, bookingStatus, reason, steps, customerAction, suggestedReply);
     }
 
     private static String clean(String value) {

@@ -52,7 +52,7 @@ export function mapBookingDtoToProfileRow(b: BookingDto): ProfileBookingRow {
   return {
     rawId: b.id,
     id: `B-${b.id}`,
-    route: `${f.originCode} → ${f.destinationCode}`,
+    route: `${f.departureAirport} → ${f.arrivalAirport}`,
     date: formatDdMmYyyy(f.departureAt),
     status: b.status,
     statusKey,
@@ -64,13 +64,13 @@ export function mapBookingDtoToProfileRow(b: BookingDto): ProfileBookingRow {
       seat: b.seatNumber,
       gate: '—',
       boardingTime: depHm,
-      from: f.originCode,
-      to: f.destinationCode,
+      from: f.departureAirport,
+      to: f.arrivalAirport,
       depart: f.departureAt.replace('T', ' ').slice(0, 16),
       arrive: f.arrivalAt.replace('T', ' ').slice(0, 16),
       flightNumber: f.flightNumber,
-      airline: f.airlineName,
-      qrValue: `${b.pnr}|${f.flightNumber}|${f.originCode}-${f.destinationCode}`,
+      airline: f.airline,
+      qrValue: `${b.pnr}|${f.flightNumber}|${f.departureAirport}-${f.arrivalAirport}`,
     },
   };
 }

@@ -16,6 +16,14 @@ export type SupportTicketDto = {
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string | null;
+  workflow?: {
+    decision: 'ELIGIBLE' | 'INELIGIBLE' | 'MANUAL_REVIEW' | 'MISSING_BOOKING';
+    bookingStatus?: string | null;
+    reason: string;
+    steps: string[];
+    customerAction?: 'SEARCH_FLIGHTS' | 'OPEN_BOOKINGS' | 'OPEN_BAGGAGE' | null;
+    suggestedReply: string;
+  } | null;
 };
 
 async function authHeaders() {
@@ -37,4 +45,12 @@ export async function createSupportTicketApi(body: {
     timeout: 25000,
   });
   return data;
+}
+
+export async function listMySupportTicketsApi(): Promise<SupportTicketDto[]> {
+  const { data } = await axios.get<SupportTicketDto[]>(`${API_BASE_URL}/api/support-tickets/me`, {
+    headers: await authHeaders(),
+    timeout: 25000,
+  });
+  return Array.isArray(data) ? data : [];
 }

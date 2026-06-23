@@ -108,7 +108,11 @@ public class ChatAiService {
 
             return ChatResponse.builder()
                     .reply(reply)
+                    .intent(stringValue(response.get("intent")))
+                    .confidence(parseDouble(response.get("confidence")))
                     .suggestions(parseSuggestions(response.get("suggestions")))
+                    .actions(parseActions(response.get("actions")))
+                    .cards(parseCards(response.get("cards")))
                     .build();
         } catch (Exception e) {
             return null;
@@ -359,5 +363,68 @@ public class ChatAiService {
                 })
                 .filter(s -> !s.label().isBlank())
                 .toList();
+    }
+
+    private static List<ChatResponse.Action> parseActions(Object raw) {
+        if (!(raw instanceof List<?> list)) {
+            return List.of();
+        }
+
+        return list.stream()
+                .filter(Map.class::isInstance)
+                .map(item -> {
+                    Map<?, ?> map = (Map<?, ?>) item;
+                    String type = stringValue(map.get("type"));
+                    String label = stringValue(map.get("label"));
+                    String route = stringValue(map.get("route"));
+                    Map<String, Object> payload = parseObjectMap(map.get("payload"));
+                    return new ChatResponse.Action(type, label, route, payload);
+                })
+                .filter(action -> !action.type().isBlank() || !action.route().isBlank() || !action.label().isBlank())
+                .toList();
+    }
+
+    private static List<Map<String, Object>> parseCards(Object raw) {
+        if (!(raw instanceof List<?> list)) {
+            return List.of();
+        }
+
+        return list.stream()
+                .filter(Map.class::isInstance)
+                .map(item -> parseObjectMap(item))
+                .filter(map -> !map.isEmpty())
+                .toList();
+    }
+
+    private static Map<String, Object> parseObjectMap(Object raw) {
+        if (!(raw instanceof Map<?, ?> map)) {
+            return Map.of();
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        map.forEach((key, value) -> {
+            if (key != null) {
+                result.put(String.valueOf(key), value);
+            }
+        });
+        return result;
+    }
+
+    private static String stringValue(Object raw) {
+        return raw == null ? "" : String.valueOf(raw).trim();
+    }
+
+    private static Double parseDouble(Object raw) {
+        if (raw instanceof Number number) {
+            return number.doubleValue();
+        }
+        if (raw == null) {
+            return null;
+        }
+        try {
+            return Double.parseDouble(String.valueOf(raw));
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }
