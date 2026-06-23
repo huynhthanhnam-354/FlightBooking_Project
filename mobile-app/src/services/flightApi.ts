@@ -6,24 +6,16 @@ export type FlightDto = {
   id: number;
   flightNumber: string;
   airline: string;
-<<<<<<< HEAD
-  airlineName?: string; // alias for backward compatibility
-  departureAirport: string;
-  originCode?: string; // alias for backward compatibility
-  arrivalAirport: string;
-  destinationCode?: string; // alias for backward compatibility
-=======
-  departureAirport: string;
-  arrivalAirport: string;
->>>>>>> f6f583f0eb2d3901f690fc975412e01d314bdaf5
+  airlineName?: string;      // alias for backward compatibility
+  departureAirport: string;  // Giữ lại 1 dòng duy nhất
+  originCode?: string;       // alias for backward compatibility
+  arrivalAirport: string;    // Giữ lại 1 dòng duy nhất
+  destinationCode?: string;  // alias for backward compatibility
   departureAt: string;
   arrivalAt: string;
   durationMinutes: number;
   price: number;
-<<<<<<< HEAD
-  basePriceVnd?: number; // alias for backward compatibility
-=======
->>>>>>> f6f583f0eb2d3901f690fc975412e01d314bdaf5
+  basePriceVnd?: number;     // alias for backward compatibility
   premiumCabin: boolean;
 };
 
@@ -78,8 +70,7 @@ export function mapFlightDtoToCatalogFlight(f: FlightDto): CatalogFlight {
 
 export async function searchFlightsApi(origin: string, destination: string, departureDate?: string): Promise<CatalogFlight[]> {
   const isoDate = departureDate ? ddMmYyyyToIsoDate(departureDate) : null;
-<<<<<<< HEAD
-  
+
   let start = null;
   let end = null;
   if (isoDate) {
@@ -87,23 +78,18 @@ export async function searchFlightsApi(origin: string, destination: string, depa
     end = `${isoDate}T23:59:59`;
   }
 
-=======
->>>>>>> f6f583f0eb2d3901f690fc975412e01d314bdaf5
   const { data } = await axios.get<FlightDto[]>(`${API_BASE_URL}/api/v1/flights/search`, {
     params: {
       departureAirport: origin.trim().toUpperCase(),
       arrivalAirport: destination.trim().toUpperCase(),
-<<<<<<< HEAD
       ...(start ? { start } : {}),
-      ...(end ? { end } : {}),
-=======
+      ...((end ? { end } : {})),
       ...(isoDate
         ? {
             start: `${isoDate}T00:00:00`,
             end: `${isoDate}T23:59:59`,
           }
         : {}),
->>>>>>> f6f583f0eb2d3901f690fc975412e01d314bdaf5
     },
     timeout: 25000,
   });
