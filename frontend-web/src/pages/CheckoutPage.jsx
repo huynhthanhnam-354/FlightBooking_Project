@@ -28,12 +28,14 @@ export default function CheckoutPage() {
   const bookingState = location.state?.booking || null
   const flight = bookingState?.flight || { id: 1, price: 1200000, originCode: 'HAN', destinationCode: 'SGN', airline: 'Vietnam Airlines' }
   const passengers = bookingState?.passengers || 1
+  const rawUser = localStorage.getItem('fb_user')
+  const currentUser = rawUser ? JSON.parse(rawUser) : null
 
   // --- LOCAL STATE ---
   const [formData, setFormData] = useState({
     name: bookingState?.passenger?.fullName || '',
     phone: bookingState?.contact?.phone || '',
-    email: bookingState?.contact?.email || '',
+    email: currentUser?.email || bookingState?.contact?.email || '',
   })
   
   const [isLoading, setIsLoading] = useState(false)
@@ -87,7 +89,7 @@ export default function CheckoutPage() {
         flightId: flight.id,
         seatNumber: selectedSeats.join(', ') || 'Auto',
         passengerName: formData.name.toUpperCase(),
-        passengerEmail: formData.email,
+        passengerEmail: currentUser?.email || formData.email,
         passengerPhone: formData.phone,
         passengerCount: passengers,
         totalPriceVnd: total,
@@ -247,7 +249,8 @@ export default function CheckoutPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email nhận vé</label>
-                <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 border-none font-bold focus:ring-1 focus:ring-sky-500" placeholder="customer@email.com" />
+                <input type="email" value={formData.email} disabled className="w-full p-4 rounded-xl bg-slate-100 border-none font-bold text-slate-500 cursor-not-allowed" placeholder="customer@email.com" />
+                <p className="mt-2 text-xs font-medium text-slate-400">Email nhận vé được lấy theo tài khoản đang đăng nhập.</p>
               </div>
             </div>
           </section>

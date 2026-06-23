@@ -17,6 +17,7 @@ import com.flightbooking.web.dto.FlightResponse;
 import com.flightbooking.web.dto.RoomTypeResponse;
 import com.flightbooking.web.dto.ComboCheckoutRequest;
 import com.flightbooking.web.dto.ComboCheckoutResponse;
+import com.flightbooking.validation.InputValidator;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -249,6 +250,13 @@ public class ComboService {
 
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
+        String passengerName = InputValidator.requirePersonName(request.passengerName());
+        String passengerEmail = InputValidator.requireEmail(request.passengerEmail());
+        if (!passengerEmail.equalsIgnoreCase(user.getEmail())) {
+            throw new IllegalArgumentException("Email nhận vé phải trùng với email tài khoản đang đăng nhập.");
+        }
+        String passengerPhone = InputValidator.optionalPhone(request.passengerPhone());
+        String passengerIdCard = InputValidator.optionalIdCard(request.passengerIdCard());
 
         ComboPriceRequest priceRequest = new ComboPriceRequest(request.comboId(), request.selectedFlightId(), request.selectedRoomTypeId());
         ComboPriceResponse priceResponse = calculatePrice(priceRequest);
@@ -266,10 +274,10 @@ public class ComboService {
                 .user(user)
                 .flight(flight)
                 .seatNumber("Auto-assigned")
-                .passengerName(request.passengerName())
-                .passengerEmail(request.passengerEmail())
-                .passengerPhone(request.passengerPhone())
-                .passengerIdCard(request.passengerIdCard())
+                .passengerName(passengerName)
+                .passengerEmail(passengerEmail)
+                .passengerPhone(passengerPhone)
+                .passengerIdCard(passengerIdCard)
                 .passengerCount(passengerCount)
                 .tripType("ROUND_TRIP")
                 .paymentMethod("VNPAY")
@@ -287,10 +295,10 @@ public class ComboService {
             booking.addPassenger(BookingPassenger.builder()
                     .flight(flight)
                     .seatNumber("C-" + (i + 1))
-                    .fullName(request.passengerName())
-                    .email(request.passengerEmail())
-                    .phone(request.passengerPhone())
-                    .idCard(request.passengerIdCard())
+                    .fullName(passengerName)
+                    .email(passengerEmail)
+                    .phone(passengerPhone)
+                    .idCard(passengerIdCard)
                     .build());
         }
 

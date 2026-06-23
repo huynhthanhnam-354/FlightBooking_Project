@@ -31,6 +31,7 @@ function AppContent() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/booking" element={<SearchPage />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/booking/seat" element={<BookingSeat />} />
           <Route path="/booking/passenger" element={<PassengerForm />} />
           <Route path="/booking/checkout" element={<CheckoutPage />} />

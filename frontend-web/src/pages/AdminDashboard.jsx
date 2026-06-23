@@ -36,6 +36,7 @@ import { toast } from 'react-toastify';
  
 const money = (value) => `${Number(value || 0).toLocaleString('vi-VN')} VND`;
 const dateText = (value) => (value ? new Date(value).toLocaleString('vi-VN') : '-');
+const paidRevenueStatuses = new Set(['CONFIRMED', 'CHECKED_IN', 'COMPLETED']);
 
 /**
  * 1. Bookings Management Component (Updated for Real Data)
@@ -109,7 +110,7 @@ function StatCard({ label, value, icon: Icon, tone }) {
 function buildDailyRevenue(bookings) {
   const byDate = new Map();
   bookings
-    .filter((item) => item.status !== 'CANCELLED')
+    .filter((item) => paidRevenueStatuses.has(item.status))
     .forEach((item) => {
       const key = item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : 'Không rõ';
       byDate.set(key, (byDate.get(key) || 0) + Number(item.totalPriceVnd || 0));
@@ -228,7 +229,7 @@ function AnalyticsPanel({ bookings, summary }) {
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-base font-black text-slate-950">Trạng thái đặt chỗ</h2>
         <div className="mt-5 space-y-3">
-          {['PENDING_PAYMENT', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'CANCELLED'].map((status) => (
+          {['PENDING_PAYMENT', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'REFUND_PENDING', 'CANCELLED', 'EXPIRED'].map((status) => (
             <div key={status} className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">
               <StatusBadge status={status} />
               <span className="font-black text-slate-900">{byStatus[status] || 0}</span>

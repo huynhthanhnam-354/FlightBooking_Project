@@ -53,6 +53,11 @@ import javax.crypto.spec.SecretKeySpec;
 public class BookingService {
 
     private static final Logger log = LoggerFactory.getLogger(BookingService.class);
+    private static final List<BookingStatus> PAID_REVENUE_STATUSES = List.of(
+            BookingStatus.CONFIRMED,
+            BookingStatus.CHECKED_IN,
+            BookingStatus.COMPLETED
+    );
 
     private final BookingRepository bookingRepository;
     private final AppUserRepository appUserRepository;
@@ -120,6 +125,12 @@ public class BookingService {
         String passengerEmail = request.passengerEmail() == null || request.passengerEmail().isBlank()
                 ? null
                 : InputValidator.requireEmail(request.passengerEmail());
+        if (passengerEmail == null) {
+            passengerEmail = user.getEmail();
+        }
+        if (!passengerEmail.equalsIgnoreCase(user.getEmail())) {
+            throw new IllegalArgumentException("Email nhận vé phải trùng với email tài khoản đang đăng nhập.");
+        }
         String passengerPhone = InputValidator.optionalPhone(request.passengerPhone());
         String passengerIdCard = InputValidator.optionalIdCard(request.passengerIdCard());
         Set<String> occupied = occupiedSeatsForFlight(flight);
@@ -176,8 +187,7 @@ public class BookingService {
     public List<BookingResponse> listMine(String userEmail) {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
                 .orElseThrow(() -> new UsernameNotFoundException(userEmail));
-        return bookingRepository.findByUserOrderByCreatedAtDesc(user).stream()
-                .filter(b -> b.getComboId() != null || "COMBO".equalsIgnoreCase(b.getSourceChannel()) || b.getComboId() == null)
+        return bookingRepository.findMineOrderByCreatedAtDesc(user, user.getEmail()).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -205,17 +215,19 @@ public class BookingService {
         long checkedIn = bookingRepository.countByStatus(BookingStatus.CHECKED_IN);
         long completed = bookingRepository.countByStatus(BookingStatus.COMPLETED);
         long cancelled = bookingRepository.countByStatus(BookingStatus.CANCELLED);
+        long expired = bookingRepository.countByStatus(BookingStatus.EXPIRED);
+        long refundPending = bookingRepository.countByStatus(BookingStatus.REFUND_PENDING);
         List<Booking> bookings = bookingRepository.findAll();
         long onlineCheckedIn = bookings.stream()
                 .filter(b -> b.getStatus() == BookingStatus.CHECKED_IN)
                 .filter(b -> "ONLINE".equalsIgnoreCase(b.getCheckInChannel()))
                 .count();
         long revenue = bookings.stream()
-                .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
+                .filter(b -> PAID_REVENUE_STATUSES.contains(b.getStatus()))
                 .mapToLong(b -> b.getTotalPriceVnd() == null ? 0L : b.getTotalPriceVnd())
                 .sum();
         long baggageRevenue = bookings.stream()
-                .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
+                .filter(b -> PAID_REVENUE_STATUSES.contains(b.getStatus()))
                 .mapToLong(b -> b.getBaggageFeeVnd() == null ? 0L : b.getBaggageFeeVnd())
                 .sum();
         return new BookingAdminSummaryResponse(
@@ -233,7 +245,9 @@ public class BookingService {
                         "CONFIRMED", confirmed,
                         "CHECKED_IN", checkedIn,
                         "COMPLETED", completed,
-                        "CANCELLED", cancelled
+                        "CANCELLED", cancelled,
+                        "EXPIRED", expired,
+                        "REFUND_PENDING", refundPending
                 )
         );
     }

@@ -65,7 +65,7 @@ function QRCodeDisplay({ value, size = 150 }) {
 }
 
 // Ticket Card Component with QR Code
-function TicketCard({ booking, onShowQR }) {
+function TicketCard({ booking, onShowQR, onPayBooking, onCheckIn }) {
   const statusMap = {
     CONFIRMED: { label: 'Đã xác nhận', color: 'bg-emerald-50 text-emerald-700', icon: FaCheckCircle },
     PENDING_PAYMENT: { label: 'Chờ thanh toán', color: 'bg-amber-50 text-amber-700', icon: FaClock },
@@ -77,6 +77,8 @@ function TicketCard({ booking, onShowQR }) {
   const f = booking?.flight || booking?.flightResponse || {};
   const s = statusMap[booking?.status || ''] || { label: booking?.status || '', color: 'bg-slate-50 text-slate-700', icon: FaCircle }
   const StatusIcon = s.icon || FaCircle
+  const canViewEticket = ['CONFIRMED', 'CHECKED_IN', 'COMPLETED'].includes(booking?.status || '')
+  const canCheckIn = booking?.status === 'CONFIRMED'
 
   return (
     <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-all duration-300">
@@ -139,9 +141,30 @@ function TicketCard({ booking, onShowQR }) {
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tổng cộng:</span>
               <span className="text-2xl font-black text-sky-900">{booking?.totalPriceVnd?.toLocaleString('vi-VN') || 0}₫</span>
            </div>
+          {booking?.status === 'PENDING_PAYMENT' && (
+            <button
+              onClick={() => onPayBooking?.(booking)}
+              className="mr-3 px-7 py-4 bg-amber-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-amber-600 transition-all inline-flex items-center gap-3 shadow-lg shadow-amber-500/20 active:scale-95"
+            >
+              <FaCreditCard size={16} /> Thanh toán
+            </button>
+          )}
+          {!canViewEticket && (
+            <span className="mr-3 px-5 py-4 rounded-2xl bg-slate-100 text-slate-400 text-xs font-black uppercase tracking-widest">
+              Chưa có vé điện tử
+            </span>
+          )}
+          {canCheckIn && (
+            <button
+              onClick={() => onCheckIn?.(booking)}
+              className="mr-3 px-7 py-4 bg-sky-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-sky-700 transition-all inline-flex items-center gap-3 shadow-lg shadow-sky-600/20 active:scale-95"
+            >
+              <FaCheckCircle size={16} /> Check-in
+            </button>
+          )}
           <button
             onClick={() => onShowQR?.(booking)}
-            className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-sky-600 transition-all flex items-center gap-3 shadow-lg shadow-slate-900/10 active:scale-95"
+            className={`px-8 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-sky-600 transition-all items-center gap-3 shadow-lg shadow-slate-900/10 active:scale-95 ${canViewEticket ? 'flex' : 'hidden'}`}
           >
             <FaQrcode size={16} /> Vé điện tử
           </button>
@@ -152,7 +175,7 @@ function TicketCard({ booking, onShowQR }) {
 }
 
 // History Table Component
-function BookingHistory({ bookings, onCancelBooking }) {
+function BookingHistory({ bookings, onCancelBooking, onPayBooking, onCheckIn }) {
   return (
     <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
       <div className="p-10 border-b border-slate-100 flex items-center justify-between">
@@ -225,7 +248,21 @@ function BookingHistory({ bookings, onCancelBooking }) {
                     {booking?.totalPriceVnd?.toLocaleString('vi-VN') || 0}₫
                   </td>
                   <td className="px-10 py-8 text-center">
-                    {canCancel ? (
+                    {booking?.status === 'PENDING_PAYMENT' ? (
+                      <button
+                        onClick={() => onPayBooking?.(booking)}
+                        className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl text-xs font-bold transition active:scale-95 border border-amber-200"
+                      >
+                        Thanh toán
+                      </button>
+                    ) : booking?.status === 'CONFIRMED' ? (
+                      <button
+                        onClick={() => onCheckIn?.(booking)}
+                        className="px-4 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-xl text-xs font-bold transition active:scale-95 border border-sky-200"
+                      >
+                        Check-in
+                      </button>
+                    ) : canCancel ? (
                       <button
                         onClick={() => onCancelBooking?.(booking?.id)}
                         className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition active:scale-95 border border-rose-200"
@@ -270,6 +307,7 @@ function BookingHistory({ bookings, onCancelBooking }) {
 // QR Code Modal
 function QRModal({ booking, onClose }) {
   if (!booking) return null
+  if (!['CONFIRMED', 'CHECKED_IN', 'COMPLETED'].includes(booking?.status || '')) return null
   const f = booking?.flight || booking?.flightResponse || {};
   const qrValue = `FLIGHT:${booking?.pnr || ''}|${f?.flightNumber || ''}|${f?.departureAirport || ''}-${f?.arrivalAirport || ''}`
 
@@ -464,6 +502,30 @@ export default function UserDashboard() {
     else navigate('/login')
   }, [user, navigate])
 
+  const handlePayBooking = async (booking) => {
+    if (!booking?.id) return
+    try {
+      await bookingApi.paymentSuccess(booking.id)
+      setBookings(prev => (prev || []).map(b => b?.id === booking.id ? { ...b, status: 'CONFIRMED' } : b))
+      toast.success('Thanh toán thành công.')
+    } catch (err) {
+      console.error('Mock payment error:', err)
+      const msg = err.response?.data?.message || 'Không thể xác nhận thanh toán.'
+      toast.error(msg)
+    }
+  }
+
+  const handleCheckInBooking = (booking) => {
+    const fullName = booking?.passengerName || ''
+    const lastName = fullName.trim().split(/\s+/).filter(Boolean).pop() || ''
+    navigate('/check-in', {
+      state: {
+        pnr: booking?.pnr || '',
+        passengerLastName: lastName,
+      },
+    })
+  }
+
   const handleCancelBooking = async (bookingId) => {
     const reason = window.prompt("Vui lòng nhập lý do hủy chuyến bay (bắt buộc):");
     if (reason === null) {
@@ -506,9 +568,9 @@ export default function UserDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="flex">
+      <div className="flex items-start">
         {/* Sidebar */}
-        <aside className="w-72 bg-white shadow-2xl shadow-slate-200/50 min-h-screen fixed left-0 top-0 z-50 border-r border-slate-100">
+        <aside className="w-72 shrink-0 bg-white shadow-2xl shadow-slate-200/50 min-h-[calc(100vh-5rem)] sticky top-20 z-10 border-r border-slate-100">
           <div className="p-8">
             <div className="flex items-center gap-4 mb-12">
               <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg shadow-slate-900/20">
@@ -576,7 +638,7 @@ export default function UserDashboard() {
         </aside>
 
         {/* Main Content */}
-        <main className="ml-72 flex-1 p-16">
+        <main className="flex-1 min-w-0 p-16">
           {/* Header */}
           <div className="mb-16">
             <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase tracking-widest">
@@ -600,7 +662,7 @@ export default function UserDashboard() {
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {(upcomingBookings?.length || 0) > 0 ? (
                   upcomingBookings?.map(booking => (
-                    <TicketCard key={booking?.id} booking={booking} onShowQR={setQrBooking} />
+                    <TicketCard key={booking?.id} booking={booking} onShowQR={setQrBooking} onPayBooking={handlePayBooking} onCheckIn={handleCheckInBooking} />
                   ))
                 ) : (
                   <div className="bg-white rounded-[3rem] shadow-sm p-24 text-center border border-slate-100">
@@ -619,7 +681,7 @@ export default function UserDashboard() {
 
             {activeTab === 'history' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <BookingHistory bookings={bookings} onCancelBooking={handleCancelBooking} />
+                <BookingHistory bookings={bookings} onCancelBooking={handleCancelBooking} onPayBooking={handlePayBooking} onCheckIn={handleCheckInBooking} />
               </div>
             )}
 
