@@ -16,9 +16,18 @@ export type AgentSuggestion = {
   label: string;
 };
 
+export type AgentAction = {
+  type?: string;
+  label?: string;
+  route?: string;
+  payload?: Record<string, unknown>;
+};
+
 export type AgentResponse = {
   reply: string;
   suggestions: AgentSuggestion[];
+  actions: AgentAction[];
+  cards: Record<string, unknown>[];
 };
 
 export type AgentRequestContext = {
@@ -47,6 +56,20 @@ function normalizeSuggestion(item: unknown, index: number): AgentSuggestion {
   return { id: `suggestion-${index}`, label: String(item ?? '') };
 }
 
+function normalizeAction(item: unknown, index: number): AgentAction | null {
+  if (!item || typeof item !== 'object') return null;
+  const raw = item as Partial<AgentAction>;
+  const type = String(raw.type || '').trim();
+  const label = String(raw.label || raw.route || type || `Action ${index + 1}`).trim();
+  const route = String(raw.route || '').trim();
+  return {
+    type,
+    label,
+    route,
+    payload: raw.payload && typeof raw.payload === 'object' ? raw.payload : {},
+  };
+}
+
 export async function sendMessageToAgent(
   message: string,
   context?: AgentRequestContext,
@@ -68,6 +91,14 @@ export async function sendMessageToAgent(
       ? data.suggestions
           .map(normalizeSuggestion)
           .filter((item) => item.label.trim().length > 0)
+      : [],
+    actions: Array.isArray(data.actions)
+      ? data.actions
+          .map(normalizeAction)
+          .filter((item): item is AgentAction => !!item)
+      : [],
+    cards: Array.isArray(data.cards)
+      ? data.cards.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
       : [],
   };
 }
