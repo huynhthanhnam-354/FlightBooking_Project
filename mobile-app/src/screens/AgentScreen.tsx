@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AppIcon from '../components/AppIcon';
 import { AgentAction, AgentMessage, AgentSuggestion, sendMessageToAgent } from '../services/agent';
 import { useLanguage } from '../context/LanguageContext';
 import { useSearch } from '../context/SearchContext';
+import { AIRLINE_COLORS, flightCodePrefix, type CatalogFlight } from '../data/flightCatalog';
 import { AI_DESTINATION_FILTERS, AI_DESTINATIONS, AIDestination, AIDestinationFilter } from '../data/aiDestinations';
+import { AIRPORT_LIST, airportName, airportSearchBlob, normalizeAirportSearchText } from '../data/airports';
 import { searchFlightsApi } from '../services/flightApi';
 import { formatPrice } from '../utils/price';
 
@@ -25,9 +27,47 @@ type DestinationPrice = {
   duration?: string;
 };
 
+type AssistantFlightResults = {
+  from: string;
+  to: string;
+  date: string;
+  flights: CatalogFlight[];
+  usedFlexibleDate: boolean;
+};
+
 function originForDestination(currentOrigin: string, destination: string): string {
   if (currentOrigin !== destination) return currentOrigin;
   return currentOrigin === 'HAN' ? 'SGN' : 'HAN';
+}
+
+function hasWord(text: string, word: string): boolean {
+  return new RegExp(`(^|\\s)${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`).test(text);
+}
+
+function scoreAirportMatch(message: string, airportCode: string): number {
+  const normalized = normalizeAirportSearchText(message);
+  const upperMessage = message.toUpperCase();
+  const blob = airportSearchBlob(AIRPORT_LIST.find((a) => a.code === airportCode)!);
+  const tokens = Array.from(new Set(blob.split(/\s+/).filter((token) => token.length >= 4)));
+  let score = upperMessage.includes(airportCode) ? 5 : 0;
+  tokens.forEach((token) => {
+    if (hasWord(normalized, token)) score += 1;
+  });
+  return score;
+}
+
+function parseFlightIntent(message: string, fallbackOrigin: string): { from: string; to: string } | null {
+  const ranked = AIRPORT_LIST
+    .map((airport) => ({ code: airport.code, score: scoreAirportMatch(message, airport.code) }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (!ranked.length) return null;
+
+  const to = ranked[0].code;
+  const fromCandidate = ranked.find((item) => item.code !== to)?.code;
+  const from = fromCandidate ?? originForDestination(fallbackOrigin, to);
+  return { from, to };
 }
 
 export default function AgentScreen() {
@@ -42,12 +82,30 @@ export default function AgentScreen() {
   const [activeDestinationFilter, setActiveDestinationFilter] = useState<AIDestinationFilter>('season');
   const [destinationPrices, setDestinationPrices] = useState<Record<string, DestinationPrice>>({});
   const [pricesLoading, setPricesLoading] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
+  const [assistantFlights, setAssistantFlights] = useState<AssistantFlightResults | null>(null);
+  const [assistantFlightLoading, setAssistantFlightLoading] = useState(false);
+  const [assistantFlightError, setAssistantFlightError] = useState<string | null>(null);
 
   useEffect(() => {
     setMessages([makeMessage('assistant', t('agent_intro'))]);
     setSuggestions([]);
     setActions([]);
   }, [language, t]);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+      setInputFocused(false);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const visibleDestinations = useMemo(
     () => AI_DESTINATIONS.filter((item) => item.categories.includes(activeDestinationFilter)),
@@ -99,6 +157,60 @@ export default function AgentScreen() {
   }, [search.fromCode, search.departureDate]);
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
+  const isTyping = keyboardVisible || inputFocused;
+  const hasConversation = messages.length > 1;
+  const showDiscoveryPanel = !isTyping && !hasConversation;
+  const showSuggestionChips = !isTyping && (actions.length > 0 || suggestions.length > 0);
+
+  async function findFlightsForMessage(text: string) {
+    const route = parseFlightIntent(text, search.fromCode);
+    if (!route) return;
+
+    setAssistantFlightLoading(true);
+    setAssistantFlightError(null);
+    setAssistantFlights(null);
+
+    try {
+      let flights = await searchFlightsApi(route.from, route.to, search.departureDate);
+      let usedFlexibleDate = false;
+
+      if (!flights.length) {
+        flights = await searchFlightsApi(route.from, route.to);
+        usedFlexibleDate = flights.length > 0;
+      }
+
+      search.setTripType('oneWay');
+      search.setFromCode(route.from);
+      search.setToCode(route.to);
+      search.setSelectedFlight(null);
+
+      if (!flights.length) {
+        setAssistantFlightError(`Mình chưa tìm thấy chuyến ${route.from} → ${route.to} cho dữ liệu hiện có.`);
+        return;
+      }
+
+      setAssistantFlights({
+        from: route.from,
+        to: route.to,
+        date: search.departureDate,
+        flights: [...flights].sort((a, b) => a.priceVND - b.priceVND).slice(0, 5),
+        usedFlexibleDate,
+      });
+    } catch {
+      setAssistantFlightError('Mình chưa kết nối được dữ liệu chuyến bay. Bạn thử lại sau nhé.');
+    } finally {
+      setAssistantFlightLoading(false);
+    }
+  }
+
+  function chooseAssistantFlight(flight: CatalogFlight) {
+    if (!assistantFlights) return;
+    search.setTripType('oneWay');
+    search.setFromCode(assistantFlights.from);
+    search.setToCode(assistantFlights.to);
+    search.setSelectedFlight(flight);
+    navigation.navigate('Bookings');
+  }
 
   function applyDestination(destination: AIDestination) {
     const routeFrom = originForDestination(search.fromCode, destination.code);
@@ -124,6 +236,7 @@ export default function AgentScreen() {
     setMessages((prev) => [userMsg, ...prev]);
     setInput('');
     setLoading(true);
+    findFlightsForMessage(text);
 
     try {
       const response = await sendMessageToAgent(text, {
@@ -199,7 +312,7 @@ export default function AgentScreen() {
         <Text style={styles.headerSub}>Tu van tim chuyen bay va dat ve</Text>
       </View>
 
-      <View style={styles.discoveryPanel}>
+      {showDiscoveryPanel ? <View style={styles.discoveryPanel}>
         <View style={styles.discoveryTitleRow}>
           <View style={styles.aiBadge}>
             <AppIcon name="sparkles" size={14} color="#fff" />
@@ -274,62 +387,148 @@ export default function AgentScreen() {
             );
           })}
         </ScrollView>
-      </View>
+      </View> : null}
 
-      <FlatList
-        data={messages}
-        keyExtractor={(item) => item.id}
-        inverted
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <View style={[styles.bubble, item.role === 'user' ? styles.userBubble : styles.aiBubble]}>
-            <Text style={[styles.bubbleText, item.role === 'user' && styles.userBubbleText]}>{item.content}</Text>
+      <KeyboardAvoidingView
+        style={styles.chatArea}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <FlatList
+          style={styles.messageList}
+          data={messages}
+          keyExtractor={(item) => item.id}
+          inverted
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <View style={[styles.bubble, item.role === 'user' ? styles.userBubble : styles.aiBubble]}>
+              <Text style={[styles.bubbleText, item.role === 'user' && styles.userBubbleText]}>{item.content}</Text>
+            </View>
+          )}
+        />
+
+        {(assistantFlightLoading || assistantFlightError || assistantFlights) ? (
+          <View style={styles.assistantFlightPanel}>
+            <View style={styles.assistantFlightHeader}>
+              <View>
+                <Text style={styles.assistantFlightEyebrow}>Kết quả AI tìm được</Text>
+                <Text style={styles.assistantFlightTitle}>
+                  {assistantFlights
+                    ? `${airportName(assistantFlights.from, language)} → ${airportName(assistantFlights.to, language)}`
+                    : 'Đang tìm chuyến bay phù hợp'}
+                </Text>
+              </View>
+              {assistantFlightLoading ? <ActivityIndicator size="small" color="#0064D2" /> : null}
+            </View>
+
+            {assistantFlightError ? <Text style={styles.assistantFlightError}>{assistantFlightError}</Text> : null}
+
+            {assistantFlights ? (
+              <>
+                <Text style={styles.assistantFlightNote}>
+                  {assistantFlights.usedFlexibleDate
+                    ? 'Không có chuyến đúng ngày đang chọn, mình hiển thị các chuyến phù hợp trong dữ liệu hiện có.'
+                    : `${assistantFlights.date} · ${assistantFlights.flights.length} chuyến giá tốt nhất`}
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.assistantFlightList}>
+                  {assistantFlights.flights.map((flight) => {
+                    const prefix = flightCodePrefix(flight.code);
+                    const badgeColor = AIRLINE_COLORS[prefix] ?? '#9CA3AF';
+                    return (
+                      <TouchableOpacity
+                        key={flight.id}
+                        style={styles.assistantFlightCard}
+                        activeOpacity={0.88}
+                        onPress={() => chooseAssistantFlight(flight)}
+                      >
+                        <View style={styles.assistantAirlineRow}>
+                          <View style={[styles.assistantAirlineBadge, { backgroundColor: badgeColor }]}>
+                            <Text style={styles.assistantAirlineBadgeText}>{prefix}</Text>
+                          </View>
+                          <View style={styles.assistantAirlineInfo}>
+                            <Text style={styles.assistantAirlineName} numberOfLines={1}>{flight.airline}</Text>
+                            <Text style={styles.assistantFlightCode}>{flight.code}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.assistantTimeRow}>
+                          <View>
+                            <Text style={styles.assistantTime}>{flight.dep}</Text>
+                            <Text style={styles.assistantAirport}>{assistantFlights.from}</Text>
+                          </View>
+                          <View style={styles.assistantDurationBox}>
+                            <Text style={styles.assistantDuration}>{flight.duration}</Text>
+                            <AppIcon name="airplaneTakeoff" size={15} color="#0064D2" />
+                          </View>
+                          <View style={styles.assistantArriveBox}>
+                            <Text style={styles.assistantTime}>{flight.arr}</Text>
+                            <Text style={styles.assistantAirport}>{assistantFlights.to}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.assistantCardFooter}>
+                          <View>
+                            <Text style={styles.assistantPrice}>{formatPrice(flight.priceVND, currency)}</Text>
+                            <Text style={styles.assistantPerPax}>/ khách</Text>
+                          </View>
+                          <View style={styles.assistantChooseBtn}>
+                            <Text style={styles.assistantChooseText}>Chọn chuyến này</Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            ) : null}
           </View>
-        )}
-      />
+        ) : null}
 
-      <View style={styles.suggestionWrap}>
-        {actions.map((action, index) => (
-          <TouchableOpacity
-            key={`${action.type || 'action'}-${action.label || index}-${index}`}
-            style={[styles.suggestionChip, styles.actionChip]}
-            onPress={() => handleActionPress(action)}
-            disabled={loading}
-          >
-            <Text style={[styles.suggestionText, styles.actionText]}>{action.label || action.route || action.type}</Text>
-          </TouchableOpacity>
-        ))}
-        {suggestions.map((s, index) => (
-          <TouchableOpacity
-            key={`${s.id || 'suggestion'}-${s.label || index}-${index}`}
-            style={styles.suggestionChip}
-            onPress={() => handleSuggestionPress(s)}
-            disabled={loading}
-          >
+        {showSuggestionChips ? <View style={styles.suggestionWrap}>
+          {actions.map((action, index) => (
+            <TouchableOpacity
+              key={`${action.type || 'action'}-${action.label || index}-${index}`}
+              style={[styles.suggestionChip, styles.actionChip]}
+              onPress={() => handleActionPress(action)}
+              disabled={loading}
+            >
+              <Text style={[styles.suggestionText, styles.actionText]}>{action.label || action.route || action.type}</Text>
+            </TouchableOpacity>
+          ))}
+          {suggestions.map((s, index) => (
+            <TouchableOpacity
+              key={`${s.id || 'suggestion'}-${s.label || index}-${index}`}
+              style={styles.suggestionChip}
+              onPress={() => handleSuggestionPress(s)}
+              disabled={loading}
+            >
             <Text style={styles.suggestionText}>{s.label || s.id}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+        </View> : null}
 
-      <View style={styles.inputBar}>
-        <TextInput
-          value={input}
-          onChangeText={setInput}
-          placeholder="Nhap cau hoi cho AI..."
-          placeholderTextColor="#9CA3AF"
-          style={styles.input}
-          editable={!loading}
-        />
-        <TouchableOpacity style={[styles.sendBtn, !canSend && styles.sendBtnDisabled]} onPress={() => handleSend()} disabled={!canSend}>
-          <AppIcon name="next" size={18} color="#fff" />
-        </TouchableOpacity>
-      </View>
+        <View style={styles.inputBar}>
+          <TextInput
+            value={input}
+            onChangeText={setInput}
+            placeholder="Nhap cau hoi cho AI..."
+            placeholderTextColor="#9CA3AF"
+            style={styles.input}
+            editable={!loading}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+          />
+          <TouchableOpacity style={[styles.sendBtn, !canSend && styles.sendBtnDisabled]} onPress={() => handleSend()} disabled={!canSend}>
+            <AppIcon name="next" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F5F7FA' },
+  chatArea: { flex: 1 },
   header: { backgroundColor: '#0064D2', paddingHorizontal: 16, paddingVertical: 14 },
   headerTitle: { color: '#fff', fontSize: 19, fontWeight: '700' },
   headerSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 },
@@ -361,6 +560,7 @@ const styles = StyleSheet.create({
   destinationPrice: { color: '#0064D2', fontSize: 15, fontWeight: '900', marginTop: 2 },
   pickButton: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
   pickButtonText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  messageList: { flex: 1 },
   listContent: { paddingHorizontal: 14, paddingVertical: 12, gap: 10 },
   bubble: { maxWidth: '84%', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12 },
   aiBubble: { alignSelf: 'flex-start', backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB' },
@@ -372,7 +572,32 @@ const styles = StyleSheet.create({
   suggestionText: { color: '#1D4ED8', fontSize: 12, fontWeight: '600' },
   actionChip: { backgroundColor: '#0064D2' },
   actionText: { color: '#fff' },
-  inputBar: { flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB', gap: 8 },
+  assistantFlightPanel: { flexShrink: 0, borderTopWidth: 1, borderTopColor: '#E5E7EB', backgroundColor: '#fff', paddingVertical: 10 },
+  assistantFlightHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, marginBottom: 6 },
+  assistantFlightEyebrow: { color: '#6B7280', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  assistantFlightTitle: { color: '#111827', fontSize: 14, fontWeight: '800', marginTop: 2 },
+  assistantFlightNote: { color: '#6B7280', fontSize: 11, paddingHorizontal: 12, marginBottom: 8 },
+  assistantFlightError: { color: '#B91C1C', backgroundColor: '#FEF2F2', borderRadius: 10, fontSize: 12, marginHorizontal: 12, padding: 10 },
+  assistantFlightList: { paddingHorizontal: 12, gap: 10 },
+  assistantFlightCard: { width: 280, borderWidth: 1, borderColor: '#DBEAFE', borderRadius: 14, backgroundColor: '#F8FBFF', padding: 12 },
+  assistantAirlineRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  assistantAirlineBadge: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  assistantAirlineBadgeText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+  assistantAirlineInfo: { flex: 1, marginLeft: 9 },
+  assistantAirlineName: { color: '#111827', fontSize: 13, fontWeight: '800' },
+  assistantFlightCode: { color: '#6B7280', fontSize: 11, marginTop: 1 },
+  assistantTimeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  assistantTime: { color: '#111827', fontSize: 19, fontWeight: '900' },
+  assistantAirport: { color: '#6B7280', fontSize: 11, marginTop: 1 },
+  assistantDurationBox: { alignItems: 'center', minWidth: 78 },
+  assistantDuration: { color: '#6B7280', fontSize: 11, marginBottom: 3 },
+  assistantArriveBox: { alignItems: 'flex-end' },
+  assistantCardFooter: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 14 },
+  assistantPrice: { color: '#0064D2', fontSize: 16, fontWeight: '900' },
+  assistantPerPax: { color: '#9CA3AF', fontSize: 10 },
+  assistantChooseBtn: { backgroundColor: '#0064D2', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
+  assistantChooseText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  inputBar: { flexDirection: 'row', alignItems: 'center', flexShrink: 0, padding: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB', gap: 8 },
   input: { flex: 1, borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#1A1A2E', backgroundColor: '#F9FAFB' },
   sendBtn: { width: 42, height: 42, borderRadius: 10, backgroundColor: '#0064D2', alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { backgroundColor: '#9CA3AF' },
