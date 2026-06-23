@@ -23,6 +23,7 @@ export type BookingDto = {
   baggageFeeVnd?: number | null;
   totalPriceVnd: number;
   createdAt: string;
+  expiresAt?: string | null;
   checkedInAt?: string | null;
   checkInChannel?: string | null;
   flight: FlightDto;

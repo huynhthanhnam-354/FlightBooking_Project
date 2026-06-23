@@ -452,6 +452,7 @@ public class BookingService {
                 b.getBaggageFeeVnd() == null ? 0L : b.getBaggageFeeVnd(),
                 b.getTotalPriceVnd(),
                 VietnamTime.toInstant(b.getCreatedAt()),
+                b.getExpiresAt() == null ? null : VietnamTime.toInstant(b.getExpiresAt()),
                 b.getCheckedInAt() == null ? null : VietnamTime.toInstant(b.getCheckedInAt()),
                 b.getCheckInChannel(),
                 flightService.toResponse(f),
