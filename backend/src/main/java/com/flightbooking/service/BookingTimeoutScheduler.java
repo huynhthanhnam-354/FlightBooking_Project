@@ -7,25 +7,22 @@ import com.flightbooking.time.VietnamTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-@Service
+@Component
 @RequiredArgsConstructor
 @Slf4j
-public class BookingCleanupService {
+public class BookingTimeoutScheduler {
 
     private final BookingRepository bookingRepository;
 
-    /**
-     * Tự động giải phóng các ghế đang chờ thanh toán nhưng đã quá thời hạn (15 phút).
-     * Chạy mỗi 1 phút một lần.
-     */
+    @Scheduled(cron = "*/30 * * * * *")
     @Transactional
-    public void cleanupExpiredBookings() {
-        log.debug("Bắt đầu quét các đơn đặt vé hết hạn...");
+    public void releaseExpiredSeats() {
+        log.info("System Scheduler: Scanning for expired pending payment bookings...");
         
         List<Booking> expiredBookings = bookingRepository.findByStatusAndExpiresAtBefore(
                 BookingStatus.PENDING_PAYMENT, 
@@ -33,14 +30,16 @@ public class BookingCleanupService {
         );
 
         if (!expiredBookings.isEmpty()) {
-            log.info("Tìm thấy {} đơn đặt vé hết hạn thanh toán. Đang tiến hành giải phóng ghế...", expiredBookings.size());
+            log.info("System Scheduler: Found {} expired bookings. Commencing seat release...", expiredBookings.size());
             
             for (Booking booking : expiredBookings) {
                 booking.setStatus(BookingStatus.EXPIRED);
-                log.info("PNR {} đã chuyển sang trạng thái EXPIRED", booking.getPnr());
+                booking.setSeatNumber(null);
+                log.info("System Scheduler: PNR {} status changed to EXPIRED and seat number nullified.", booking.getPnr());
             }
             
             bookingRepository.saveAll(expiredBookings);
+            log.info("System Scheduler: Expired seats batch release completed successfully.");
         }
     }
 }

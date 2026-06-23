@@ -90,27 +90,11 @@ function SearchPage() {
 		fetchFlights()
 	}, [searchParams])
 
-	const [priceBounds, setPriceBounds] = useState(fallbackBounds)
-	const [minPrice, setMinPrice] = useState(fallbackBounds.min)
-	const [maxPrice, setMaxPrice] = useState(fallbackBounds.max)
-	const [isFiltering, setIsFiltering] = useState(false)
+	const [maxPrice, setMaxPrice] = useState(5000000)
 	const [selectedAirlines, setSelectedAirlines] = useState([])
-	const [selectedTimes, setSelectedTimes] = useState([])
+	const [directOnly, setDirectOnly] = useState(false)
 	const [sortBy, setSortBy] = useState('best')
-	const [selectedStops, setSelectedStops] = useState([])
-	const [selectedAmenities, setSelectedAmenities] = useState([])
 	const [selectedDate, setSelectedDate] = useState(null)
-
-	useEffect(() => {
-		if (flights.length > 0) {
-			const prices = flights.map(f => Number(f.price) || 0)
-			const min = Math.min(...prices)
-			const max = Math.max(...prices)
-			setPriceBounds({ min, max })
-			setMinPrice(min)
-			setMaxPrice(max)
-		}
-	}, [flights])
 
 	const location = useLocation()
 
@@ -126,37 +110,13 @@ function SearchPage() {
 		}
 	}, [location?.state?.initialSearch, setSearchParams])
 
-	function applyFilters() {
-		setIsFiltering(true)
-		setTimeout(() => {
-			let filtered = flights.filter(f => {
+	// 3. REACTIVE FILTERING EFFECT (No "Áp dụng" button click required)
+	useEffect(() => {
+		let filtered = flights.filter(f => {
 			const p = Number(f.price) || 0
-			if (p < minPrice) return false
 			if (p > maxPrice) return false
 			if (selectedAirlines.length > 0 && !selectedAirlines.includes(f.airline)) return false
-
-			if (selectedTimes.length > 0) {
-				const hour = parseInt(String(f.depart).split(':')[0])
-				const bucket = hour >= 5 && hour < 12 ? 'morning' : hour >= 12 && hour < 17 ? 'afternoon' : 'evening'
-				if (!selectedTimes.includes(bucket)) return false
-			}
-
-			if (selectedStops.length > 0) {
-				const stops = Number(f.stops || 0)
-				const ok = selectedStops.some(s => {
-					if (s === '0') return stops === 0
-					if (s === '1') return stops === 1
-					if (s === '2plus') return stops >= 2
-					return false
-				})
-				if (!ok) return false
-			}
-
-			if (selectedAmenities.length > 0) {
-				const hasAll = selectedAmenities.every(a => (f.amenities || []).includes(a))
-				if (!hasAll) return false
-			}
-
+			if (directOnly && Number(f.stops || 0) > 0) return false
 			return true
 		})
 
@@ -164,28 +124,29 @@ function SearchPage() {
 		if (sortBy === 'priceDesc') filtered.sort((a, b) => b.price - a.price)
 
 		setResults(filtered)
-		setIsFiltering(false)
-	}, 380)
-}
+	}, [flights, maxPrice, selectedAirlines, directOnly, sortBy])
+
+	function handleFilterChange(filters) {
+		if (!filters) return
+		const price = filters.maxPrice
+		const air = filters.airlines !== undefined ? filters.airlines : filters.selectedAirlines
+		const direct = filters.isDirectOnly !== undefined ? filters.isDirectOnly : filters.directOnly
+
+		if (price !== undefined) setMaxPrice(price)
+		if (air !== undefined) setSelectedAirlines(air)
+		if (direct !== undefined) setDirectOnly(direct)
+	}
 
 	function resetFilters() {
-		setMinPrice(priceBounds.min)
-		setMaxPrice(priceBounds.max)
+		setMaxPrice(5000000)
 		setSelectedAirlines([])
-		setSelectedTimes([])
+		setDirectOnly(false)
 		setSortBy('best')
-		setSelectedStops([])
-		setSelectedAmenities([])
 		setSelectedDate(null)
-		setResults(flights)
 	}
 
 	function searchAlternativeDates() {
 		setSearchParams({ from: '', to: '', date: '', passengers: 1 })
-	}
-
-	function toggleAirline(name) {
-		setSelectedAirlines(prev => (prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name]))
 	}
 
 	function handleSearch(criteria) {
@@ -197,21 +158,13 @@ function SearchPage() {
 			<div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
 				<aside className="lg:col-span-1">
 					<FilterSidebar
-						priceBounds={results.length ? priceBounds : fallbackBounds}
-						minPrice={results.length ? minPrice : fallbackBounds.min}
-						maxPrice={results.length ? maxPrice : fallbackBounds.max}
-						onMinPriceChange={setMinPrice}
-						onMaxPriceChange={setMaxPrice}
-						airlines={AIRLINES}
+						maxPrice={maxPrice}
 						selectedAirlines={selectedAirlines}
-						onToggleAirline={toggleAirline}
-						selectedStops={selectedStops}
-						onToggleStop={(value) => setSelectedStops(prev => prev.includes(value) ? prev.filter(x => x !== value) : [...prev, value])}
-						selectedAmenities={selectedAmenities}
-						onToggleAmenity={(value) => setSelectedAmenities(prev => prev.includes(value) ? prev.filter(x => x !== value) : [...prev, value])}
-						onApply={applyFilters}
+						directOnly={directOnly}
+						airlines={AIRLINES}
+						onFilterChange={handleFilterChange}
 						onReset={resetFilters}
-						disabled={!results.length}
+						disabled={!flights.length}
 					/>
 				</aside>
 
@@ -222,12 +175,19 @@ function SearchPage() {
 						<DatePriceSlider 
 							flights={flights} 
 							selectedDate={selectedDate}
-							onSelect={setSelectedDate}
+							onSelect={(date) => {
+								setSelectedDate(date)
+								setSearchParams({ date })
+							}}
 						/>
 					</div>
 
 					<div className="mt-6">
-						<PriceTrendPredictor routeLabel={routeLabel} />
+						<PriceTrendPredictor 
+							departure={searchParams.from} 
+							arrival={searchParams.to} 
+							date={searchParams.date} 
+						/>
 					</div>
 
 					<div className="mt-4 flex items-center justify-between">
@@ -239,7 +199,6 @@ function SearchPage() {
 								<option value="priceAsc">Giá tăng dần</option>
 								<option value="priceDesc">Giá giảm dần</option>
 							</select>
-							<button onClick={applyFilters} className="px-3 py-2 border rounded">Áp dụng</button>
 						</div>
 					</div>
 

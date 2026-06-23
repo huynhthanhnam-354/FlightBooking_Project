@@ -31,6 +31,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+
+
+
 @Service
 @RequiredArgsConstructor
 public class BookingService {
@@ -94,7 +99,7 @@ public class BookingService {
         Set<String> occupied = occupiedSeatsForFlight(flight);
         for (String seat : parseSeatNumbers(seatNumber)) {
             if (occupied.contains(seat)) {
-                throw new IllegalArgumentException("Seat already booked: " + seat);
+                throw new IllegalStateException("Ghế này đã bị người khác đặt trước, vui lòng chọn ghế khác");
             }
         }
         int passengerCount = request.passengerCount() == null ? 1 : request.passengerCount();
@@ -117,7 +122,7 @@ public class BookingService {
                 .baggageFeeVnd(baggageFeeVnd)
                 .totalPriceVnd(request.totalPriceVnd())
                 .status(statusForPayment(paymentMethod))
-                .expiresAt(VietnamTime.nowLocal().plusMinutes(15))
+                .expiresAt(VietnamTime.nowLocal().plusMinutes(10))
                 .pnr(pnrGenerator.generate())
                 .build();
         for (String seat : parseSeatNumbers(seatNumber)) {
@@ -228,6 +233,22 @@ public class BookingService {
         return toResponse(booking);
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, Long> getTimeRemaining(Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+        
+        long remainingSeconds = 0;
+        if (booking.getStatus() == BookingStatus.PENDING_PAYMENT && booking.getExpiresAt() != null) {
+            LocalDateTime now = VietnamTime.nowLocal();
+            remainingSeconds = java.time.Duration.between(now, booking.getExpiresAt()).getSeconds();
+            if (remainingSeconds < 0) {
+                remainingSeconds = 0;
+            }
+        }
+        return Map.of("timeRemaining", remainingSeconds);
+    }
+
     @Transactional
     public BookingResponse checkIn(String userEmail, CheckInRequest request) {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
@@ -291,8 +312,8 @@ public class BookingService {
         if (booking.getStatus() == BookingStatus.CANCELLED) {
             throw new IllegalArgumentException("Booking is already cancelled");
         }
-        if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
-            throw new IllegalArgumentException("Only unpaid bookings can be cancelled directly");
+        if (booking.getStatus() != BookingStatus.PENDING_PAYMENT && booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new IllegalArgumentException("Only pending or confirmed bookings can be cancelled");
         }
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setCancelledAt(VietnamTime.nowLocal());
@@ -301,6 +322,61 @@ public class BookingService {
             payment.setStatus(PaymentStatus.REFUNDED);
         }
         bookingRepository.save(booking);        
+        return toResponse(booking);
+    }
+
+    @Transactional
+    public BookingResponse cancelSecure(String userEmail, Long bookingId, String reason) {
+        AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
+                .orElseThrow(() -> new UsernameNotFoundException(userEmail));
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+        
+        // Secure check: Ensure passengerEmail matches authenticated user's email
+        if (booking.getPassengerEmail() == null || !booking.getPassengerEmail().equalsIgnoreCase(user.getEmail())) {
+            throw new IllegalArgumentException("Booking does not belong to the authenticated user");
+        }
+
+        // Business rule check: Verify status is currently 'CONFIRMED'
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new IllegalStateException("Only confirmed bookings can be cancelled");
+        }
+
+        Flight flight = booking.getFlight();
+        if (flight == null) {
+            throw new IllegalStateException("Flight information not found on booking");
+        }
+
+        LocalDateTime now = VietnamTime.nowLocal();
+        LocalDateTime departure = flight.getDepartureAt();
+        if (departure == null) {
+            throw new IllegalStateException("Flight departure time is not specified");
+        }
+
+        long hoursUntilDeparture = java.time.temporal.ChronoUnit.HOURS.between(now, departure);
+        if (hoursUntilDeparture < 24) {
+            throw new IllegalStateException("Cancellations are only allowed at least 24 hours prior to departure");
+        }
+
+        // Fee calculation: 10% penalty for Premium Cabin, 20% otherwise
+        long totalPrice = booking.getTotalPriceVnd() != null ? booking.getTotalPriceVnd() : 0L;
+        long fee = flight.isPremiumCabin() ? (long)(totalPrice * 0.10) : (long)(totalPrice * 0.20);
+        long refund = totalPrice - fee;
+
+        // State mutation: Transition to REFUND_PENDING, release seat, save details
+        booking.setStatus(BookingStatus.REFUND_PENDING);
+        booking.setSeatNumber(null);
+        booking.setCancelledAt(now);
+        booking.setCancellationReason(reason != null ? reason : "Hủy trực tuyến");
+        booking.setCancellationFeeVnd(fee);
+        booking.setRefundAmountVnd(refund);
+
+        PaymentTransaction payment = booking.getPaymentTransaction();
+        if (payment != null && (payment.getStatus() == PaymentStatus.MOCK_CONFIRMED || payment.getStatus() == PaymentStatus.PAID)) {
+            payment.setStatus(PaymentStatus.REFUNDED);
+        }
+
+        bookingRepository.save(booking);
         return toResponse(booking);
     }
 
@@ -334,7 +410,11 @@ public class BookingService {
                 VietnamTime.toInstant(b.getCreatedAt()),
                 b.getCheckedInAt() == null ? null : VietnamTime.toInstant(b.getCheckedInAt()),
                 b.getCheckInChannel(),
-                flightService.toResponse(f)
+                flightService.toResponse(f),
+                b.getCancelledAt() == null ? null : VietnamTime.toInstant(b.getCancelledAt()),
+                b.getCancellationReason(),
+                b.getCancellationFeeVnd(),
+                b.getRefundAmountVnd()
         );
     }
 

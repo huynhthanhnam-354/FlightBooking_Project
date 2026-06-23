@@ -85,6 +85,7 @@ export const bookingApi = {
   paymentSuccess: (id) => api.post(`/bookings/payment-success?bookingId=${id}`),
   getMine: () => api.get('/bookings/me'),
   cancel: (id) => api.post(`/bookings/${id}/cancel`),
+  cancelPut: (id) => api.put(`/bookings/${id}/cancel`),
 };
 
 export default api;

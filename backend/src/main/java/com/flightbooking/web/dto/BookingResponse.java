@@ -25,6 +25,10 @@ public record BookingResponse(
         Instant createdAt,
         Instant checkedInAt,
         String checkInChannel,
-        FlightResponse flight
+        FlightResponse flight,
+        Instant cancelledAt,
+        String cancellationReason,
+        Long cancellationFeeVnd,
+        Long refundAmountVnd
 ) {
 }

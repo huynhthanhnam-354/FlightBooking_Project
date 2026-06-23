@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
 import { getAuthToken } from '../storage/authStorage';
+import { normalizeFlightDto } from './flightApi';
 import type { FlightDto } from './flightApi';
 
 export type BookingDto = {
@@ -51,12 +52,20 @@ export type CreateBookingBody = {
   totalPriceVnd: number;
 };
 
+export function normalizeBookingDto(b: any): BookingDto {
+  if (!b) return b;
+  return {
+    ...b,
+    flight: normalizeFlightDto(b.flight),
+  };
+}
+
 export async function createBookingApi(body: CreateBookingBody): Promise<BookingDto> {
   const { data } = await axios.post<BookingDto>(`${API_BASE_URL}/api/bookings`, body, {
     headers: await authHeaders(),
     timeout: 25000,
   });
-  return data;
+  return normalizeBookingDto(data);
 }
 
 export async function listMyBookingsApi(): Promise<BookingDto[]> {
@@ -64,7 +73,7 @@ export async function listMyBookingsApi(): Promise<BookingDto[]> {
     headers: await authHeaders(),
     timeout: 25000,
   });
-  return Array.isArray(data) ? data : [];
+  return (Array.isArray(data) ? data : []).map(normalizeBookingDto);
 }
 
 export async function updateBookingBaggageApi(
@@ -75,7 +84,7 @@ export async function updateBookingBaggageApi(
     headers: await authHeaders(),
     timeout: 25000,
   });
-  return data;
+  return normalizeBookingDto(data);
 }
 
 export async function confirmMockPaymentApi(bookingId: number): Promise<BookingDto> {
@@ -87,7 +96,7 @@ export async function confirmMockPaymentApi(bookingId: number): Promise<BookingD
       timeout: 25000,
     },
   );
-  return data;
+  return normalizeBookingDto(data);
 }
 
 export async function cancelBookingApi(bookingId: number): Promise<BookingDto> {
@@ -99,7 +108,7 @@ export async function cancelBookingApi(bookingId: number): Promise<BookingDto> {
       timeout: 25000,
     },
   );
-  return data;
+  return normalizeBookingDto(data);
 }
 
 export async function checkInBookingApi(body: { pnr: string; passengerLastName: string }): Promise<BookingDto> {
@@ -107,7 +116,7 @@ export async function checkInBookingApi(body: { pnr: string; passengerLastName: 
     headers: await authHeaders(),
     timeout: 25000,
   });
-  return data;
+  return normalizeBookingDto(data);
 }
 
 export async function listOccupiedSeatsApi(flightId: number): Promise<string[]> {

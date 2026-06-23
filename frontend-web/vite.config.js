@@ -10,6 +10,11 @@ export default defineConfig({
         target: 'http://localhost:8081',
         changeOrigin: true,
       },
+      '/ws-seat-selection': {
+        target: 'http://localhost:8081',
+        ws: true,
+        changeOrigin: true,
+      },
     },
   },
 })

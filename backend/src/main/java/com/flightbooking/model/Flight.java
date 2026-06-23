@@ -47,7 +47,7 @@ public class Flight {
     @Column(name = "flight_number", nullable = false, length = 20)
     private String flightNumber;
 
-    @Column(name = "airline", nullable = false, length = 120)
+    @Column(name = "airline_name", nullable = false, length = 120)
     private String airline;
 
     @Column(name = "departure_airport", nullable = false, length = 8)

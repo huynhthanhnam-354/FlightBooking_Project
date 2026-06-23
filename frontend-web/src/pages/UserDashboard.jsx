@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { bookingApi } from '../services/api'
+import api, { bookingApi } from '../services/api'
 import { FaPlane, FaHistory, FaUser, FaQrcode, FaClock, FaCheckCircle, FaTimesCircle, FaCreditCard, FaPhone, FaEnvelope, FaMapMarkerAlt, FaEdit, FaSignOutAlt, FaChevronRight, FaShieldAlt, FaLock, FaCircle, FaArrowRight, FaHome } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import { useNavigate } from 'react-router-dom'
@@ -74,9 +74,9 @@ function TicketCard({ booking, onShowQR }) {
     CANCELLED: { label: 'Đã hủy', color: 'bg-rose-50 text-rose-700', icon: FaTimesCircle }
   }
 
-  const f = booking.flightResponse;
-  const s = statusMap[booking.status] || { label: booking.status, color: 'bg-slate-50 text-slate-700', icon: FaCircle }
-  const StatusIcon = s.icon
+  const f = booking?.flight || booking?.flightResponse || {};
+  const s = statusMap[booking?.status || ''] || { label: booking?.status || '', color: 'bg-slate-50 text-slate-700', icon: FaCircle }
+  const StatusIcon = s.icon || FaCircle
 
   return (
     <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-all duration-300">
@@ -84,11 +84,11 @@ function TicketCard({ booking, onShowQR }) {
       <div className="bg-slate-50 px-8 py-5 flex items-center justify-between border-b border-slate-100">
         <div>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Mã đặt chỗ</p>
-          <p className="text-xl font-black text-sky-900 font-mono tracking-tighter uppercase">{booking.pnr}</p>
+          <p className="text-xl font-black text-sky-900 font-mono tracking-tighter uppercase">{booking?.pnr || ''}</p>
         </div>
-        <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${s.color}`}>
+        <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${s.color || ''}`}>
           <StatusIcon size={10} />
-          {s.label}
+          {s.label || ''}
         </div>
       </div>
 
@@ -96,7 +96,7 @@ function TicketCard({ booking, onShowQR }) {
       <div className="p-10">
         <div className="flex items-center justify-between mb-10">
           <div className="text-left">
-            <p className="text-3xl font-black text-slate-900 tracking-tighter">{f.departureAirport}</p>
+            <p className="text-3xl font-black text-slate-900 tracking-tighter">{f?.departureAirport || ''}</p>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Khởi hành</p>
           </div>
           
@@ -106,11 +106,11 @@ function TicketCard({ booking, onShowQR }) {
               <FaPlane className="text-slate-900 rotate-45" size={14} />
               <div className="h-px bg-slate-400 flex-1"></div>
             </div>
-            <p className="text-[10px] font-black uppercase tracking-widest">{f.airline} • {f.flightNumber}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest">{f?.airline || ''} • {f?.flightNumber || ''}</p>
           </div>
 
           <div className="text-right">
-            <p className="text-3xl font-black text-slate-900 tracking-tighter">{f.arrivalAirport}</p>
+            <p className="text-3xl font-black text-slate-900 tracking-tighter">{f?.arrivalAirport || ''}</p>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Hạ cánh</p>
           </div>
         </div>
@@ -118,11 +118,11 @@ function TicketCard({ booking, onShowQR }) {
         <div className="grid grid-cols-2 gap-8 py-8 border-y border-slate-50">
             <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Thời gian khởi hành</p>
-                <p className="text-sm font-bold text-slate-700">{new Date(f.departureAt).toLocaleString('vi-VN')}</p>
+                <p className="text-sm font-bold text-slate-700">{f?.departureAt ? new Date(f?.departureAt).toLocaleString('vi-VN') : ''}</p>
             </div>
             <div className="text-right">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tên hành khách</p>
-                <p className="text-sm font-bold text-slate-700">{booking.passengerName}</p>
+                <p className="text-sm font-bold text-slate-700">{booking?.passengerName || ''}</p>
             </div>
         </div>
 
@@ -130,10 +130,10 @@ function TicketCard({ booking, onShowQR }) {
         <div className="mt-10 flex items-center justify-between">
            <div className="flex items-end gap-2">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tổng cộng:</span>
-              <span className="text-2xl font-black text-sky-900">{booking.totalPriceVnd.toLocaleString('vi-VN')}₫</span>
+              <span className="text-2xl font-black text-sky-900">{booking?.totalPriceVnd?.toLocaleString('vi-VN') || 0}₫</span>
            </div>
           <button
-            onClick={() => onShowQR(booking)}
+            onClick={() => onShowQR?.(booking)}
             className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-sky-600 transition-all flex items-center gap-3 shadow-lg shadow-slate-900/10 active:scale-95"
           >
             <FaQrcode size={16} /> Vé điện tử
@@ -145,7 +145,7 @@ function TicketCard({ booking, onShowQR }) {
 }
 
 // History Table Component
-function BookingHistory({ bookings }) {
+function BookingHistory({ bookings, onCancelBooking }) {
   return (
     <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
       <div className="p-10 border-b border-slate-100 flex items-center justify-between">
@@ -153,7 +153,7 @@ function BookingHistory({ bookings }) {
           <FaHistory className="text-sky-500" size={20} />
           Toàn bộ lịch sử đặt chỗ
         </h3>
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50 px-4 py-2 rounded-full border border-slate-100">{bookings.length} Giao dịch</span>
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50 px-4 py-2 rounded-full border border-slate-100">{bookings?.length || 0} Giao dịch</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -164,41 +164,78 @@ function BookingHistory({ bookings }) {
               <th className="px-6 py-6">Ngày đặt</th>
               <th className="px-6 py-6 text-center">Trạng thái</th>
               <th className="px-10 py-6 text-right">Tổng tiền</th>
+              <th className="px-10 py-6 text-center">Hành động</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {bookings.map((booking) => {
-              const f = booking.flightResponse;
+            {bookings?.map((booking) => {
+              const f = booking?.flight || booking?.flightResponse || {};
               const statusConfig = {
                 CONFIRMED: { label: 'Đã xác nhận', color: 'text-emerald-600 bg-emerald-50' },
                 PENDING_PAYMENT: { label: 'Chờ thanh toán', color: 'text-amber-600 bg-amber-50' },
                 CANCELLED: { label: 'Đã hủy', color: 'text-rose-600 bg-rose-50' },
-                COMPLETED: { label: 'Hoàn thành', color: 'text-slate-600 bg-slate-50' }
+                COMPLETED: { label: 'Hoàn thành', color: 'text-slate-600 bg-slate-50' },
+                REFUND_PENDING: { label: 'Chờ hoàn tiền', color: 'text-amber-600 bg-amber-50' }
               }
-              const sc = statusConfig[booking.status] || { label: booking.status, color: 'text-slate-600 bg-slate-50' }
+              const sc = statusConfig[booking?.status || ''] || { label: booking?.status || '', color: 'text-slate-600 bg-slate-50' }
+              
+              const departureTime = f?.departureAt ? new Date(f.departureAt) : null;
+              const now = new Date();
+              const hoursUntilDeparture = departureTime ? (departureTime - now) / (1000 * 60 * 60) : 0;
+              const isConfirmed = booking?.status === 'CONFIRMED';
+              const canCancel = isConfirmed && hoursUntilDeparture >= 24;
+              const showCannotCancelOnline = isConfirmed && hoursUntilDeparture < 24;
+
               return (
-                <tr key={booking.id} className="hover:bg-slate-50/50 transition-colors group">
+                <tr key={booking?.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-10 py-8">
-                    <span className="font-mono font-black text-sky-900 group-hover:text-sky-600 transition-colors uppercase tracking-tight">#{booking.pnr}</span>
+                    <span className="font-mono font-black text-sky-900 group-hover:text-sky-600 transition-colors uppercase tracking-tight">#{booking?.pnr || ''}</span>
                   </td>
                   <td className="px-6 py-8">
                     <div className="flex items-center gap-3">
-                      <span className="font-bold text-slate-800">{f.departureAirport}</span>
+                      <span className="font-bold text-slate-800">{f?.departureAirport || ''}</span>
                       <FaArrowRight className="text-slate-300" size={10} />
-                      <span className="font-bold text-slate-800">{f.arrivalAirport}</span>
+                      <span className="font-bold text-slate-800">{f?.arrivalAirport || ''}</span>
                     </div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">{f.airline}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">{f?.airline || ''}</p>
                   </td>
                   <td className="px-6 py-8 text-sm font-medium text-slate-600">
-                    {new Date(booking.createdAt || Date.now()).toLocaleDateString('vi-VN')}
+                    {booking?.createdAt ? new Date(booking?.createdAt).toLocaleDateString('vi-VN') : ''}
                   </td>
                   <td className="px-6 py-8 text-center">
-                    <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${sc.color}`}>
-                      {sc.label}
+                    <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${sc.color || ''}`}>
+                      {sc.label || ''}
                     </span>
                   </td>
                   <td className="px-10 py-8 text-right font-black text-slate-900 text-lg tracking-tighter">
-                    {booking.totalPriceVnd.toLocaleString('vi-VN')}₫
+                    {booking?.totalPriceVnd?.toLocaleString('vi-VN') || 0}₫
+                  </td>
+                  <td className="px-10 py-8 text-center">
+                    {canCancel ? (
+                      <button
+                        onClick={() => onCancelBooking?.(booking?.id)}
+                        className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition active:scale-95 border border-rose-200"
+                      >
+                        Hủy chuyến
+                      </button>
+                    ) : showCannotCancelOnline ? (
+                      <span className="text-xs text-slate-400 font-semibold bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                        Không thể hủy trực tuyến
+                      </span>
+                    ) : booking?.status === 'CANCELLED' ? (
+                      <button
+                        disabled
+                        className="px-4 py-2 bg-slate-50 text-slate-400 rounded-xl text-xs font-bold border border-slate-200 cursor-not-allowed"
+                      >
+                        Đã hủy
+                      </button>
+                    ) : booking?.status === 'REFUND_PENDING' ? (
+                      <span className="px-3 py-1.5 bg-amber-50 text-amber-600 rounded-xl text-xs font-bold border border-amber-200">
+                        Đang chờ hoàn tiền
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400 font-semibold">—</span>
+                    )}
                   </td>
                 </tr>
               )
@@ -206,7 +243,7 @@ function BookingHistory({ bookings }) {
           </tbody>
         </table>
       </div>
-      {bookings.length === 0 && (
+      {(!bookings || bookings?.length === 0) && (
         <div className="p-32 text-center text-slate-400">
           <FaHistory size={64} className="mx-auto mb-6 opacity-5" />
           <p className="font-black uppercase tracking-[0.3em] text-[10px]">Chưa có dữ liệu giao dịch</p>
@@ -219,8 +256,8 @@ function BookingHistory({ bookings }) {
 // QR Code Modal
 function QRModal({ booking, onClose }) {
   if (!booking) return null
-  const f = booking.flightResponse;
-  const qrValue = `FLIGHT:${booking.pnr}|${f.flightNumber}|${f.departureAirport}-${f.arrivalAirport}`
+  const f = booking?.flight || booking?.flightResponse || {};
+  const qrValue = `FLIGHT:${booking?.pnr || ''}|${f?.flightNumber || ''}|${f?.departureAirport || ''}-${f?.arrivalAirport || ''}`
 
   return (
     <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center z-[200] p-4" onClick={onClose}>
@@ -242,7 +279,7 @@ function QRModal({ booking, onClose }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Chuyến bay</p>
-                <p className="font-bold text-slate-800 truncate">{f.airline} • {f.flightNumber}</p>
+                <p className="font-bold text-slate-800 truncate">{f?.airline || ''} • {f?.flightNumber || ''}</p>
               </div>
             </div>
 
@@ -252,7 +289,7 @@ function QRModal({ booking, onClose }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Hành trình</p>
-                <p className="font-bold text-slate-800">{f.departureAirport} → {f.arrivalAirport}</p>
+                <p className="font-bold text-slate-800">{f?.departureAirport || ''} → {f?.arrivalAirport || ''}</p>
               </div>
             </div>
           </div>
@@ -397,10 +434,14 @@ export default function UserDashboard() {
     const fetchBookings = async () => {
       try {
         const res = await bookingApi.getMine()
-        setBookings(res.data)
+        setBookings(res?.data || [])
       } catch (err) {
         console.error("Fetch history error:", err)
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          console.warn("Unauthorized/Forbidden access to bookings, logging and clearing list.")
+        }
         toast.error("Không thể tải lịch sử đặt vé.")
+        setBookings([])
       } finally {
         setLoading(false)
       }
@@ -409,14 +450,35 @@ export default function UserDashboard() {
     else navigate('/login')
   }, [user, navigate])
 
+  const handleCancelBooking = async (bookingId) => {
+    const reason = window.prompt("Vui lòng nhập lý do hủy chuyến bay (bắt buộc):");
+    if (reason === null) {
+      return; // User clicked Cancel
+    }
+    if (!reason.trim()) {
+      toast.error("Lý do hủy chuyến bay không được để trống.");
+      return;
+    }
+
+    try {
+      await api.put(`/bookings/${bookingId}/cancel`, { reason });
+      setBookings(prev => (prev || []).map(b => b?.id === bookingId ? { ...b, status: 'REFUND_PENDING', seatNumber: null } : b))
+      toast.success("Yêu cầu hủy chuyến và hoàn tiền đã được gửi thành công.");
+    } catch (err) {
+      console.error("Cancel booking error:", err)
+      const msg = err.response?.data?.message || "Không thể hủy chuyến bay."
+      toast.error(msg)
+    }
+  }
+
   const upcomingBookings = useMemo(() => 
-    bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'PENDING_PAYMENT' || b.status === 'CHECKED_IN'), 
+    (bookings || []).filter(b => b?.status === 'CONFIRMED' || b?.status === 'PENDING_PAYMENT' || b?.status === 'CHECKED_IN'), 
     [bookings]
   )
 
   const menuItems = [
-    { key: 'upcoming', label: 'Chuyến bay sắp tới', icon: FaPlane, count: upcomingBookings.length },
-    { key: 'history', label: 'Lịch sử hành trình', icon: FaHistory, count: bookings.length },
+    { key: 'upcoming', label: 'Chuyến bay sắp tới', icon: FaPlane, count: upcomingBookings?.length || 0 },
+    { key: 'history', label: 'Lịch sử hành trình', icon: FaHistory, count: bookings?.length || 0 },
     { key: 'account', label: 'Hồ sơ cá nhân', icon: FaUser },
   ]
 
@@ -522,9 +584,9 @@ export default function UserDashboard() {
           <div className="max-w-5xl">
             {activeTab === 'upcoming' && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {upcomingBookings.length > 0 ? (
-                  upcomingBookings.map(booking => (
-                    <TicketCard key={booking.id} booking={booking} onShowQR={setQrBooking} />
+                {(upcomingBookings?.length || 0) > 0 ? (
+                  upcomingBookings?.map(booking => (
+                    <TicketCard key={booking?.id} booking={booking} onShowQR={setQrBooking} />
                   ))
                 ) : (
                   <div className="bg-white rounded-[3rem] shadow-sm p-24 text-center border border-slate-100">
@@ -543,7 +605,7 @@ export default function UserDashboard() {
 
             {activeTab === 'history' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <BookingHistory bookings={bookings} />
+                <BookingHistory bookings={bookings} onCancelBooking={handleCancelBooking} />
               </div>
             )}
 
