@@ -84,7 +84,14 @@ function TicketCard({ booking, onShowQR }) {
       <div className="bg-slate-50 px-8 py-5 flex items-center justify-between border-b border-slate-100">
         <div>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Mã đặt chỗ</p>
-          <p className="text-xl font-black text-sky-900 font-mono tracking-tighter uppercase">{booking?.pnr || ''}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xl font-black text-sky-900 font-mono tracking-tighter uppercase">{booking?.pnr || ''}</p>
+            {(booking?.comboId || booking?.sourceChannel === 'COMBO') && (
+              <span className="px-2 py-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-md text-[8px] font-black uppercase tracking-wider shadow-sm shadow-blue-500/10">
+                Combo
+              </span>
+            )}
+          </div>
         </div>
         <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${s.color || ''}`}>
           <StatusIcon size={10} />
@@ -189,7 +196,14 @@ function BookingHistory({ bookings, onCancelBooking }) {
               return (
                 <tr key={booking?.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-10 py-8">
-                    <span className="font-mono font-black text-sky-900 group-hover:text-sky-600 transition-colors uppercase tracking-tight">#{booking?.pnr || ''}</span>
+                    <div className="flex flex-col gap-1 items-start">
+                      <span className="font-mono font-black text-sky-900 group-hover:text-sky-600 transition-colors uppercase tracking-tight">#{booking?.pnr || ''}</span>
+                      {(booking?.comboId || booking?.sourceChannel === 'COMBO') && (
+                        <span className="px-2 py-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-md text-[8px] font-black uppercase tracking-wider shadow-sm shadow-blue-500/10">
+                          Combo
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-8">
                     <div className="flex items-center gap-3">

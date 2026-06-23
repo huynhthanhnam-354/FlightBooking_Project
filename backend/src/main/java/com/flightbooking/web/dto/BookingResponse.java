@@ -29,6 +29,8 @@ public record BookingResponse(
         Instant cancelledAt,
         String cancellationReason,
         Long cancellationFeeVnd,
-        Long refundAmountVnd
+        Long refundAmountVnd,
+        Long comboId,
+        String sourceChannel
 ) {
 }

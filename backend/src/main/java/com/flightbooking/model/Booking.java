@@ -100,6 +100,9 @@ public class Booking {
     @Column(nullable = false, unique = true, length = 24)
     private String pnr;
 
+    @Column(name = "combo_id", nullable = true)
+    private Long comboId;
+
     @Version
     private Integer version;
 

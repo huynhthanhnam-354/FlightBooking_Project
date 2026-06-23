@@ -18,6 +18,7 @@ import java.util.List;
 public class BookingCleanupService {
 
     private final BookingRepository bookingRepository;
+    private final ComboService comboService;
 
     /**
      * Tự động giải phóng các ghế đang chờ thanh toán nhưng đã quá thời hạn (15 phút).
@@ -38,6 +39,13 @@ public class BookingCleanupService {
             for (Booking booking : expiredBookings) {
                 booking.setStatus(BookingStatus.EXPIRED);
                 log.info("PNR {} đã chuyển sang trạng thái EXPIRED", booking.getPnr());
+                if (booking.getComboId() != null) {
+                    try {
+                        comboService.updateAndBroadcastAvailability(booking.getComboId(), null);
+                    } catch (Exception e) {
+                        log.error("Failed to broadcast combo slot release: ", e);
+                    }
+                }
             }
             
             bookingRepository.saveAll(expiredBookings);

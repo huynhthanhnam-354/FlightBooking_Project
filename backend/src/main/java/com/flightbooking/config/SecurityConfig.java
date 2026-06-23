@@ -49,7 +49,8 @@ public class SecurityConfig {
                         })
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/health", "/api/auth/**", "/api/ai/chat/**", "/api/ai/analyze").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/combos/checkout").authenticated()
+                        .requestMatchers("/api/health", "/api/auth/**", "/api/ai/chat/**", "/api/ai/analyze", "/api/v1/ai/**", "/api/v1/combos/**").permitAll()
                         .requestMatchers("/api/agent/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/flights/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/flights/**").permitAll()

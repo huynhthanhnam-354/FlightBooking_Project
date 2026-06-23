@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { FaPlane, FaHotel, FaCalendarAlt, FaUser, FaPhone, FaEnvelope, FaIdCard, FaTimes, FaMinus, FaPlus } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import api from '../services/api';
 
 export default function BookingModal({ combo, onClose }) {
   if (!combo) return null;
 
-  const [passengers, setPassengers] = useState(1);
+  const [passengers, setPassengers] = useState(combo.passengerCount || 1);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
@@ -29,15 +31,44 @@ export default function BookingModal({ combo, onClose }) {
     if (passengers > 1) setPassengers(prev => prev - 1);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.fullName || !formData.phone || !formData.passport || !formData.email) {
       toast.error('Vui lòng điền đầy đủ các trường thông tin bắt buộc.');
       return;
     }
     
-    toast.success(`Đặt thành công Combo ${combo.location} cho ${passengers} hành khách!`);
-    onClose();
+    setIsLoading(true);
+    try {
+      const payload = {
+        comboId: combo.id,
+        selectedFlightId: combo.selectedFlightId || combo.flight?.id || 1,
+        selectedRoomTypeId: combo.selectedRoomTypeId || 'std',
+        passengerName: formData.fullName,
+        passengerEmail: formData.email,
+        passengerPhone: formData.phone,
+        passengerIdCard: formData.passport,
+        passengerCount: passengers,
+        baggageKg: 20,
+        baggageFeeVnd: 0
+      };
+
+      const res = await api.post('/v1/combos/checkout', payload);
+      const { paymentUrl } = res.data || {};
+
+      if (paymentUrl) {
+        toast.info('Đang chuyển hướng sang cổng thanh toán VNPAY...');
+        window.location.href = paymentUrl;
+      } else {
+        toast.success(`Đặt thành công Combo ${combo.location} cho ${passengers} hành khách!`);
+        onClose();
+      }
+    } catch (err) {
+      console.error("Combo checkout error:", err);
+      toast.error(err.response?.data?.message || 'Có lỗi xảy ra trong quá trình đặt combo.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const totalPrice = combo.price * passengers;
@@ -216,11 +247,23 @@ export default function BookingModal({ combo, onClose }) {
                 >
                   Hủy bỏ
                 </button>
-                <button
+                 <button
                   type="submit"
-                  className="w-2/3 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+                  disabled={isLoading}
+                  className={`w-2/3 py-4 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                    isLoading 
+                      ? 'bg-slate-400 cursor-not-allowed shadow-none' 
+                      : 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20'
+                  }`}
                 >
-                  Xác nhận đặt combo
+                  {isLoading ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    'Xác nhận đặt combo'
+                  )}
                 </button>
               </div>
             </form>

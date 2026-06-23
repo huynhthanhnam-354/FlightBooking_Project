@@ -18,6 +18,7 @@ import java.util.List;
 public class BookingTimeoutScheduler {
 
     private final BookingRepository bookingRepository;
+    private final ComboService comboService;
 
     @Scheduled(cron = "*/30 * * * * *")
     @Transactional
@@ -36,6 +37,13 @@ public class BookingTimeoutScheduler {
                 booking.setStatus(BookingStatus.EXPIRED);
                 booking.setSeatNumber(null);
                 log.info("System Scheduler: PNR {} status changed to EXPIRED and seat number nullified.", booking.getPnr());
+                if (booking.getComboId() != null) {
+                    try {
+                        comboService.updateAndBroadcastAvailability(booking.getComboId(), null);
+                    } catch (Exception e) {
+                        log.error("Failed to broadcast combo slot release in scheduler: ", e);
+                    }
+                }
             }
             
             bookingRepository.saveAll(expiredBookings);

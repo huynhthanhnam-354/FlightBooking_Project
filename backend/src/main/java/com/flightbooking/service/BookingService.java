@@ -33,6 +33,18 @@ import java.util.Set;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 
 
@@ -40,12 +52,26 @@ import java.time.temporal.ChronoUnit;
 @RequiredArgsConstructor
 public class BookingService {
 
+    private static final Logger log = LoggerFactory.getLogger(BookingService.class);
+
     private final BookingRepository bookingRepository;
     private final AppUserRepository appUserRepository;
     private final FlightRepository flightRepository;
     private final FlightService flightService;
     private final EmailService emailService;
     private final PnrGenerator pnrGenerator;
+
+    @Value("${app.vnpay.tmn-code:2QXUI8KI}")
+    private String vnp_TmnCode;
+
+    @Value("${app.vnpay.hash-secret:AQODJSRVZZTRNMTIKGOWVPHFXXKJZIEW}")
+    private String vnp_HashSecret;
+
+    @Value("${app.vnpay.url:http://localhost:8081/api/v1/payments/vnpay-mock}")
+    private String vnp_PayUrl;
+
+    @Value("${app.vnpay.return-url:http://localhost:5173/checkout/success}")
+    private String vnp_ReturnUrl;
 
     /**
               * VÁ LỖI 1: Hàm checkSeatAvailability bị thiếu khiến Controller báo lỗi biên dịch
@@ -151,6 +177,7 @@ public class BookingService {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
                 .orElseThrow(() -> new UsernameNotFoundException(userEmail));
         return bookingRepository.findByUserOrderByCreatedAtDesc(user).stream()
+                .filter(b -> b.getComboId() != null || "COMBO".equalsIgnoreCase(b.getSourceChannel()) || b.getComboId() == null)
                 .map(this::toResponse)
                 .toList();
     }
@@ -417,7 +444,9 @@ public class BookingService {
                 b.getCancelledAt() == null ? null : VietnamTime.toInstant(b.getCancelledAt()),
                 b.getCancellationReason(),
                 b.getCancellationFeeVnd(),
-                b.getRefundAmountVnd()
+                b.getRefundAmountVnd(),
+                b.getComboId(),
+                b.getSourceChannel()
         );
     }
 
@@ -525,6 +554,89 @@ public class BookingService {
             return PaymentStatus.MOCK_CONFIRMED;
         }
         return PaymentStatus.PENDING;
+    }
+
+    private String generateVnPayUrl(Booking booking) {
+        String vnp_Version = "2.1.0";
+        String vnp_Command = "pay";
+        String vnp_OrderInfo = "Thanh toan combo " + booking.getPnr();
+        String vnp_OrderType = "other";
+        String vnp_TxnRef = booking.getPnr();
+        String vnp_IpAddr = "127.0.0.1";
+        String vnp_Locale = "vn";
+        String vnp_CurrCode = "VND";
+
+        long amount = booking.getTotalPriceVnd() * 100L;
+
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+        String vnp_CreateDate = now.format(formatter);
+        String vnp_ExpireDate = now.plusMinutes(10).format(formatter);
+
+        Map<String, String> vnp_Params = new HashMap<>();
+        vnp_Params.put("vnp_Version", vnp_Version);
+        vnp_Params.put("vnp_Command", vnp_Command);
+        vnp_Params.put("vnp_TmnCode", vnp_TmnCode);
+        vnp_Params.put("vnp_Amount", String.valueOf(amount));
+        vnp_Params.put("vnp_CurrCode", vnp_CurrCode);
+        vnp_Params.put("vnp_TxnRef", vnp_TxnRef);
+        vnp_Params.put("vnp_OrderInfo", vnp_OrderInfo);
+        vnp_Params.put("vnp_OrderType", vnp_OrderType);
+        vnp_Params.put("vnp_Locale", vnp_Locale);
+        vnp_Params.put("vnp_ReturnUrl", vnp_ReturnUrl);
+        vnp_Params.put("vnp_IpAddr", vnp_IpAddr);
+        vnp_Params.put("vnp_CreateDate", vnp_CreateDate);
+        vnp_Params.put("vnp_ExpireDate", vnp_ExpireDate);
+
+        List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
+        Collections.sort(fieldNames);
+
+        StringBuilder hashData = new StringBuilder();
+        StringBuilder query = new StringBuilder();
+
+        for (int i = 0; i < fieldNames.size(); i++) {
+            String fieldName = fieldNames.get(i);
+            String fieldValue = vnp_Params.get(fieldName);
+            if ((fieldValue != null) && (fieldValue.length() > 0)) {
+                try {
+                    String encodedFieldName = URLEncoder.encode(fieldName, StandardCharsets.UTF_8.toString());
+                    String encodedFieldValue = URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString());
+
+                    hashData.append(encodedFieldName).append("=").append(encodedFieldValue);
+                    query.append(encodedFieldName).append("=").append(encodedFieldValue);
+                } catch (Exception e) {
+                    log.error("URL Encoding error: ", e);
+                }
+
+                if (i < fieldNames.size() - 1) {
+                    query.append('&');
+                    hashData.append('&');
+                }
+            }
+        }
+
+        String queryUrl = query.toString();
+        String vnp_SecureHash = hmacSHA512(vnp_HashSecret, hashData.toString());
+        queryUrl += "&vnp_SecureHash=" + vnp_SecureHash;
+
+        return vnp_PayUrl + "?" + queryUrl;
+    }
+
+    private String hmacSHA512(String key, String data) {
+        try {
+            Mac hmacSHA512 = Mac.getInstance("HmacSHA512");
+            SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512");
+            hmacSHA512.init(secretKey);
+            byte[] result = hmacSHA512.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(2 * result.length);
+            for (byte b : result) {
+                sb.append(String.format("%02x", b & 0xff));
+            }
+            return sb.toString();
+        } catch (Exception ex) {
+            log.error("HMAC-SHA512 failed: ", ex);
+            return "";
+        }
     }
 
     private static String paymentProvider(String paymentMethod) {
