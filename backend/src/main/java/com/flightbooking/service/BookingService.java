@@ -286,6 +286,9 @@ public class BookingService {
         if (!booking.getUser().getId().equals(user.getId())) {
             throw new IllegalArgumentException("Booking not found");
         }
+        if (booking.getStatus() == BookingStatus.CONFIRMED) {
+            return toResponse(booking);
+        }
         if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
             throw new IllegalArgumentException("Booking is not waiting for payment");
         }

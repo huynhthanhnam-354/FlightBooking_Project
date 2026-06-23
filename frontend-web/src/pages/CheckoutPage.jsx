@@ -57,6 +57,14 @@ export default function CheckoutPage() {
   const total = subtotal + baggageFee + seatSurcharge + 45000 
 
   useEffect(() => {
+    const rawUser = localStorage.getItem('fb_user');
+    if (!rawUser) {
+      toast.warning('Vui lòng đăng nhập để thực hiện thanh toán.');
+      navigate('/login');
+    }
+  }, [navigate]);
+
+  useEffect(() => {
     const timer = setInterval(() => {
         setTimeLeft(prev => prev <= 1 ? 0 : prev - 1);
     }, 1000);
@@ -87,14 +95,17 @@ export default function CheckoutPage() {
         tripType: 'ONE_WAY'
       }
       const res = await bookingApi.create(payload)
-      const bookingId = res.data?.id || res.data?.bookingId || 9999
+      const bookingId = res.data?.id || res.data?.bookingId
+      if (!bookingId) {
+        throw new Error('Không thể lấy mã đơn hàng từ hệ thống.')
+      }
       setActiveBookingId(bookingId)
       setShowQrModal(true)
       setIsLoading(false)
     } catch (err) {
-      console.error('Lỗi khởi tạo đơn hàng. Sử dụng ID mô phỏng cho thanh toán.', err)
-      setActiveBookingId(9999)
-      setShowQrModal(true)
+      console.error('Lỗi khởi tạo đơn hàng:', err)
+      const errMsg = err.response?.data?.message || err.message || 'Không thể tạo đơn hàng. Vui lòng kiểm tra lại thông tin.'
+      toast.error(errMsg)
       setIsLoading(false)
     }
   }
@@ -103,23 +114,7 @@ export default function CheckoutPage() {
     setShowQrModal(false)
     setIsLoading(true)
     try {
-
       await bookingApi.paymentSuccess(activeBookingId)
-
-      const rawUser = localStorage.getItem('fb_user')
-      let headers = {}
-      if (rawUser) {
-        const user = JSON.parse(rawUser)
-        if (user.accessToken) {
-          headers = { Authorization: `Bearer ${user.accessToken}` }
-        }
-      }
-
-      const id = activeBookingId || 9999
-      // Triggers axios.post('/api/bookings/payment-success', { bookingId: id })
-      // For compatibility with backend (which expects query param), we include it both in query params and body
-      await axios.post(`/api/bookings/payment-success?bookingId=${id}`, { bookingId: id }, { headers })
-      
 
       toast.success('Thanh toán thành công!')
       
