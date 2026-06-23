@@ -37,6 +37,11 @@ public class BookingController {
         return bookingService.listMine(user.getUsername());
     }
 
+    @GetMapping("/{id}/time-remaining")
+    public java.util.Map<String, Long> getTimeRemaining(@PathVariable Long id) {
+        return bookingService.getTimeRemaining(id);
+    }
+
     @GetMapping("/occupied-seats")
     public List<String> occupiedSeats(@RequestParam Long flightId) {
         return bookingService.listOccupiedSeats(flightId);
@@ -101,5 +106,15 @@ public class BookingController {
             @PathVariable Long bookingId
     ) {
         return bookingService.cancel(user.getUsername(), bookingId);
+    }
+
+    @PutMapping("/{bookingId}/cancel")
+    public BookingResponse cancelPut(
+            @AuthenticationPrincipal UserDetails user,
+            @PathVariable Long bookingId,
+            @RequestBody(required = false) java.util.Map<String, String> payload
+    ) {
+        String reason = payload != null ? payload.get("reason") : "Hủy trực tuyến";
+        return bookingService.cancelSecure(user.getUsername(), bookingId, reason);
     }
 }

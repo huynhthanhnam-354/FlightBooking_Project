@@ -56,7 +56,7 @@ public class Booking {
     @JoinColumn(name = "flight_id", nullable = false)
     private Flight flight;
 
-    @Column(name = "seat_number", nullable = false, length = 64)
+    @Column(name = "seat_number", nullable = true, length = 64)
     private String seatNumber;
 
     @Column(name = "passenger_name", nullable = false, length = 200)
@@ -100,6 +100,9 @@ public class Booking {
     @Column(nullable = false, unique = true, length = 24)
     private String pnr;
 
+    @Column(name = "combo_id", nullable = true)
+    private Long comboId;
+
     @Version
     private Integer version;
 
@@ -121,6 +124,15 @@ public class Booking {
 
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
+
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
+    @Column(name = "cancellation_fee_vnd")
+    private Long cancellationFeeVnd;
+
+    @Column(name = "refund_amount_vnd")
+    private Long refundAmountVnd;
 
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

@@ -31,9 +31,28 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
+
+
 @Service
 @RequiredArgsConstructor
 public class BookingService {
+
+    private static final Logger log = LoggerFactory.getLogger(BookingService.class);
 
     private final BookingRepository bookingRepository;
     private final AppUserRepository appUserRepository;
@@ -41,6 +60,18 @@ public class BookingService {
     private final FlightService flightService;
     private final EmailService emailService;
     private final PnrGenerator pnrGenerator;
+
+    @Value("${app.vnpay.tmn-code:2QXUI8KI}")
+    private String vnp_TmnCode;
+
+    @Value("${app.vnpay.hash-secret:AQODJSRVZZTRNMTIKGOWVPHFXXKJZIEW}")
+    private String vnp_HashSecret;
+
+    @Value("${app.vnpay.url:http://localhost:8081/api/v1/payments/vnpay-mock}")
+    private String vnp_PayUrl;
+
+    @Value("${app.vnpay.return-url:http://localhost:5173/checkout/success}")
+    private String vnp_ReturnUrl;
 
     /**
               * VÁ LỖI 1: Hàm checkSeatAvailability bị thiếu khiến Controller báo lỗi biên dịch
@@ -94,7 +125,7 @@ public class BookingService {
         Set<String> occupied = occupiedSeatsForFlight(flight);
         for (String seat : parseSeatNumbers(seatNumber)) {
             if (occupied.contains(seat)) {
-                throw new IllegalArgumentException("Seat already booked: " + seat);
+                throw new IllegalStateException("Ghế này đã bị người khác đặt trước, vui lòng chọn ghế khác");
             }
         }
         int passengerCount = request.passengerCount() == null ? 1 : request.passengerCount();
@@ -117,7 +148,7 @@ public class BookingService {
                 .baggageFeeVnd(baggageFeeVnd)
                 .totalPriceVnd(request.totalPriceVnd())
                 .status(statusForPayment(paymentMethod))
-                .expiresAt(VietnamTime.nowLocal().plusMinutes(15))
+                .expiresAt(VietnamTime.nowLocal().plusMinutes(10))
                 .pnr(pnrGenerator.generate())
                 .build();
         for (String seat : parseSeatNumbers(seatNumber)) {
@@ -146,6 +177,7 @@ public class BookingService {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
                 .orElseThrow(() -> new UsernameNotFoundException(userEmail));
         return bookingRepository.findByUserOrderByCreatedAtDesc(user).stream()
+                .filter(b -> b.getComboId() != null || "COMBO".equalsIgnoreCase(b.getSourceChannel()) || b.getComboId() == null)
                 .map(this::toResponse)
                 .toList();
     }
@@ -228,6 +260,22 @@ public class BookingService {
         return toResponse(booking);
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, Long> getTimeRemaining(Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+        
+        long remainingSeconds = 0;
+        if (booking.getStatus() == BookingStatus.PENDING_PAYMENT && booking.getExpiresAt() != null) {
+            LocalDateTime now = VietnamTime.nowLocal();
+            remainingSeconds = java.time.Duration.between(now, booking.getExpiresAt()).getSeconds();
+            if (remainingSeconds < 0) {
+                remainingSeconds = 0;
+            }
+        }
+        return Map.of("timeRemaining", remainingSeconds);
+    }
+
     @Transactional
     public BookingResponse checkIn(String userEmail, CheckInRequest request) {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
@@ -265,6 +313,9 @@ public class BookingService {
         if (!booking.getUser().getId().equals(user.getId())) {
             throw new IllegalArgumentException("Booking not found");
         }
+        if (booking.getStatus() == BookingStatus.CONFIRMED) {
+            return toResponse(booking);
+        }
         if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
             throw new IllegalArgumentException("Booking is not waiting for payment");
         }
@@ -291,8 +342,8 @@ public class BookingService {
         if (booking.getStatus() == BookingStatus.CANCELLED) {
             throw new IllegalArgumentException("Booking is already cancelled");
         }
-        if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
-            throw new IllegalArgumentException("Only unpaid bookings can be cancelled directly");
+        if (booking.getStatus() != BookingStatus.PENDING_PAYMENT && booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new IllegalArgumentException("Only pending or confirmed bookings can be cancelled");
         }
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setCancelledAt(VietnamTime.nowLocal());
@@ -301,6 +352,61 @@ public class BookingService {
             payment.setStatus(PaymentStatus.REFUNDED);
         }
         bookingRepository.save(booking);        
+        return toResponse(booking);
+    }
+
+    @Transactional
+    public BookingResponse cancelSecure(String userEmail, Long bookingId, String reason) {
+        AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
+                .orElseThrow(() -> new UsernameNotFoundException(userEmail));
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+        
+        // Secure check: Ensure passengerEmail matches authenticated user's email
+        if (booking.getPassengerEmail() == null || !booking.getPassengerEmail().equalsIgnoreCase(user.getEmail())) {
+            throw new IllegalArgumentException("Booking does not belong to the authenticated user");
+        }
+
+        // Business rule check: Verify status is currently 'CONFIRMED'
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new IllegalStateException("Only confirmed bookings can be cancelled");
+        }
+
+        Flight flight = booking.getFlight();
+        if (flight == null) {
+            throw new IllegalStateException("Flight information not found on booking");
+        }
+
+        LocalDateTime now = VietnamTime.nowLocal();
+        LocalDateTime departure = flight.getDepartureAt();
+        if (departure == null) {
+            throw new IllegalStateException("Flight departure time is not specified");
+        }
+
+        long hoursUntilDeparture = java.time.temporal.ChronoUnit.HOURS.between(now, departure);
+        if (hoursUntilDeparture < 24) {
+            throw new IllegalStateException("Cancellations are only allowed at least 24 hours prior to departure");
+        }
+
+        // Fee calculation: 10% penalty for Premium Cabin, 20% otherwise
+        long totalPrice = booking.getTotalPriceVnd() != null ? booking.getTotalPriceVnd() : 0L;
+        long fee = flight.isPremiumCabin() ? (long)(totalPrice * 0.10) : (long)(totalPrice * 0.20);
+        long refund = totalPrice - fee;
+
+        // State mutation: Transition to REFUND_PENDING, release seat, save details
+        booking.setStatus(BookingStatus.REFUND_PENDING);
+        booking.setSeatNumber(null);
+        booking.setCancelledAt(now);
+        booking.setCancellationReason(reason != null ? reason : "Hủy trực tuyến");
+        booking.setCancellationFeeVnd(fee);
+        booking.setRefundAmountVnd(refund);
+
+        PaymentTransaction payment = booking.getPaymentTransaction();
+        if (payment != null && (payment.getStatus() == PaymentStatus.MOCK_CONFIRMED || payment.getStatus() == PaymentStatus.PAID)) {
+            payment.setStatus(PaymentStatus.REFUNDED);
+        }
+
+        bookingRepository.save(booking);
         return toResponse(booking);
     }
 
@@ -334,7 +440,13 @@ public class BookingService {
                 VietnamTime.toInstant(b.getCreatedAt()),
                 b.getCheckedInAt() == null ? null : VietnamTime.toInstant(b.getCheckedInAt()),
                 b.getCheckInChannel(),
-                flightService.toResponse(f)
+                flightService.toResponse(f),
+                b.getCancelledAt() == null ? null : VietnamTime.toInstant(b.getCancelledAt()),
+                b.getCancellationReason(),
+                b.getCancellationFeeVnd(),
+                b.getRefundAmountVnd(),
+                b.getComboId(),
+                b.getSourceChannel()
         );
     }
 
@@ -442,6 +554,89 @@ public class BookingService {
             return PaymentStatus.MOCK_CONFIRMED;
         }
         return PaymentStatus.PENDING;
+    }
+
+    private String generateVnPayUrl(Booking booking) {
+        String vnp_Version = "2.1.0";
+        String vnp_Command = "pay";
+        String vnp_OrderInfo = "Thanh toan combo " + booking.getPnr();
+        String vnp_OrderType = "other";
+        String vnp_TxnRef = booking.getPnr();
+        String vnp_IpAddr = "127.0.0.1";
+        String vnp_Locale = "vn";
+        String vnp_CurrCode = "VND";
+
+        long amount = booking.getTotalPriceVnd() * 100L;
+
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+        String vnp_CreateDate = now.format(formatter);
+        String vnp_ExpireDate = now.plusMinutes(10).format(formatter);
+
+        Map<String, String> vnp_Params = new HashMap<>();
+        vnp_Params.put("vnp_Version", vnp_Version);
+        vnp_Params.put("vnp_Command", vnp_Command);
+        vnp_Params.put("vnp_TmnCode", vnp_TmnCode);
+        vnp_Params.put("vnp_Amount", String.valueOf(amount));
+        vnp_Params.put("vnp_CurrCode", vnp_CurrCode);
+        vnp_Params.put("vnp_TxnRef", vnp_TxnRef);
+        vnp_Params.put("vnp_OrderInfo", vnp_OrderInfo);
+        vnp_Params.put("vnp_OrderType", vnp_OrderType);
+        vnp_Params.put("vnp_Locale", vnp_Locale);
+        vnp_Params.put("vnp_ReturnUrl", vnp_ReturnUrl);
+        vnp_Params.put("vnp_IpAddr", vnp_IpAddr);
+        vnp_Params.put("vnp_CreateDate", vnp_CreateDate);
+        vnp_Params.put("vnp_ExpireDate", vnp_ExpireDate);
+
+        List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
+        Collections.sort(fieldNames);
+
+        StringBuilder hashData = new StringBuilder();
+        StringBuilder query = new StringBuilder();
+
+        for (int i = 0; i < fieldNames.size(); i++) {
+            String fieldName = fieldNames.get(i);
+            String fieldValue = vnp_Params.get(fieldName);
+            if ((fieldValue != null) && (fieldValue.length() > 0)) {
+                try {
+                    String encodedFieldName = URLEncoder.encode(fieldName, StandardCharsets.UTF_8.toString());
+                    String encodedFieldValue = URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString());
+
+                    hashData.append(encodedFieldName).append("=").append(encodedFieldValue);
+                    query.append(encodedFieldName).append("=").append(encodedFieldValue);
+                } catch (Exception e) {
+                    log.error("URL Encoding error: ", e);
+                }
+
+                if (i < fieldNames.size() - 1) {
+                    query.append('&');
+                    hashData.append('&');
+                }
+            }
+        }
+
+        String queryUrl = query.toString();
+        String vnp_SecureHash = hmacSHA512(vnp_HashSecret, hashData.toString());
+        queryUrl += "&vnp_SecureHash=" + vnp_SecureHash;
+
+        return vnp_PayUrl + "?" + queryUrl;
+    }
+
+    private String hmacSHA512(String key, String data) {
+        try {
+            Mac hmacSHA512 = Mac.getInstance("HmacSHA512");
+            SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512");
+            hmacSHA512.init(secretKey);
+            byte[] result = hmacSHA512.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(2 * result.length);
+            for (byte b : result) {
+                sb.append(String.format("%02x", b & 0xff));
+            }
+            return sb.toString();
+        } catch (Exception ex) {
+            log.error("HMAC-SHA512 failed: ", ex);
+            return "";
+        }
     }
 
     private static String paymentProvider(String paymentMethod) {

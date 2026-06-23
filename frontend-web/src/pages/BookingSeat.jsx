@@ -107,7 +107,7 @@ export default function BookingSeat() {
 
               <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-sm border border-slate-100 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-sky-500 to-indigo-500 opacity-20" />
-                <SeatMap />
+                <SeatMap flight={flight} />
               </div>
 
               {/* Selection Info Panel */}

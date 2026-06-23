@@ -142,7 +142,7 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
           date: departDate, // Đổi tên cho đồng bộ với SearchPage
           departDate, 
           returnDate: tripType === 'oneway' ? null : returnDate, 
-          passengers, 
+          passengers: passengers.adults + passengers.children, 
           cabinClass 
         }
     navigate('/search', { state: { initialSearch: payload } })

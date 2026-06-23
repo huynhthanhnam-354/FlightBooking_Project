@@ -6,14 +6,29 @@ export type FlightDto = {
   id: number;
   flightNumber: string;
   airline: string;
-  departureAirport: string;
-  arrivalAirport: string;
+  airlineName?: string;      // alias for backward compatibility
+  departureAirport: string;  // Giữ lại 1 dòng duy nhất
+  originCode?: string;       // alias for backward compatibility
+  arrivalAirport: string;    // Giữ lại 1 dòng duy nhất
+  destinationCode?: string;  // alias for backward compatibility
   departureAt: string;
   arrivalAt: string;
   durationMinutes: number;
   price: number;
+  basePriceVnd?: number;     // alias for backward compatibility
   premiumCabin: boolean;
 };
+
+export function normalizeFlightDto(f: any): FlightDto {
+  if (!f) return f;
+  return {
+    ...f,
+    airlineName: f.airlineName || f.airline,
+    originCode: f.originCode || f.departureAirport,
+    destinationCode: f.destinationCode || f.arrivalAirport,
+    basePriceVnd: f.basePriceVnd || f.price,
+  };
+}
 
 function timeFromLocalDateTime(iso: string): string {
   const t = iso.includes('T') ? iso.split('T')[1] ?? '' : '';
@@ -55,10 +70,20 @@ export function mapFlightDtoToCatalogFlight(f: FlightDto): CatalogFlight {
 
 export async function searchFlightsApi(origin: string, destination: string, departureDate?: string): Promise<CatalogFlight[]> {
   const isoDate = departureDate ? ddMmYyyyToIsoDate(departureDate) : null;
+
+  let start = null;
+  let end = null;
+  if (isoDate) {
+    start = `${isoDate}T00:00:00`;
+    end = `${isoDate}T23:59:59`;
+  }
+
   const { data } = await axios.get<FlightDto[]>(`${API_BASE_URL}/api/v1/flights/search`, {
     params: {
       departureAirport: origin.trim().toUpperCase(),
       arrivalAirport: destination.trim().toUpperCase(),
+      ...(start ? { start } : {}),
+      ...((end ? { end } : {})),
       ...(isoDate
         ? {
             start: `${isoDate}T00:00:00`,
@@ -68,5 +93,5 @@ export async function searchFlightsApi(origin: string, destination: string, depa
     },
     timeout: 25000,
   });
-  return (Array.isArray(data) ? data : []).map(mapFlightDtoToCatalogFlight);
+  return (Array.isArray(data) ? data : []).map(normalizeFlightDto).map(mapFlightDtoToCatalogFlight);
 }

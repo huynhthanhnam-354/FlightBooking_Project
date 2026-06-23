@@ -1,35 +1,136 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useBookingStore } from '../store/bookingStore'
 import { toast } from 'react-toastify'
+import SockJS from 'sockjs-client'
+import Stomp from 'stompjs'
+import api from '../services/api'
 import './SeatMap.css'
+
+if (typeof window !== 'undefined' && !window.global) {
+  window.global = window;
+}
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
 const BUSINESS_ROWS = 2
 const TOTAL_ROWS = 15
 
-export default function SeatMap() {
-  const selectedSeats = useBookingStore((state) => state.selectedSeats)
-  const setSelectedSeats = useBookingStore((state) => state.setSelectedSeats)
-  const passengerCount = useBookingStore((state) => state.searchParams.passengers || 1)
-  const [bookedSeats] = useState(['1A', '5C', '10F', '3B']) // Mock booked seats
+export default function SeatMap({ flight }) {
+  const selectedSeats = useBookingStore((state) => state?.selectedSeats || [])
+  const setSelectedSeats = useBookingStore((state) => state?.setSelectedSeats)
+  const passengerCount = useBookingStore((state) => state?.searchParams?.passengers || 1)
+  
+  const [occupiedSeats, setOccupiedSeats] = useState([])
+  const [heldSeats, setHeldSeats] = useState([])
+  const stompClientRef = useRef(null)
+
+  // 1. Fetch initially occupied seats from database
+  useEffect(() => {
+    if (!flight?.id) return
+
+    const fetchOccupied = async () => {
+      try {
+        const response = await api.get(`/bookings/occupied-seats?flightId=${flight.id}`)
+        setOccupiedSeats(response?.data || [])
+      } catch (err) {
+        console.error("Error fetching occupied seats:", err)
+      }
+    }
+    fetchOccupied()
+  }, [flight])
+
+  // 2. Connect WebSocket STOMP client
+  useEffect(() => {
+    if (!flight?.id) return
+
+    let socket;
+    let client;
+    try {
+      socket = new SockJS('/ws-seat-selection')
+      client = Stomp.over(socket)
+      
+      client.debug = () => {} // disable debug messages
+
+      client.connect({}, (frame) => {
+        stompClientRef.current = client
+        
+        client.subscribe(`/topic/flight/${flight.id}/seats`, (message) => {
+          try {
+            const event = JSON.parse(message?.body || '{}')
+            const { seatNumber, actionStatus } = event
+            
+            if (seatNumber) {
+              if (actionStatus === 'HOLD') {
+                setHeldSeats(prev => [...new Set([...prev, seatNumber])])
+              } else if (actionStatus === 'UNHOLD') {
+                setHeldSeats(prev => prev.filter(s => s !== seatNumber))
+              } else if (actionStatus === 'BOOKED') {
+                setOccupiedSeats(prev => [...new Set([...prev, seatNumber])])
+                setHeldSeats(prev => prev.filter(s => s !== seatNumber))
+              }
+            }
+          } catch (e) {
+            console.error("Error parsing dynamic seat event:", e)
+          }
+        })
+      }, (error) => {
+        console.warn("STOMP connection failed, running in fallback offline mode:", error)
+      })
+    } catch (err) {
+      console.error("Failed to initialize STOMP client connection:", err)
+    }
+
+    return () => {
+      if (stompClientRef.current) {
+        try {
+          stompClientRef.current.disconnect()
+        } catch (e) {
+          console.warn("Error during STOMP client disconnect cleanup:", e)
+        }
+      }
+    }
+  }, [flight])
+
+  const sendSeatToggle = (seatNumber, actionStatus) => {
+    if (stompClientRef.current?.connected && flight?.id) {
+      try {
+        stompClientRef.current.send(`/app/flight/${flight.id}/toggle-seat`, {}, JSON.stringify({
+          seatNumber,
+          actionStatus
+        }));
+      } catch (err) {
+        console.warn("Failed to publish seat toggle message via STOMP:", err);
+      }
+    }
+  }
 
   const handleSeatClick = (id) => {
-    const isSelected = selectedSeats.includes(id);
+    const currentSeats = selectedSeats || [];
+    const isSelected = currentSeats.includes(id);
     
+    let actionStatus;
     if (isSelected) {
-      // Hủy chọn nếu ghế đã có trong danh sách
-      setSelectedSeats(selectedSeats.filter(seat => seat !== id));
+      // Hủy chọn
+      setSelectedSeats?.(currentSeats.filter(seat => seat !== id));
+      actionStatus = 'UNHOLD';
+      sendSeatToggle(id, actionStatus);
     } else {
       // Ghế mới
       if (passengerCount === 1) {
-        // Thay thế ghế hiện tại
-        setSelectedSeats([id]);
+        // Hủy chọn ghế cũ
+        if (currentSeats.length > 0) {
+          const oldSeat = currentSeats[0];
+          sendSeatToggle(oldSeat, 'UNHOLD');
+        }
+        setSelectedSeats?.([id]);
+        actionStatus = 'HOLD';
+        sendSeatToggle(id, actionStatus);
       } else {
         // Nhiều hành khách
-        if (selectedSeats.length < passengerCount) {
-          setSelectedSeats([...selectedSeats, id]);
+        if (currentSeats.length < passengerCount) {
+          setSelectedSeats?.([...currentSeats, id]);
+          actionStatus = 'HOLD';
+          sendSeatToggle(id, actionStatus);
         } else {
-          // Báo lỗi bằng Toast
           toast.warning(`Bạn đã chọn đủ số lượng ghế cho ${passengerCount} hành khách.`, {
             position: "top-center",
             autoClose: 3000,
@@ -54,14 +155,16 @@ export default function SeatMap() {
 
   const renderSeat = (row, letter) => {
     const id = `${row}${letter}`
-    const isBooked = bookedSeats.includes(id)
-    const isSelected = selectedSeats.includes(id)
+    const isBooked = occupiedSeats?.includes(id)
+    const isSelected = selectedSeats?.includes(id)
+    const isHeldByOthers = heldSeats?.includes(id) && !isSelected
     const isBusiness = row <= BUSINESS_ROWS
     const isExitRow = row === 6 || row === 7
     const price = getSeatPrice(row)
 
     let seatClass = 'seat-item'
     if (isBooked) seatClass += ' booked'
+    else if (isHeldByOthers) seatClass += ' held'
     else if (isSelected) seatClass += ' selected'
     else if (isBusiness) seatClass += ' business'
     else if (isExitRow) seatClass += ' extra-legroom'
@@ -69,10 +172,10 @@ export default function SeatMap() {
     return (
       <button
         key={id}
-        disabled={isBooked}
+        disabled={isBooked || isHeldByOthers}
         onClick={() => handleSeatClick(id)}
         className={seatClass}
-        title={`${id} - ${getSeatType(row, letter)}${price > 0 ? ` - +${price.toLocaleString()}₫` : ''}`}
+        title={`${id} - ${getSeatType(row, letter)}${price > 0 ? ` - +${price.toLocaleString()}₫` : ''}${isHeldByOthers ? ' - Đang được người khác chọn' : ''}`}
       >
         <span className="seat-label">{letter}</span>
       </button>
@@ -112,10 +215,10 @@ export default function SeatMap() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded-lg bg-slate-100 border-2 border-slate-200 opacity-50" />
+          <div className="w-6 h-6 rounded-lg bg-slate-100 border-2 border-slate-300" />
           <div className="flex flex-col">
-            <span className="text-[10px] font-black text-slate-400 uppercase leading-none">Đã đặt</span>
-            <span className="text-[9px] text-slate-400 font-bold mt-1">Hết chỗ</span>
+            <span className="text-[10px] font-black text-slate-500 uppercase leading-none">Tạm giữ</span>
+            <span className="text-[9px] text-slate-400 font-bold mt-1">Hành khách khác</span>
           </div>
         </div>
       </div>

@@ -15,13 +15,16 @@ import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
-    List<Booking> findByUserOrderByCreatedAtDesc(AppUser user);
+    @Query("SELECT b FROM Booking b WHERE b.user = :user OR (b.user = :user AND (b.sourceChannel = 'COMBO' OR b.comboId IS NOT NULL)) ORDER BY b.createdAt DESC")
+    List<Booking> findByUserOrderByCreatedAtDesc(@org.springframework.data.repository.query.Param("user") AppUser user);
 
     List<Booking> findAllByOrderByCreatedAtDesc();
 
     List<Booking> findByFlightAndStatusNot(Flight flight, BookingStatus status);
 
     long countByStatus(BookingStatus status);
+
+    long countByComboIdAndStatusIn(Long comboId, List<BookingStatus> statuses);
 
     List<Booking> findByStatusInOrderByCreatedAtDesc(List<BookingStatus> statuses);
 

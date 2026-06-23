@@ -1,192 +1,166 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react';
+import { LuCheck } from 'react-icons/lu';
 
-const formatCurrency = value => value.toLocaleString('vi-VN') + '₫'
+const formatCurrency = value => {
+  return new Intl.NumberFormat('vi-VN').format(value) + 'đ';
+};
 
 export default function FilterSidebar({
-  priceBounds = { min: 500000, max: 5000000 },
-  minPrice = 500000,
   maxPrice = 5000000,
-  onMinPriceChange = () => {},
-  onMaxPriceChange = () => {},
-  airlines = [],
   selectedAirlines = [],
-  onToggleAirline = () => {},
-  selectedStops = [],
-  onToggleStop = () => {},
-  selectedAmenities = [],
-  onToggleAmenity = () => {},
-  onApply = () => {},
+  directOnly = false,
+  airlines = [],
+  onFilterChange = () => {},
   onReset = () => {},
   disabled = false,
 }) {
+  const [localMaxPrice, setLocalMaxPrice] = useState(maxPrice);
+  const [localSelectedAirlines, setLocalSelectedAirlines] = useState(selectedAirlines);
+  const [localDirectOnly, setLocalDirectOnly] = useState(directOnly);
+
+  // Sync internal states with incoming props (e.g. on reset or parent state change)
+  useEffect(() => {
+    setLocalMaxPrice(maxPrice);
+  }, [maxPrice]);
+
+  useEffect(() => {
+    setLocalSelectedAirlines(selectedAirlines);
+  }, [selectedAirlines]);
+
+  useEffect(() => {
+    setLocalDirectOnly(directOnly);
+  }, [directOnly]);
+
+  const handlePriceChange = (e) => {
+    const val = Number(e.target.value);
+    setLocalMaxPrice(val);
+    if (onFilterChange) {
+      onFilterChange({
+        maxPrice: val,
+        airlines: localSelectedAirlines,
+        selectedAirlines: localSelectedAirlines,
+        isDirectOnly: localDirectOnly,
+        directOnly: localDirectOnly,
+      });
+    }
+  };
+
+  const handleToggleAirline = (name) => {
+    const nextAirlines = localSelectedAirlines.includes(name)
+      ? localSelectedAirlines.filter(a => a !== name)
+      : [...localSelectedAirlines, name];
+    setLocalSelectedAirlines(nextAirlines);
+    if (onFilterChange) {
+      onFilterChange({
+        maxPrice: localMaxPrice,
+        airlines: nextAirlines,
+        selectedAirlines: nextAirlines,
+        isDirectOnly: localDirectOnly,
+        directOnly: localDirectOnly,
+      });
+    }
+  };
+
+  const handleDirectOnlyChange = (e) => {
+    const val = e.target.checked;
+    setLocalDirectOnly(val);
+    if (onFilterChange) {
+      onFilterChange({
+        maxPrice: localMaxPrice,
+        airlines: localSelectedAirlines,
+        selectedAirlines: localSelectedAirlines,
+        isDirectOnly: val,
+        directOnly: val,
+      });
+    }
+  };
+
   return (
-    <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_28px_60px_-40px_rgba(15,23,42,0.35)]">
-      <div className="mb-6 border-b border-slate-200 pb-4">
-        <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Tùy chọn tìm chuyến</p>
-        <h2 className="mt-3 text-2xl font-semibold text-slate-900">Bộ lọc</h2>
+    <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_20px_50px_-30px_rgba(15,23,42,0.12)]">
+      <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+        <div>
+          <span className="text-[10px] uppercase font-black tracking-[0.24em] text-slate-400">Bộ lọc</span>
+          <h2 className="text-xl font-bold text-slate-900 mt-1">Tìm chuyến</h2>
+        </div>
+        <button
+          type="button"
+          onClick={onReset}
+          className="text-xs font-bold text-sky-600 hover:text-sky-700 transition active:scale-95 px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100"
+        >
+          Xóa bộ lọc
+        </button>
       </div>
 
-      <div className="space-y-8">
-        <section className="space-y-4">
-          <div>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900">Khoảng giá</h3>
-                <p className="mt-1 text-sm text-slate-500">Điều chỉnh phạm vi giá phù hợp với ngân sách.</p>
-              </div>
-              <span className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">{formatCurrency(minPrice)} - {formatCurrency(maxPrice)}</span>
-            </div>
-
-            <div className="mt-4 rounded-3xl bg-slate-100 p-4">
-              <div className="space-y-3">
-                <div className="relative h-3 overflow-hidden rounded-full bg-slate-200">
-                  <div
-                    className="absolute inset-y-0 rounded-full bg-sky-600"
-                    style={{ left: `${((minPrice - priceBounds.min) / Math.max(priceBounds.max - priceBounds.min, 1)) * 100}%`, right: `${100 - ((maxPrice - priceBounds.min) / Math.max(priceBounds.max - priceBounds.min, 1)) * 100}%` }}
-                  />
-                </div>
-
-                <div className="grid gap-3">
-                  <input
-                    type="range"
-                    min={priceBounds.min}
-                    max={priceBounds.max}
-                    value={minPrice}
-                    onChange={e => onMinPriceChange(Number(e.target.value))}
-                    disabled={disabled}
-                    className="w-full cursor-pointer accent-sky-600"
-                  />
-                  <input
-                    type="range"
-                    min={priceBounds.min}
-                    max={priceBounds.max}
-                    value={maxPrice}
-                    onChange={e => onMaxPriceChange(Number(e.target.value))}
-                    disabled={disabled}
-                    className="w-full cursor-pointer accent-sky-600"
-                  />
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <label className="rounded-3xl border border-slate-200 bg-white px-3 py-3 shadow-sm focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100">
-                    <span className="block text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Min</span>
-                    <input
-                      type="number"
-                      value={minPrice}
-                      onChange={e => onMinPriceChange(Number(e.target.value))}
-                      disabled={disabled}
-                      className="mt-2 w-full border-0 bg-transparent p-0 text-lg font-semibold text-slate-900 focus:outline-none"
-                    />
-                  </label>
-                  <label className="rounded-3xl border border-slate-200 bg-white px-3 py-3 shadow-sm focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100">
-                    <span className="block text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Max</span>
-                    <input
-                      type="number"
-                      value={maxPrice}
-                      onChange={e => onMaxPriceChange(Number(e.target.value))}
-                      disabled={disabled}
-                      className="mt-2 w-full border-0 bg-transparent p-0 text-lg font-semibold text-slate-900 focus:outline-none"
-                    />
-                  </label>
-                </div>
-              </div>
+      <div className="space-y-6">
+        {/* PRICE FILTER */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900">Giá tối đa</h3>
+            <span className="inline-flex rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-600">
+              Dưới {formatCurrency(localMaxPrice)}
+            </span>
+          </div>
+          <div className="relative pt-2">
+            <input
+              type="range"
+              min="0"
+              max="5000000"
+              step="100000"
+              value={localMaxPrice}
+              onChange={handlePriceChange}
+              disabled={disabled}
+              className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-sky-600 disabled:opacity-50"
+            />
+            <div className="flex justify-between text-[10px] font-semibold text-slate-400 mt-2">
+              <span>0đ</span>
+              <span>5.000.000đ</span>
             </div>
           </div>
         </section>
 
-          <section className="space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900">Hãng hàng không</h3>
-              <p className="mt-1 text-sm text-slate-500">Chọn hãng bay uy tín, phù hợp lịch trình.</p>
-            </div>
-            <div className="space-y-3">
-              {airlines.map((airline) => (
+        {/* AIRLINE FILTER */}
+        <section className="space-y-3">
+          <h3 className="text-sm font-bold text-slate-900">Hãng hàng không</h3>
+          <div className="flex flex-wrap gap-2">
+            {airlines.map((airline) => {
+              const isActive = localSelectedAirlines.includes(airline.name);
+              return (
                 <button
                   key={airline.code}
                   type="button"
-                  onClick={() => onToggleAirline(airline.name)}
-                  className={`group flex w-full items-center justify-between gap-3 rounded-3xl border px-3 py-3 text-left transition ${selectedAirlines.includes(airline.name) ? 'border-sky-500 bg-sky-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                  onClick={() => handleToggleAirline(airline.name)}
+                  disabled={disabled}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition active:scale-95 disabled:opacity-50 ${
+                    isActive
+                      ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                  }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 text-xs font-semibold uppercase text-slate-600 shadow-sm">
-                      {airline.code}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{airline.name}</p>
-                      <p className="text-xs text-slate-500">Mã: {airline.code}</p>
-                    </div>
-                  </div>
-                  <div className={`h-5 w-5 rounded-full border ${selectedAirlines.includes(airline.name) ? 'border-sky-500 bg-sky-500 shadow-sm' : 'border-slate-300 bg-white'}`} />
+                  {isActive && <LuCheck className="w-3.5 h-3.5 stroke-[3]" />}
+                  <span>{airline.name}</span>
                 </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900">Số điểm dừng</h3>
-              <p className="mt-1 text-sm text-slate-500">Lọc chuyến theo số lần transit.</p>
-            </div>
-            <div className="space-y-3">
-              {[
-                { value: '0', label: 'Bay thẳng' },
-                { value: '1', label: '1 điểm dừng' },
-                { value: '2plus', label: '2+ điểm dừng' },
-              ].map((option) => (
-                <label key={option.value} className="flex cursor-pointer items-center justify-between rounded-3xl border px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300">
-                  <span>{option.label}</span>
-                  <input
-                    type="checkbox"
-                    checked={selectedStops.includes(option.value)}
-                    onChange={() => onToggleStop(option.value)}
-                    className="h-5 w-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                  />
-                </label>
-              ))}
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900">Tiện ích</h3>
-              <p className="mt-1 text-sm text-slate-500">Chọn tiện nghi đi kèm chuyến bay.</p>
-            </div>
-            <div className="space-y-3">
-              {[
-                { value: 'wifi', label: 'Wifi' },
-                { value: 'meal', label: 'Suất ăn' },
-              ].map((item) => (
-                <label key={item.value} className="flex cursor-pointer items-center justify-between rounded-3xl border px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300">
-                  <span>{item.label}</span>
-                  <input
-                    type="checkbox"
-                    checked={selectedAmenities.includes(item.value)}
-                    onChange={() => onToggleAmenity(item.value)}
-                    className="h-5 w-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                  />
-                </label>
-              ))}
-            </div>
-          </section>
-
-          <div className="grid gap-3 pt-2 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={onApply}
-              className="w-full rounded-3xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/10 transition hover:bg-sky-700"
-              disabled={disabled}
-            >
-              Áp dụng bộ lọc
-            </button>
-            <button
-              type="button"
-              onClick={onReset}
-              className="w-full rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300"
-            >
-              Đặt lại
-            </button>
+              );
+            })}
           </div>
+        </section>
+
+        {/* DIRECT FLIGHT SWITCH */}
+        <section className="pt-4 border-t border-slate-100">
+          <label className="flex items-center justify-between cursor-pointer select-none group">
+            <div className="space-y-0.5">
+              <span className="text-sm font-bold text-slate-900">Bay thẳng</span>
+              <p className="text-xs text-slate-400">Chỉ hiển thị chuyến bay không quá cảnh</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={localDirectOnly}
+              onChange={handleDirectOnlyChange}
+              disabled={disabled}
+              className="h-5 w-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer disabled:opacity-50"
+            />
+          </label>
+        </section>
       </div>
     </div>
-  )
+  );
 }

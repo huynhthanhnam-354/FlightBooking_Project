@@ -38,7 +38,7 @@ public interface FlightRepository extends JpaRepository<Flight, Long> {
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT f FROM Flight f WHERE f.id = :id")
-    Optional<Flight> findByIdForUpdate(@Param("id") Long id);
+    Optional<Flight> findByIdForUpdate(Long id);
 
     /**
      * SENIOR DEV FIX: Helper method for clean functional code and standard error handling.

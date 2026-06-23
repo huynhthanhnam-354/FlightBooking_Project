@@ -43,11 +43,13 @@ export default function FlightCard({ flight, onOpenDetails }) {
     price,
     stops = 0,
     amenities = [],
+    departureAt,
+    arrivalAt,
   } = flight
 
   const priceLabel = formatCurrency(price)
-  const departInfo = formatDateTime(depart)
-  const arriveInfo = formatDateTime(arrive)
+  const departInfo = formatDateTime(departureAt)
+  const arriveInfo = formatDateTime(arrivalAt)
 
   const handleOpenDetails = () => {
     setShowDetails(true)

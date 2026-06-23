@@ -1,21 +1,50 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { 
+  FaPlane, FaHotel, FaCalendarAlt, FaStar, FaSlidersH, FaSearch, FaUser, FaTimes, FaMinus, FaPlus 
+} from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import { searchCombosApi } from '../services/api';
+import BookingModal from '../components/BookingModal';
+import ComboAiAssistant from '../components/ComboAiAssistant';
+import { toast } from 'react-toastify';
+import SockJS from 'sockjs-client';
+import Stomp from 'stompjs';
+
+// Polyfill for global object required by stompjs
+if (typeof window !== 'undefined' && !window.global) {
+  window.global = window;
+}
 
 const mockData = [
   {
     id: 1,
     title: 'Kỳ nghỉ trọn gói Đà Nẵng 3N2Đ',
     location: 'Đà Nẵng',
-    hotelName: 'InterContinental Danang Sun Peninsula',
+    hotelName: 'InterContinental Danang Sun Peninsula Resort',
     price: 6890000,
-    image: 'https://images.unsplash.com/photo-1559592481-74418d7cd362?auto=format&fit=crop&w=800&q=80'
+    region: 'Miền Trung',
+    description: 'Tuyệt tác nghỉ dưỡng bên vịnh Bán đảo Sơn Trà hoang sơ, tận hưởng dịch vụ đẳng cấp thế giới cùng bãi biển riêng tư tuyệt đẹp.',
+    duration: '3 ngày 2 đêm',
+    image: 'https://images.unsplash.com/photo-1559592481-74418d7cd362?auto=format&fit=crop&w=600&q=80',
+    popularity: 95,
+    discount: 20,
+    aiRecommendation: 'best_price',
+    availableSlots: 5
   },
   {
     id: 2,
     title: 'Khám phá Đảo Ngọc Phú Quốc 4N3Đ',
     location: 'Phú Quốc',
-    hotelName: 'JW Marriott Phu Quoc Emerald Bay',
+    hotelName: 'JW Marriott Phu Quoc Emerald Bay Resort',
     price: 9450000,
-    image: 'https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=800&q=80'
+    region: 'Miền Nam',
+    description: 'Tuyệt tác thiết kế mang cảm hứng học đường cổ điển bên Bãi Khem cát trắng mịn, trải nghiệm ẩm thực đỉnh cao và hồ bơi vỏ sò độc đáo.',
+    duration: '4 ngày 3 đêm',
+    image: 'https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=600&q=80',
+    popularity: 98,
+    discount: 15,
+    aiRecommendation: 'price_up',
+    availableSlots: 2
   },
   {
     id: 3,
@@ -23,69 +52,551 @@ const mockData = [
     location: 'Nha Trang',
     hotelName: 'Amiana Resort Nha Trang',
     price: 5900000,
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'
+    region: 'Miền Trung',
+    description: 'Thư giãn bên hồ bơi vô cực nước biển tự nhiên rộng lớn cùng bãi tắm cát trắng riêng tư yên bình giữa vịnh Nha Trang lộng gió.',
+    duration: '3 ngày 2 đêm',
+    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
+    popularity: 88,
+    discount: 10,
+    availableSlots: 8
+  },
+  {
+    id: 4,
+    title: 'Sapa Mây Ngàn Kỳ Thú 3N2Đ',
+    location: 'Sa Pa',
+    hotelName: 'Hotel de la Coupole - MGallery',
+    price: 4890000,
+    region: 'Miền Bắc',
+    description: 'Trải nghiệm nét lãng mạn phong cách Pháp hòa quyện nét văn hóa Tây Bắc độc đáo giữa thị trấn mờ sương đẹp như tranh vẽ.',
+    duration: '3 ngày 2 đêm',
+    image: 'https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?auto=format&fit=crop&w=600&q=80',
+    popularity: 92,
+    discount: 25,
+    aiRecommendation: 'best_price',
+    availableSlots: 1
+  },
+  {
+    id: 5,
+    title: 'Vịnh Hạ Long Du Thuyền Sang Trọng 2N1Đ',
+    location: 'Hạ Long',
+    hotelName: 'Paradise Elegance Cruise Halong',
+    price: 5490000,
+    region: 'Miền Bắc',
+    description: 'Hành trình di sản kỳ diệu lênh đênh giữa vịnh biển kỳ vĩ, ngắm hoàng hôn buông xuống từ cabin ban công riêng cao cấp.',
+    duration: '2 ngày 1 đêm',
+    image: 'https://images.unsplash.com/photo-1524413840807-0c3cb6fa808d?auto=format&fit=crop&w=600&q=80',
+    popularity: 87,
+    discount: 18,
+    availableSlots: 6
+  },
+  {
+    id: 6,
+    title: 'Hùng Vĩ Cao Nguyên Đá Hà Giang 3N2Đ',
+    location: 'Hà Giang',
+    hotelName: 'P\'apiu Resort Hà Giang',
+    price: 6200000,
+    region: 'Miền Bắc',
+    description: 'Chinh phục cung đường đèo hiểm trở, ngắm mùa hoa tam giác mạch rực rỡ và ẩn mình tại resort sinh thái đẳng cấp biệt lập.',
+    duration: '3 ngày 2 đêm',
+    image: 'https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=600&q=80',
+    popularity: 89,
+    discount: 12,
+    availableSlots: 4
+  },
+  {
+    id: 7,
+    title: 'Hội An Hoài Niệm Phố Cổ 3N2Đ',
+    location: 'Hội An',
+    hotelName: 'Anantara Hoi An Resort',
+    price: 4500000,
+    region: 'Miền Trung',
+    description: 'Lưu trú bên dòng sông Hoài thơ mộng, thả đèn hoa đăng lung linh và len lỏi qua từng con hẻm rêu phong nhuộm màu thời gian.',
+    duration: '3 ngày 2 đêm',
+    image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80',
+    popularity: 91,
+    discount: 30,
+    aiRecommendation: 'best_price',
+    availableSlots: 3
+  },
+  {
+    id: 8,
+    title: 'Quy Nhơn Hoang Sơ Kỳ Vĩ 3N2Đ',
+    location: 'Quy Nhơn',
+    hotelName: 'Anantara Quy Nhon Villas',
+    price: 7800000,
+    region: 'Miền Trung',
+    description: 'Bờ biển nguyên sơ cát vàng mịn màng bao quanh bởi những mỏm đá tuyệt tác, tận hưởng hồ bơi riêng biệt độc bản xa hoa.',
+    duration: '3 ngày 2 đêm',
+    image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=600&q=80',
+    popularity: 84,
+    discount: 14,
+    availableSlots: 7
+  },
+  {
+    id: 9,
+    title: 'Đà Lạt Sương Mờ Lãng Mạn 3N2Đ',
+    location: 'Đà Lạt',
+    hotelName: 'Ana Mandara Villas Dalat Resort & Spa',
+    price: 3950000,
+    region: 'Miền Trung',
+    description: 'Ẩn mình dưới những tán thông ngút ngàn, biệt thự kiến trúc Pháp cổ kính mở ra không gian lãng mạn ấm áp giữa cao nguyên.',
+    duration: '3 ngày 2 đêm',
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
+    popularity: 93,
+    discount: 22,
+    aiRecommendation: 'price_up',
+    availableSlots: 2
+  },
+  {
+    id: 10,
+    title: 'Côn Đảo Thiên Đường Tự Nhiên 3N2Đ',
+    location: 'Côn Đảo',
+    hotelName: 'Six Senses Con Dao Resort',
+    price: 12500000,
+    region: 'Miền Nam',
+    description: 'Thiên đường bảo tồn thiên nhiên biển đảo đỉnh cao, biệt thự gỗ sang trọng ven biển lộng gió mang lại sự thái tuyệt hảo.',
+    duration: '3 ngày 2 đêm',
+    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
+    popularity: 96,
+    discount: 8,
+    availableSlots: 5
+  },
+  {
+    id: 11,
+    title: 'Gió Biển Hồ Tràm Thanh Bình 3N2Đ',
+    location: 'Vũng Tàu',
+    hotelName: 'InterContinental Grand Ho Tram',
+    price: 3200000,
+    region: 'Miền Nam',
+    description: 'Trải nghiệm không gian sòng bài, sân golf chuẩn quốc tế ven bãi biển Hồ Tràm hoang sơ cách TP.HCM chỉ hơn 2 giờ di chuyển.',
+    duration: '3 ngày 2 đêm',
+    image: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=600&q=80',
+    popularity: 82,
+    discount: 16,
+    availableSlots: 9
+  },
+  {
+    id: 12,
+    title: 'Combo Mũi Né Cát Vàng Lấp Lánh 3N2Đ',
+    location: 'Mũi Né',
+    hotelName: 'Anantara Mui Ne Resort',
+    price: 4100000,
+    region: 'Miền Nam',
+    description: 'Những rặng dừa xanh đung đưa trước gió bên bờ biển êm đềm, khám phá đồi cát bay trứ danh và thưởng ngoạn hoàng hôn tuyệt mỹ.',
+    duration: '3 ngày 2 đêm',
+    image: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=600&q=80',
+    popularity: 86,
+    discount: 21,
+    availableSlots: 4
   }
 ];
 
+const regions = [
+  { id: 'all', label: 'Tất cả điểm đến' },
+  { id: 'Miền Bắc', label: 'Miền Bắc' },
+  { id: 'Miền Trung', label: 'Miền Trung' },
+  { id: 'Miền Nam', label: 'Miền Nam' }
+];
+
 export default function ComboList() {
+  const navigate = useNavigate();
+  const [selectedRegion, setSelectedRegion] = useState('all');
+  const [selectedCombo, setSelectedCombo] = useState(null);
+  const [customizingCombo, setCustomizingCombo] = useState(null);
+  const [sortOption, setSortOption] = useState('');
+
+  // Search Bar & Filter States
+  const [searchParams, setSearchParams] = useState({
+    origin: '',
+    destination: '',
+    departureDate: '',
+    guests: 1,
+    budget: 0
+  });
+  
+  const [combos, setCombos] = useState(mockData);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // 1. Establish STOMP connection over SockJS and subscribe to topic
+  useEffect(() => {
+    let socket;
+    let client;
+    try {
+      socket = new SockJS('/ws-seat-selection');
+      client = Stomp.over(socket);
+      client.debug = () => {}; // Disable verbose logs in console
+
+      client.connect({}, (frame) => {
+        // Subscribe to combos availability topic
+        client.subscribe('/topic/combos-availability', (message) => {
+          try {
+            const payload = JSON.parse(message?.body || '{}');
+            const { comboId, availableSlots, customerCity, cityName, messageText } = payload;
+
+            // 2. Update availability counts
+            if (comboId !== undefined && availableSlots !== undefined) {
+              setCombos(prev => prev.map(c => 
+                c.id === Number(comboId) 
+                  ? { ...c, availableSlots: Number(availableSlots) } 
+                  : c
+              ));
+            }
+
+            // 3. Show Toast notification when a booking occurs
+            const city = customerCity || cityName;
+            if (city) {
+              toast.info(`Một khách hàng tại ${city} vừa đặt thành công combo này!`, {
+                position: "bottom-right",
+                autoClose: 5000
+              });
+            } else if (messageText && messageText.includes("đặt thành công")) {
+              toast.info(messageText, {
+                position: "bottom-right",
+                autoClose: 5000
+              });
+            }
+          } catch (err) {
+            console.error("Error parsing combos-availability websocket payload:", err);
+          }
+        });
+      }, (error) => {
+        console.warn("STOMP connection failed for ComboList, running offline:", error);
+      });
+    } catch (e) {
+      console.error("Failed to connect websocket client:", e);
+    }
+
+    return () => {
+      if (client && client.connected) {
+        client.disconnect();
+      }
+    };
+  }, []);
+
+  const handleSearch = async (e) => {
+    if (e) e.preventDefault();
+    setIsSearching(true);
+    try {
+      const res = await searchCombosApi(searchParams);
+      setCombos(res.data || []);
+      toast.success('Đã cập nhật danh sách Combo!');
+    } catch (err) {
+      console.error("Search error:", err);
+      toast.error('Lỗi khi tải kết quả tìm kiếm Combo.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Callback to handle updates sent from the AI Combo Assistant Chat widget
+  const handleApplyAiFilters = ({ origin, destination, budget }) => {
+    const airportToCity = {
+      'pqc': 'Phú Quốc',
+      'dad': 'Đà Nẵng',
+      'cxr': 'Nha Trang',
+      'han': 'Hà Nội',
+      'sgn': 'Hồ Chí Minh',
+      'dli': 'Đà Lạt',
+      'uih': 'Quy Nhơn'
+    };
+
+    const resolvedDestination = airportToCity[destination?.toLowerCase()] || destination;
+    const resolvedOrigin = airportToCity[origin?.toLowerCase()] || origin;
+
+    setSearchParams(prev => ({
+      ...prev,
+      origin: resolvedOrigin || prev.origin,
+      destination: resolvedDestination || prev.destination,
+      budget: budget || 0
+    }));
+
+    // Perform local destination filtering if matches found
+    if (resolvedDestination) {
+      const dest = resolvedDestination.toLowerCase().trim();
+      const filtered = mockData.filter(c => 
+        c.location.toLowerCase().includes(dest) || 
+        c.title.toLowerCase().includes(dest)
+      );
+      setCombos(filtered);
+    } else {
+      setCombos(mockData);
+    }
+  };
+
+  // Filter combos by Region tab
+  const filteredCombos = selectedRegion === 'all'
+    ? combos
+    : combos.filter(item => item.region === selectedRegion);
+
+  // Apply optional budget constraints from AI suggestions
+  const budgetFilteredCombos = searchParams.budget > 0
+    ? filteredCombos.filter(item => item.price <= searchParams.budget)
+    : filteredCombos;
+
+  // Sort combos based on Sort Bar selection
+  const sortedCombos = [...budgetFilteredCombos].sort((a, b) => {
+    if (sortOption === 'price_asc') {
+      return a.price - b.price;
+    } else if (sortOption === 'popularity') {
+      return b.popularity - a.popularity;
+    } else if (sortOption === 'discount') {
+      return b.discount - a.discount;
+    }
+    return 0;
+  });
+
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
+    <div className="min-h-screen bg-slate-50 font-sans pb-20">
       {/* Hero Banner */}
-      <section className="bg-slate-800 py-16 px-4 text-center">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl md:text-5xl font-black text-white mb-4">
+      <section className="relative overflow-hidden bg-slate-950 pt-20 pb-28 px-4 text-center">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-950/70 to-indigo-950/70 opacity-90 z-0"></div>
+        <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
+        
+        <div className="max-w-5xl mx-auto relative z-10 space-y-4">
+          <span className="px-4 py-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-full text-xs font-black uppercase tracking-widest inline-block font-black">
+            ✨ Đặc quyền du lịch trọn gói
+          </span>
+          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-none uppercase">
             Combo Vé Máy Bay + Khách Sạn
           </h1>
-          <p className="text-lg text-slate-300">
-            Đặt cùng nhau, tiết kiệm đến 20% chi phí chuyến đi
+          <p className="text-sm md:text-base text-slate-300 max-w-2xl mx-auto font-medium">
+            Đặt trọn gói hành trình khứ hồi chất lượng cao cùng các resort nghỉ dưỡng 5 sao hàng đầu Việt Nam để nhận ưu đãi tiết kiệm tới 20%.
           </p>
+
+          {/* Connected Search Bar Form */}
+          <form onSubmit={handleSearch} className="max-w-5xl mx-auto mt-10 bg-white rounded-[2rem] p-6 shadow-2xl border border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-4 text-left">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-black">Điểm khởi hành</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><FaPlane className="-rotate-45" size={11} /></span>
+                <input 
+                  type="text" 
+                  value={searchParams.origin}
+                  onChange={e => setSearchParams({...searchParams, origin: e.target.value})}
+                  placeholder="Hà Nội (HAN)" 
+                  className="w-full pl-9 pr-4 py-3 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-1 focus:ring-blue-500" 
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-black">Điểm đến</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><FaPlane className="rotate-45" size={11} /></span>
+                <input 
+                  type="text" 
+                  value={searchParams.destination}
+                  onChange={e => setSearchParams({...searchParams, destination: e.target.value})}
+                  placeholder="Điểm du lịch..." 
+                  className="w-full pl-9 pr-4 py-3 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-1 focus:ring-blue-500" 
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-black">Ngày đi</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><FaCalendarAlt size={11} /></span>
+                <input 
+                  type="date" 
+                  value={searchParams.departureDate}
+                  onChange={e => setSearchParams({...searchParams, departureDate: e.target.value})}
+                  className="w-full pl-9 pr-4 py-3 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-1 focus:ring-blue-500" 
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 items-end">
+              <div className="space-y-1 flex-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-black">Số khách</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><FaUser size={11} /></span>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    max="9"
+                    value={searchParams.guests}
+                    onChange={e => setSearchParams({...searchParams, guests: parseInt(e.target.value) || 1})}
+                    className="w-full pl-9 pr-4 py-3 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-1 focus:ring-blue-500" 
+                  />
+                </div>
+              </div>
+              <button 
+                type="submit"
+                disabled={isSearching}
+                className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-blue-600/20 active:scale-95 flex items-center justify-center gap-2 h-[42px]"
+              >
+                {isSearching ? <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : <FaSearch size={10} />}
+                Tìm chuyến
+              </button>
+            </div>
+          </form>
         </div>
       </section>
 
+      {/* Regional Filter Tabs */}
+      <div className="flex justify-center -translate-y-6 relative z-20">
+        <div className="bg-white p-1.5 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 flex items-center gap-1.5">
+          {regions.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setSelectedRegion(tab.id)}
+              className={`px-6 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 ${
+                selectedRegion === tab.id
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Sort Bar */}
+      <div className="max-w-7xl mx-auto px-4 mt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-200/60 pb-5">
+        <div className="text-xs font-bold text-slate-500">
+          Tìm thấy <span className="text-slate-800 font-black">{sortedCombos.length}</span> Combo nghỉ dưỡng sang trọng
+          {searchParams.budget > 0 && ` (Ngân sách dưới ${searchParams.budget.toLocaleString()}₫)`}
+        </div>
+        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl border border-slate-200/20">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-3 flex items-center gap-1"><FaSlidersH size={10} /> Sắp xếp:</span>
+          <button 
+            type="button"
+            onClick={() => setSortOption(sortOption === 'price_asc' ? '' : 'price_asc')}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${sortOption === 'price_asc' ? 'bg-white text-blue-600 shadow-sm font-black' : 'text-slate-500 hover:text-slate-800 font-bold'}`}
+          >
+            Giá: Thấp - Cao
+          </button>
+          <button 
+            type="button"
+            onClick={() => setSortOption(sortOption === 'popularity' ? '' : 'popularity')}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${sortOption === 'popularity' ? 'bg-white text-blue-600 shadow-sm font-black' : 'text-slate-500 hover:text-slate-800 font-bold'}`}
+          >
+            Phổ biến nhất
+          </button>
+          <button 
+            type="button"
+            onClick={() => setSortOption(sortOption === 'discount' ? '' : 'discount')}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${sortOption === 'discount' ? 'bg-white text-blue-600 shadow-sm font-black' : 'text-slate-500 hover:text-slate-800 font-bold'}`}
+          >
+            Ưu đãi lớn nhất
+          </button>
+        </div>
+      </div>
+
       {/* Grid Content */}
-      <section className="max-w-7xl mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {mockData.map((item) => (
-            <div key={item.id} className="bg-white rounded-2xl overflow-hidden shadow-md border border-slate-100 flex flex-col transition-transform hover:-translate-y-1">
-              <div className="relative h-56">
+      <section className="max-w-7xl mx-auto px-4 py-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-in fade-in duration-500">
+          {sortedCombos.map((item) => (
+            <div 
+              key={item.id} 
+              onClick={() => navigate('/combos/' + item.id)}
+              className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-md border border-slate-100 flex flex-col transition-all duration-300 hover:-translate-y-1 cursor-pointer relative"
+            >
+              {/* Card Image */}
+              <div className="relative h-44 overflow-hidden">
                 <img 
                   src={item.image} 
                   alt={item.title} 
-                  className="w-full h-full object-cover" 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                   onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=800&q=80' }}
                 />
-                <div className="absolute top-3 left-3 bg-white/90 px-3 py-1 rounded-full text-[10px] font-bold uppercase text-sky-600 shadow-sm border border-slate-100">
-                   ✈️ Vé máy bay + 🏨 Khách sạn 5 sao
+                
+                {/* AI Recommendation Badge */}
+                {item.aiRecommendation === 'best_price' && (
+                  <div className="absolute bottom-3 left-3 bg-emerald-600/95 backdrop-blur-sm text-white px-2.5 py-1 rounded-xl text-[8px] font-black uppercase tracking-wider shadow-sm z-10 border border-emerald-500/20">
+                     ✨ [AI Khuyên dùng: Giá tốt nhất tuần]
+                  </div>
+                )}
+                {item.aiRecommendation === 'price_up' && (
+                  <div className="absolute bottom-3 left-3 bg-red-600/95 backdrop-blur-sm text-white px-2.5 py-1 rounded-xl text-[8px] font-black uppercase tracking-wider shadow-sm z-10 animate-pulse border border-red-500/20">
+                     🔥 [Xu hướng: Giá sắp tăng]
+                  </div>
+                )}
+
+                <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-full text-[9px] font-black uppercase text-blue-600 shadow-sm border border-slate-100 tracking-wider">
+                   ✈️ Bay + 🏨 Hotel 5★
                 </div>
+                {item.discount > 0 && (
+                  <div className="absolute top-3 right-3 bg-red-500 text-white px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">
+                     -{item.discount}%
+                  </div>
+                )}
               </div>
               
-              <div className="p-6 flex-1 flex flex-col">
-                <h3 className="text-lg font-bold text-slate-800 mb-2 leading-tight">
+              {/* Card Body */}
+              <div className="p-5 flex-1 flex flex-col">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest font-black">{item.location}</span>
+                   <div className="flex items-center gap-0.5 text-amber-400">
+                     <FaStar size={10} />
+                     <FaStar size={10} />
+                     <FaStar size={10} />
+                     <FaStar size={10} />
+                     <FaStar size={10} />
+                   </div>
+                </div>
+
+                <h3 className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors mb-2 leading-tight line-clamp-1">
                   {item.title}
                 </h3>
                 
-                <div className="flex items-center gap-2 mb-4">
-                   <span className="text-amber-500">⭐⭐⭐⭐⭐</span>
-                   <span className="text-xs font-bold text-slate-400 uppercase">({item.location})</span>
+                <p className="text-xs text-slate-500 font-medium mb-4 leading-relaxed line-clamp-2 h-8">
+                  {item.description}
+                </p>
+
+                <div className="space-y-1.5 mb-4 text-xs font-semibold text-slate-500">
+                  <p className="flex items-center gap-2 text-slate-600">
+                    <FaHotel className="text-slate-300 shrink-0" size={12} /> 
+                    <span className="truncate">{item.hotelName}</span>
+                  </p>
+                  <p className="flex items-center gap-2 text-slate-600">
+                    <FaCalendarAlt className="text-slate-300 shrink-0" size={12} /> 
+                    <span>{item.duration}</span>
+                  </p>
+
+                  {/* WebSocket availability updates indicator */}
+                  {item.availableSlots !== undefined && (
+                    <div className="pt-1">
+                      {item.availableSlots <= 3 ? (
+                        <p className="text-[10px] text-red-500 font-black animate-pulse flex items-center gap-1">
+                          🔥 Chỉ còn {item.availableSlots} combo giá này
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-emerald-600 font-black flex items-center gap-1">
+                          🟢 Còn lại {item.availableSlots} combo
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                <div className="space-y-2 mb-6">
-                  <p className="text-sm text-slate-600 flex items-center gap-2">
-                    <span>📍</span> {item.hotelName}
-                  </p>
-                  <p className="text-sm text-slate-600 flex items-center gap-2">
-                    <span>📅</span> 3 ngày 2 đêm
-                  </p>
-                </div>
-
-                <div className="mt-auto pt-4 border-t border-slate-50 flex items-end justify-between">
+                {/* Card Footer */}
+                <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between gap-1">
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Giá từ</p>
-                    <p className="text-xl font-black text-slate-900">{item.price.toLocaleString()}₫</p>
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest font-black">Giá từ</p>
+                    <p className="text-sm font-black text-slate-900">{item.price.toLocaleString()}₫</p>
                   </div>
-                  <button className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-sm transition-colors shadow-lg shadow-orange-500/20">
-                    Đặt ngay
-                  </button>
+                  <div className="flex gap-1.5">
+                    <button 
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCustomizingCombo(item);
+                      }}
+                      className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all"
+                    >
+                      Tùy chỉnh
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedCombo(item);
+                      }}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-md shadow-blue-600/10 active:scale-95"
+                    >
+                      Đặt ngay
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -93,9 +604,235 @@ export default function ComboList() {
         </div>
       </section>
 
-      {/* Footer info */}
+      {/* Booking Modal */}
+      {selectedCombo && (
+        <BookingModal combo={selectedCombo} onClose={() => setSelectedCombo(null)} />
+      )}
+
+      {/* Customization Modal Component */}
+      {customizingCombo && (
+        <CustomizationModal 
+          combo={customizingCombo} 
+          onClose={() => setCustomizingCombo(null)} 
+          onConfirm={(customizedCombo) => {
+            setCustomizingCombo(null);
+            setSelectedCombo(customizedCombo);
+          }}
+        />
+      )}
+
+      {/* Floating Action Button (FAB) and Chatbot */}
+      <ComboAiAssistant onApplyFilters={handleApplyAiFilters} />
+
+      {/* Footer Info */}
       <div className="pb-12 text-center">
-        <p className="text-sm text-slate-400 font-medium">Phiên bản v1.0.0 (FlightBook AI)</p>
+        <p className="text-sm text-slate-400 font-medium">Phiên bản v2.0.0 (FlightBook AI Premium)</p>
+      </div>
+    </div>
+  );
+}
+
+/* Subcomponent: CustomizationModal */
+function CustomizationModal({ combo, onClose, onConfirm }) {
+  const [passengers, setPassengers] = useState(1);
+  const [flightOption, setFlightOption] = useState('vna'); // 'vna', 'bamboo', 'vietjet'
+  const [roomOption, setRoomOption] = useState('std'); // 'std', 'deluxe', 'suite'
+
+  const flightDiffs = {
+    vna: 0,
+    bamboo: -150000,
+    vietjet: -350000
+  };
+
+  const roomDiffs = {
+    std: 0,
+    deluxe: 750000,
+    suite: 2000000
+  };
+
+  const currentPrice = combo.price + flightDiffs[flightOption] + roomDiffs[roomOption];
+  const totalPrice = currentPrice * passengers;
+
+  const handleConfirm = () => {
+    onConfirm({
+      ...combo,
+      price: currentPrice,
+      selectedRoomTypeId: roomOption,
+      selectedFlightId: combo.flight?.id || 1,
+      passengerCount: passengers
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col md:flex-row relative animate-in zoom-in-95 duration-300">
+        
+        {/* Close Button */}
+        <button 
+          type="button"
+          onClick={onClose}
+          className="absolute top-6 right-6 z-[160] text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors active:scale-95"
+        >
+          <FaTimes size={16} />
+        </button>
+
+        {/* Left Column: Combo Details */}
+        <div className="w-full md:w-5/12 bg-[#1a2b49] text-white p-10 flex flex-col justify-between">
+          <div className="space-y-8">
+            <div>
+              <span className="px-3 py-1 bg-blue-500/20 border border-blue-500/30 text-blue-300 rounded-full text-[9px] font-black uppercase tracking-wider inline-block font-black">
+                Tùy chỉnh Combo
+              </span>
+              <h3 className="text-xl font-black mt-3 leading-tight tracking-tight text-white">{combo.title}</h3>
+              <p className="text-xs text-slate-300 mt-1 font-medium">{combo.location} • Khách sạn 5★</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex gap-4 items-start bg-white/5 p-4 rounded-2xl border border-white/10">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-300 shrink-0">
+                  <FaHotel size={14} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-black">Lưu trú</p>
+                  <p className="text-xs font-bold text-white truncate mt-0.5">{combo.hotelName}</p>
+                  <p className="text-[10px] text-slate-300 mt-0.5 font-medium">
+                    {roomOption === 'std' && 'Hạng phòng: Standard (Đã bao gồm)'}
+                    {roomOption === 'deluxe' && 'Hạng phòng: Deluxe Ocean (+750k₫)'}
+                    {roomOption === 'suite' && 'Hạng phòng: Suite VIP (+2.0M₫)'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4 items-start bg-white/5 p-4 rounded-2xl border border-white/10">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-300 shrink-0">
+                  <FaPlane size={14} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-black">Vé máy bay khứ hồi</p>
+                  <p className="text-xs font-bold text-white mt-0.5">
+                    {flightOption === 'vna' && 'Vietnam Airlines (Mặc định)'}
+                    {flightOption === 'bamboo' && 'Bamboo Airways (-150k₫)'}
+                    {flightOption === 'vietjet' && 'Vietjet Air (-350k₫)'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-white/10 mt-8 md:mt-0">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-black">Tổng chi phí ({passengers} khách)</p>
+            <p className="text-3xl font-black text-blue-400 tracking-tight mt-1">{totalPrice.toLocaleString()}₫</p>
+            <p className="text-[9px] text-slate-300 mt-2 italic font-medium">* Đã bao gồm thuế, phí và các tùy chỉnh dịch vụ</p>
+          </div>
+        </div>
+
+        {/* Right Column: Customization Controls */}
+        <div className="w-full md:w-7/12 p-10 flex flex-col justify-between">
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Cá Nhân Hóa Dịch Vụ</h3>
+              <p className="text-xs text-slate-400 mt-1 font-medium">Lựa chọn chuyến bay ưa thích và nâng cấp hạng phòng khách sạn</p>
+            </div>
+
+            {/* Stepper Passenger Count Selector */}
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <div>
+                <p className="text-xs font-bold text-slate-800">Số lượng hành khách</p>
+                <p className="text-[10px] text-slate-400 font-medium">Tối đa 9 khách mỗi lượt đặt</p>
+              </div>
+              <div className="flex items-center gap-4 bg-white border border-slate-100 rounded-xl p-1.5 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => passengers > 1 && setPassengers(p => p - 1)}
+                  disabled={passengers <= 1}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-30"
+                >
+                  <FaMinus size={10} />
+                </button>
+                <span className="text-sm font-black text-slate-800 w-4 text-center">{passengers}</span>
+                <button
+                  type="button"
+                  onClick={() => passengers < 9 && setPassengers(p => p + 1)}
+                  disabled={passengers >= 9}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-30"
+                >
+                  <FaPlus size={10} />
+                </button>
+              </div>
+            </div>
+
+            {/* Change Flight */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block font-black">Đổi chuyến bay khứ hồi</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { key: 'vna', label: 'VNA khứ hồi', diff: '+0₫' },
+                  { key: 'bamboo', label: 'Bamboo khứ hồi', diff: '-150.000₫' },
+                  { key: 'vietjet', label: 'Vietjet khứ hồi', diff: '-350.000₫' }
+                ].map(opt => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setFlightOption(opt.key)}
+                    className={`p-3 rounded-xl border-2 text-center transition-all ${
+                      flightOption === opt.key 
+                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-black' 
+                        : 'border-slate-100 hover:border-slate-200 text-slate-600 font-bold'
+                    }`}
+                  >
+                    <p className="text-[9px] uppercase tracking-wider">{opt.label}</p>
+                    <p className="text-[8px] mt-0.5 opacity-80">{opt.diff}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Upgrade Room */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block font-black">Nâng cấp hạng phòng</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { key: 'std', label: 'Standard Room', diff: '+0₫' },
+                  { key: 'deluxe', label: 'Deluxe Ocean', diff: '+750.000₫' },
+                  { key: 'suite', label: 'Suite VIP', diff: '+2.000.000₫' }
+                ].map(opt => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setRoomOption(opt.key)}
+                    className={`p-3 rounded-xl border-2 text-center transition-all ${
+                      roomOption === opt.key 
+                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-black' 
+                        : 'border-slate-100 hover:border-slate-200 text-slate-600 font-bold'
+                    }`}
+                  >
+                    <p className="text-[9px] uppercase tracking-wider">{opt.label}</p>
+                    <p className="text-[8px] mt-0.5 opacity-80">{opt.diff}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-4 pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-1/3 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                className="w-2/3 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+              >
+                Xác nhận & Đặt chỗ
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
