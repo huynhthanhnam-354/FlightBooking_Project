@@ -18,9 +18,6 @@ public class FlightBookingApplication {
 
     public static void main(String[] args) {
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
-        
-        // ARCHITECT FIX: Force the application to run as a Web (Servlet) environment
-        // This ensures Tomcat starts and keeps the process alive on Port 8081.
         SpringApplication app = new SpringApplication(FlightBookingApplication.class);
         app.setWebApplicationType(WebApplicationType.SERVLET);
         app.run(args);
