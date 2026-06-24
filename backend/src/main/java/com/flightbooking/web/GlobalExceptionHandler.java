@@ -33,6 +33,14 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+            "error", "Conflict",
+            "message", ex.getMessage()
+        ));
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, String>> handleBadCredentials(BadCredentialsException ex) {
         String msg = (ex.getMessage() != null && !ex.getMessage().isBlank())

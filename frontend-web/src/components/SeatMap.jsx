@@ -10,9 +10,9 @@ if (typeof window !== 'undefined' && !window.global) {
   window.global = window;
 }
 
-const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
+const LETTERS = ['A', 'B', 'C', 'D', 'E']
 const BUSINESS_ROWS = 2
-const TOTAL_ROWS = 15
+const TOTAL_ROWS = 12
 
 export default function SeatMap({ flight }) {
   const selectedSeats = useBookingStore((state) => state?.selectedSeats || [])
@@ -23,21 +23,34 @@ export default function SeatMap({ flight }) {
   const [heldSeats, setHeldSeats] = useState([])
   const [seatActionLoading, setSeatActionLoading] = useState(false)
   const stompClientRef = useRef(null)
+  const previousFlightIdRef = useRef(null)
 
-  // 1. Fetch initially occupied seats from database
+  useEffect(() => {
+    if (previousFlightIdRef.current !== null && previousFlightIdRef.current !== flight?.id) {
+      setSelectedSeats?.([])
+    }
+    previousFlightIdRef.current = flight?.id || null
+  }, [flight?.id, setSelectedSeats])
+
+  const refreshOccupiedSeats = async () => {
+    if (!flight?.id) return
+    try {
+      const response = await api.get(`/bookings/occupied-seats?flightId=${flight.id}`)
+      const nextSeats = response?.data || []
+      setOccupiedSeats(nextSeats)
+    } catch (err) {
+      console.error("Error fetching occupied seats:", err)
+    }
+  }
+
+  // 1. Fetch occupied seats from database, with polling fallback for clients without WebSocket updates.
   useEffect(() => {
     if (!flight?.id) return
 
-    const fetchOccupied = async () => {
-      try {
-        const response = await api.get(`/bookings/occupied-seats?flightId=${flight.id}`)
-        setOccupiedSeats(response?.data || [])
-      } catch (err) {
-        console.error("Error fetching occupied seats:", err)
-      }
-    }
-    fetchOccupied()
-  }, [flight])
+    refreshOccupiedSeats()
+    const pollId = window.setInterval(refreshOccupiedSeats, 3000)
+    return () => window.clearInterval(pollId)
+  }, [flight?.id, selectedSeats, setSelectedSeats])
 
   // 2. Connect WebSocket STOMP client
   useEffect(() => {
@@ -201,8 +214,8 @@ export default function SeatMap({ flight }) {
 
   const renderSeat = (row, letter) => {
     const id = `${row}${letter}`
-    const isBooked = occupiedSeats?.includes(id)
     const isSelected = selectedSeats?.includes(id)
+    const isBooked = occupiedSeats?.includes(id) && !isSelected
     const isHeldByOthers = heldSeats?.includes(id) && !isSelected
     const isBusiness = row <= BUSINESS_ROWS
     const isExitRow = row === 6 || row === 7
@@ -218,7 +231,7 @@ export default function SeatMap({ flight }) {
     return (
       <button
         key={id}
-        disabled={isBooked || isHeldByOthers || seatActionLoading}
+        disabled={(isBooked || isHeldByOthers || seatActionLoading) && !isSelected}
         onClick={() => handleSeatClickWithHold(id)}
         className={seatClass}
         title={`${id} - ${getSeatType(row, letter)}${price > 0 ? ` - +${price.toLocaleString()}₫` : ''}${isHeldByOthers ? ' - Đang được người khác chọn' : ''}`}
@@ -310,8 +323,8 @@ export default function SeatMap({ flight }) {
                       <span className="text-[10px] font-bold text-slate-200">{row}</span>
                     </div>
 
-                    {/* Right side: D, E, F */}
-                    {LETTERS.slice(3, 6).map(l => renderSeat(row, l))}
+                    {/* Right side: D, E */}
+                    {LETTERS.slice(3).map(l => renderSeat(row, l))}
                   </div>
                   <div className="aisle-number">{row}</div>
                 </div>

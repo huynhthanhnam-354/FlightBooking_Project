@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useBookingStore } from "../store/bookingStore";
-import { FaUser, FaGlobe, FaVenusMars, FaIdCard, FaEnvelope, FaPhone, FaStickyNote, FaExclamationTriangle, FaChevronRight } from 'react-icons/fa';
+import { FaUser, FaGlobe, FaVenusMars, FaIdCard, FaEnvelope, FaPhone, FaStickyNote, FaExclamationTriangle, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
-export default function BookingForm({ flight, passengers = 1, onSubmit }) {
+export default function BookingForm({ flight, passengers = 1, onSubmit, onBack, initialPassenger = null }) {
   const updatePassengerInfo = useBookingStore((state) => state.updatePassengerInfo);
+  const userEmail = initialPassenger?.email || "";
+  const isEmailLocked = Boolean(userEmail);
   
   const [formData, setFormData] = useState({
-    fullName: "",
+    fullName: initialPassenger?.fullName || "",
     gender: "male",
     nationality: "Vietnam",
-    dob: "",
     passport: "",
-    email: "",
-    phone: "",
+    email: userEmail,
+    phone: initialPassenger?.phone || "",
     notes: ""
   });
 
@@ -43,6 +44,17 @@ export default function BookingForm({ flight, passengers = 1, onSubmit }) {
 
     setErrors(newErrors);
   }, [formData, touched]);
+
+  useEffect(() => {
+    if (!initialPassenger) return;
+
+    setFormData(prev => ({
+      ...prev,
+      fullName: prev.fullName || initialPassenger.fullName || "",
+      email: initialPassenger.email || prev.email || "",
+      phone: prev.phone || initialPassenger.phone || ""
+    }));
+  }, [initialPassenger]);
 
   if (!flight) return null;
 
@@ -83,11 +95,11 @@ export default function BookingForm({ flight, passengers = 1, onSubmit }) {
     }, 600);
   }
 
-  const inputClass = (field) => `w-full rounded-2xl border px-4 py-3 text-sm transition-all outline-none focus:ring-2 ${
+  const inputClass = (field, disabled = false) => `w-full rounded-2xl border px-4 py-3 text-sm transition-all outline-none focus:ring-2 ${
     errors[field] 
       ? 'border-red-300 bg-red-50 focus:ring-red-200' 
       : 'border-slate-200 bg-white focus:border-sky-500 focus:ring-sky-100'
-  }`;
+  } ${disabled ? 'cursor-not-allowed bg-slate-100 text-slate-500 focus:ring-0' : ''}`;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -163,17 +175,6 @@ export default function BookingForm({ flight, passengers = 1, onSubmit }) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Ngày sinh</label>
-                <input 
-                  name="dob"
-                  type="date"
-                  value={formData.dob}
-                  onChange={handleChange}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-sky-500 focus:ring-2 focus:ring-sky-100 transition-all outline-none"
-                />
-              </div>
-
-              <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Hộ chiếu / CMND</label>
                 <input 
                   name="passport"
@@ -204,8 +205,9 @@ export default function BookingForm({ flight, passengers = 1, onSubmit }) {
                   value={formData.email}
                   onChange={handleChange}
                   onBlur={() => handleBlur('email')}
+                  disabled={isEmailLocked}
                   placeholder="example@gmail.com"
-                  className={inputClass('email')}
+                  className={inputClass('email', isEmailLocked)}
                 />
                 {errors.email && <p className="text-[11px] text-red-500 font-bold ml-1">{errors.email}</p>}
               </div>
@@ -264,20 +266,31 @@ export default function BookingForm({ flight, passengers = 1, onSubmit }) {
           <p className="text-sm text-slate-500 max-w-sm text-center md:text-left">
             Thông tin của bạn sẽ được mã hóa và bảo mật tuyệt đối theo tiêu chuẩn quốc tế.
           </p>
-          <button 
-            type="submit" 
-            disabled={isLoading} 
-            className="w-full md:w-auto px-10 py-4 bg-sky-600 hover:bg-sky-700 text-white rounded-2xl font-black text-lg shadow-xl shadow-sky-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50"
-          >
-            {isLoading ? (
-              <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-            ) : (
-              <>
-                Tiếp tục thanh toán
-                <FaChevronRight size={14} />
-              </>
-            )}
-          </button>
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+            <button
+              type="button"
+              onClick={onBack}
+              disabled={isLoading}
+              className="inline-flex h-14 w-full items-center justify-center gap-2.5 whitespace-nowrap rounded-2xl border border-slate-200 bg-white px-7 text-sm font-bold text-slate-600 shadow-sm transition-all hover:bg-slate-100 active:scale-[0.98] disabled:opacity-50 sm:w-36"
+            >
+              <FaChevronLeft size={14} />
+              Quay lại
+            </button>
+            <button 
+              type="submit" 
+              disabled={isLoading} 
+              className="inline-flex h-14 w-full items-center justify-center gap-2.5 whitespace-nowrap rounded-2xl bg-sky-600 px-8 text-sm font-black text-white shadow-xl shadow-sky-600/20 transition-all hover:bg-sky-700 active:scale-[0.98] disabled:opacity-50 sm:w-56"
+            >
+              {isLoading ? (
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              ) : (
+                <>
+                  Tiếp tục thanh toán
+                  <FaChevronRight size={14} />
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </form>
     </div>

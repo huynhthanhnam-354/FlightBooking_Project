@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { useSearch } from '../context/SearchContext';
 import { useAuth } from '../context/AuthContext';
 import AppIcon from '../components/AppIcon';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { createBookingApi, holdSeatApi, listOccupiedSeatsApi, releaseSeatHoldApi } from '../services/bookingApi';
 import { formatAuthError } from '../services/authApi';
 import {
@@ -17,7 +17,12 @@ import { formatPrice } from '../utils/price';
 
 const BASE_SERVICE_FEE_VND = 50000;
 const TAX_RATE = 0.1;
-const SEAT_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
+const SEAT_LETTERS = ['A', 'B', 'C', 'D', 'E'] as const;
+const TOTAL_SEAT_ROWS = 12;
+const BUSINESS_ROWS = 2;
+const BUSINESS_SEAT_FEE_VND = 500000;
+const EXTRA_LEGROOM_ROWS = new Set([6, 7]);
+const EXTRA_LEGROOM_SEAT_FEE_VND = 150000;
 const BAGGAGE_PACKAGES = [
   { kg: 0, price: 0, labelKey: 'bag_carry' },
   { kg: 15, price: 160000, labelKey: 'bag_light' },
@@ -26,6 +31,13 @@ const BAGGAGE_PACKAGES = [
   { kg: 30, price: 350000, labelKey: 'bag_long' },
   { kg: 40, price: 480000, labelKey: 'bag_max' },
 ] as const;
+
+const SEAT_UNAVAILABLE_MESSAGE = 'Ghế này đã được đặt hoặc đang được giữ. Vui lòng chọn ghế khác.';
+
+function isSeatUnavailableError(message: string) {
+  const text = message.toLowerCase();
+  return text.includes('seat') || text.includes('ghế') || text.includes('giu') || text.includes('giữ') || text.includes('đặt');
+}
 
 const BOOKING_TEXT = {
   vi: {
@@ -212,17 +224,19 @@ type SeatItem = {
   addOn: number;
 };
 
-function generateSeatMap(occupiedSeats: Set<string>): SeatItem[] {
+function generateSeatMap(occupiedSeats: Set<string>, selectedSeats: Set<string>): SeatItem[] {
   const seats: SeatItem[] = [];
-  for (let row = 1; row <= 12; row++) {
-    const isBusiness = row <= 2;
+  for (let row = 1; row <= TOTAL_SEAT_ROWS; row++) {
+    const isBusiness = row <= BUSINESS_ROWS;
     const classType: CabinClass = isBusiness ? 'business' : 'economy';
-    const leftCount = isBusiness ? 2 : 3;
-    const rightCount = isBusiness ? 2 : 3;
-    const addOn = isBusiness ? 400000 : row === 5 ? 150000 : 0;
-    const extra = row === 5;
+    const addOn = isBusiness
+      ? BUSINESS_SEAT_FEE_VND
+      : EXTRA_LEGROOM_ROWS.has(row)
+        ? EXTRA_LEGROOM_SEAT_FEE_VND
+        : 0;
+    const extra = EXTRA_LEGROOM_ROWS.has(row);
 
-    for (let i = 0; i < leftCount; i++) {
+    for (let i = 0; i < 3; i++) {
       const letter = SEAT_LETTERS[i];
       const id = `${row}${letter}`;
       seats.push({
@@ -231,14 +245,14 @@ function generateSeatMap(occupiedSeats: Set<string>): SeatItem[] {
         letter,
         side: 'left',
         classType,
-        status: occupiedSeats.has(id) ? 'booked' : 'available',
+        status: occupiedSeats.has(id) && !selectedSeats.has(id) ? 'booked' : 'available',
         extra,
         addOn,
       });
     }
 
-    for (let i = 0; i < rightCount; i++) {
-      const letter = SEAT_LETTERS[3 + i];
+    for (let i = 3; i < SEAT_LETTERS.length; i++) {
+      const letter = SEAT_LETTERS[i];
       const id = `${row}${letter}`;
       seats.push({
         id,
@@ -246,7 +260,7 @@ function generateSeatMap(occupiedSeats: Set<string>): SeatItem[] {
         letter,
         side: 'right',
         classType,
-        status: occupiedSeats.has(id) ? 'booked' : 'available',
+        status: occupiedSeats.has(id) && !selectedSeats.has(id) ? 'booked' : 'available',
         extra,
         addOn,
       });
@@ -262,38 +276,85 @@ export default function BookingScreen() {
   const navigation = useNavigation<any>();
   const [step, setStep] = useState(0);
   const [occupiedSeats, setOccupiedSeats] = useState<Set<string>>(new Set());
-  const seatMap = useMemo(() => generateSeatMap(occupiedSeats), [occupiedSeats]);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const selectedSeatSet = useMemo(() => new Set(selectedSeats), [selectedSeats]);
+  const seatMap = useMemo(() => generateSeatMap(occupiedSeats, selectedSeatSet), [occupiedSeats, selectedSeatSet]);
   const [holdingSeatId, setHoldingSeatId] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<'credit_card' | 'bank_transfer' | 'e_wallet' | 'cod'>('credit_card');
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', idCard: '' });
   const [errors, setErrors] = useState<{ fullName?: string; email?: string; phone?: string }>({});
   const [submitting, setSubmitting] = useState(false);
+  const selectedSeatsRef = useRef<string[]>([]);
+  const flightIdRef = useRef<number | null>(null);
   const bt = (key: keyof typeof BOOKING_TEXT.en) => BOOKING_TEXT[language]?.[key] ?? BOOKING_TEXT.en[key];
   const money = (valueVnd: number) => formatPrice(valueVnd, currency);
 
   const flight = search.selectedFlight;
 
   useEffect(() => {
-    let cancelled = false;
+    selectedSeatsRef.current = selectedSeats;
+  }, [selectedSeats]);
+
+  useEffect(() => {
+    const nextFlightId = flight ? parseInt(flight.id, 10) : NaN;
+    flightIdRef.current = Number.isNaN(nextFlightId) ? null : nextFlightId;
+  }, [flight?.id]);
+
+  const refreshOccupiedSeats = useCallback(async () => {
     const flightId = flight ? parseInt(flight.id, 10) : NaN;
     if (!flight || Number.isNaN(flightId)) {
       setOccupiedSeats(new Set());
       setSelectedSeats([]);
       return;
     }
-    (async () => {
-      try {
-        const seats = await listOccupiedSeatsApi(flightId);
-        if (!cancelled) setOccupiedSeats(new Set(seats));
-      } catch {
-        if (!cancelled) setOccupiedSeats(new Set());
-      }
-    })();
+    try {
+      const seats = await listOccupiedSeatsApi(flightId);
+      setOccupiedSeats(new Set(seats));
+    } catch {
+      setOccupiedSeats(new Set());
+    }
+  }, [flight?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (cancelled) return;
+      await refreshOccupiedSeats();
+    };
+    void load();
+    const pollId = setInterval(() => {
+      void load();
+    }, 3000);
     return () => {
       cancelled = true;
+      clearInterval(pollId);
     };
+  }, [refreshOccupiedSeats]);
+
+  useEffect(() => {
+    setSelectedSeats([]);
   }, [flight?.id]);
+
+  const releaseHeldSeats = useCallback(() => {
+    const flightId = flightIdRef.current;
+    const seats = selectedSeatsRef.current;
+    if (!flightId || seats.length === 0) return;
+
+    selectedSeatsRef.current = [];
+    setSelectedSeats([]);
+    seats.forEach((seatNumber) => {
+      void releaseSeatHoldApi({ flightId, seatNumber }).catch(() => {});
+    });
+    void refreshOccupiedSeats();
+  }, [refreshOccupiedSeats]);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        releaseHeldSeats();
+      };
+    }, [releaseHeldSeats]),
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -306,17 +367,8 @@ export default function BookingScreen() {
   }, [user]);
 
   useEffect(() => {
-    if (!flight) return;
-    setSelectedSeats((prev) => {
-      const valid = prev.filter((seat) => !occupiedSeats.has(seat)).slice(0, search.adults);
-      if (valid.length >= search.adults) return valid;
-      const fill = seatMap
-        .filter((seat) => seat.status === 'available' && !valid.includes(seat.id))
-        .slice(0, search.adults - valid.length)
-        .map((seat) => seat.id);
-      return [...valid, ...fill];
-    });
-  }, [flight, occupiedSeats, search.adults, seatMap]);
+    setSelectedSeats((prev) => prev.slice(0, search.adults));
+  }, [search.adults]);
 
   const STEPS = [t('step_details'), t('step_passenger'), t('step_payment')];
 
@@ -353,7 +405,16 @@ export default function BookingScreen() {
   const tax = Math.round(baseFareVnd * TAX_RATE);
   const serviceFeeVnd = BASE_SERVICE_FEE_VND * passengerCount;
   const totalVnd = baseFareVnd + tax + serviceFeeVnd + seatAddOn + baggageAddOn;
-  const cabinLabel = flight.premium ? t('business_class') : t('economy');
+  const selectedCabinTypes = new Set(selectedSeatMetas.map((seat) => seat.classType));
+  const cabinLabel = selectedCabinTypes.size === 1
+    ? selectedCabinTypes.has('business')
+      ? t('business_class')
+      : t('economy')
+    : selectedCabinTypes.size > 1
+      ? `${t('business_class')} / ${t('economy')}`
+      : flight.premium
+        ? t('business_class')
+        : t('economy');
 
   const validatePassengerForm = () => {
     const nextErrors: { fullName?: string; email?: string; phone?: string } = {};
@@ -384,7 +445,11 @@ export default function BookingScreen() {
   };
 
   const toggleSeat = async (seat: SeatItem) => {
-    if (seat.status === 'booked') return;
+    const wasSelected = selectedSeats.includes(seat.id);
+    if (seat.status === 'booked' && !wasSelected) {
+      Alert.alert(t('confirm'), SEAT_UNAVAILABLE_MESSAGE);
+      return;
+    }
     if (!user) {
       Alert.alert(t('login_title'), t('booking_need_login'));
       return;
@@ -392,31 +457,39 @@ export default function BookingScreen() {
     const flightId = parseInt(flight.id, 10);
     if (Number.isNaN(flightId)) return;
 
-    const wasSelected = selectedSeats.includes(seat.id);
-    if (wasSelected && selectedSeats.length === 1) return;
-
     setHoldingSeatId(seat.id);
     try {
       if (wasSelected) {
         await releaseSeatHoldApi({ flightId, seatNumber: seat.id });
         setSelectedSeats((prev) => prev.filter((id) => id !== seat.id));
+        await refreshOccupiedSeats();
+        return;
+      }
+
+      if (selectedSeats.length >= passengerCount) {
+        if (passengerCount === 1) {
+          const previousSeat = selectedSeats[0];
+          await holdSeatApi({ flightId, seatNumber: seat.id });
+          if (previousSeat) {
+            await releaseSeatHoldApi({ flightId, seatNumber: previousSeat });
+          }
+          setSelectedSeats([seat.id]);
+          await refreshOccupiedSeats();
+          return;
+        }
+        Alert.alert(t('confirm'), `${t('choose_seat')}: ${passengerCount}`);
         return;
       }
 
       await holdSeatApi({ flightId, seatNumber: seat.id });
       setSelectedSeats((prev) => {
         if (prev.includes(seat.id)) return prev;
-        if (prev.length >= passengerCount) {
-          const released = prev[0];
-          if (released) {
-            void releaseSeatHoldApi({ flightId, seatNumber: released });
-          }
-          return [...prev.slice(1), seat.id];
-        }
         return [...prev, seat.id];
       });
+      await refreshOccupiedSeats();
     } catch (e) {
-      Alert.alert(t('confirm'), formatAuthError(e));
+      const message = formatAuthError(e);
+      Alert.alert(t('confirm'), isSeatUnavailableError(message) ? SEAT_UNAVAILABLE_MESSAGE : message);
       try {
         const seats = await listOccupiedSeatsApi(flightId);
         setOccupiedSeats(new Set(seats));
@@ -477,6 +550,8 @@ export default function BookingScreen() {
       search.setSelectedFlight(null);
       search.setBaggageKg(0);
       search.setBaggageFeeVnd(0);
+      selectedSeatsRef.current = [];
+      setSelectedSeats([]);
       setStep(0);
       Alert.alert(t('booking_success'), `${t('booking_code')}\nPNR: ${res.pnr}`);
     } catch (e) {
@@ -557,7 +632,7 @@ export default function BookingScreen() {
               </View>
 
               <Text style={styles.cabinTitle}>{bt('businessCabin')}</Text>
-              {[1, 2].map((rowNumber) => (
+              {Array.from({ length: BUSINESS_ROWS }, (_, index) => index + 1).map((rowNumber) => (
                 <View key={`biz-${rowNumber}`} style={styles.seatRow}>
                   <Text style={styles.rowLabel}>{rowNumber}</Text>
                   <View style={styles.rowBlock}>
@@ -603,7 +678,7 @@ export default function BookingScreen() {
               ))}
 
               <Text style={styles.cabinTitle}>{bt('economyCabin')}</Text>
-              {[3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((rowNumber) => (
+              {Array.from({ length: TOTAL_SEAT_ROWS - BUSINESS_ROWS }, (_, index) => index + BUSINESS_ROWS + 1).map((rowNumber) => (
                 <View key={`eco-${rowNumber}`} style={styles.seatRow}>
                   <Text style={styles.rowLabel}>{rowNumber}</Text>
                   <View style={styles.rowBlock}>
