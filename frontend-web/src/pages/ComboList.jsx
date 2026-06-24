@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   FaPlane, FaHotel, FaCalendarAlt, FaStar, FaSlidersH, FaSearch, FaUser, FaTimes, FaMinus, FaPlus 
 } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { searchCombosApi } from '../services/api';
 import BookingModal from '../components/BookingModal';
 import ComboAiAssistant from '../components/ComboAiAssistant';
@@ -191,6 +191,112 @@ const mockData = [
   }
 ];
 
+// Stable hash-based weather recommendation matching the Java service
+const generateMockAiRecommendation = (location) => {
+  if (!location) return "";
+  const loc = location.trim().toLowerCase();
+  let hash = 0;
+  for (let i = 0; i < loc.length; i++) {
+    hash = loc.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  hash = Math.abs(hash);
+  const statuses = ["Sunny", "Rainy", "Cloudy"];
+  const weather = statuses[hash % statuses.length];
+  
+  if (weather === "Sunny") {
+    return `☀️ Thời tiết hôm nay tại ${location} đang nắng đẹp 28°C. AI gợi ý bạn tham gia các hoạt động tắm biển, lặn ngắm san hô và thưởng thức tiệc BBQ bãi biển vào chiều nay!`;
+  } else if (weather === "Rainy") {
+    return `🌧️ ${location} hôm nay có mưa rào. Để chuyến đi trọn vẹn, AI gợi ý bạn dành thời gian thư giãn tại Spa của resort, trải nghiệm lớp học nấu ăn truyền thống và thưởng thức cafe ngắm mưa.`;
+  } else {
+    return `⛅ Thời tiết ${location} hôm nay dịu mát, nhiều mây rất thích hợp cho việc đi dạo phố cổ, tham quan bảo tàng hoặc check-in các địa điểm di sản mà không lo bị nắng gắt.`;
+  }
+};
+
+// Helper to enrich static mock data with detailed hotel profiles
+const enrichMockWithHotelProfile = (item) => {
+  const profiles = {
+    1: {
+      hotelStars: 5,
+      roomQuality: "Cao cấp, biệt thự sườn đồi view biển Sơn Trà trọn vẹn, nội thất tinh xảo đậm chất văn hóa Việt",
+      hotelAmenities: ["Bãi biển riêng tư", "Hồ bơi vô cực ngoài trời", "Harnn Heritage Spa", "Nhà hàng La Maison 1888", "Trung tâm thể hình hiện đại", "Bữa sáng buffet thượng hạng"]
+    },
+    2: {
+      hotelStars: 5,
+      roomQuality: "Tuyệt tác thiết kế Bãi Khem, phòng Deluxe view biển ngoạn mục, nội thất cổ điển chuẩn xa hoa",
+      hotelAmenities: ["Hồ bơi vỏ sò độc đáo", "Spa by JW cao cấp", "Nhà hàng Pink Pearl ẩm thực Pháp", "Bãi tắm cát trắng riêng tư", "Lớp học làm bánh miễn phí", "Bữa sáng buffet chuẩn quốc tế"]
+    },
+    3: {
+      hotelStars: 5,
+      roomQuality: "Biệt thự sát biển lãng mạn, phòng tắm mở hòa mình vào thiên nhiên, view vịnh Nha Trang xanh mát",
+      hotelAmenities: ["Hồ bơi nước biển tự nhiên", "Hồ bơi nước ngọt vô cực", "Tắm bùn khoáng nóng ôn tuyền", "Bãi tắm riêng yên bình", "Nhà hàng hải sản tươi sống", "Bữa sáng buffet miễn phí"]
+    },
+    4: {
+      hotelStars: 5,
+      roomQuality: "Phòng Indochine Pháp cổ kính quyến rũ, view núi Fansipan hùng vĩ, bồn tắm đứng nghệ thuật",
+      hotelAmenities: ["Hồ bơi nước nóng Le Grand Bassin", "Nuages Spa cao cấp", "Nhà hàng Chic ẩm thực Pháp-Việt", "Quầy bar ngoài trời trên tầng mái", "Câu lạc bộ trẻ em", "Bữa sáng buffet miễn phí"]
+    },
+    5: {
+      hotelStars: 5,
+      roomQuality: "Cabin sang trọng ban công riêng ngắm vịnh di sản, nội thất gỗ ấm cúng quý phái",
+      hotelAmenities: ["Spa trị liệu chuyên sâu", "Lớp học Taichi sáng sớm", "Nhà hàng Le Marin ẩm thực cao cấp", "Boong tàu tắm nắng 360 độ", "Trải nghiệm chèo thuyền kayak", "Tiệc tối hoàng hôn lãng mạn"]
+    },
+    6: {
+      hotelStars: 5,
+      roomQuality: "Biệt thự biệt lập ẩn mình giữa thiên nhiên cao nguyên đá, nội thất gỗ thủ công tinh tế",
+      hotelAmenities: ["Hồ Jacuzzi ngoài trời", "Dịch vụ quản gia riêng 24/7", "Trải nghiệm đi bộ trekking", "Rạp chiếu phim ngoài trời", "Bữa tối BBQ tại đỉnh núi", "Bữa sáng tại phòng miễn phí"]
+    },
+    7: {
+      hotelStars: 5,
+      roomQuality: "Phòng suite ban công lớn hướng sông Hoài thơ mộng, nội thất gỗ mang âm hưởng phố cổ",
+      hotelAmenities: ["Hồ bơi ngoài trời xanh mát", "Lớp học nấu ăn truyền thống", "Spa chăm sóc thảo dược", "Du thuyền sông Hoài hoàng hôn", "Nhà hàng ẩm thực Hội An", "Bữa sáng buffet miễn phí"]
+    },
+    8: {
+      hotelStars: 5,
+      roomQuality: "Biệt thự hồ bơi riêng hướng vịnh Quy Nhơn, nội thất đá tự nhiên và gỗ tếch đẳng cấp",
+      hotelAmenities: ["Hồ bơi riêng biệt độc bản", "Trị liệu Spa bên bờ đá", "Dịch vụ ăn uống tại biệt thự", "Lớp dạy Yoga sáng sớm", "Trung tâm thể hình hiện đại", "Bữa sáng buffet miễn phí"]
+    },
+    9: {
+      hotelStars: 5,
+      roomQuality: "Biệt thự Pháp cổ kính nép mình dưới rừng thông, lò sưởi ấm cúng và bồn tắm vintage",
+      hotelAmenities: ["Hồ bơi nước ấm ngoài trời", "La Cochinchine Spa", "Nhà hàng Le Petit ẩm thực Pháp", "Vườn rau hữu cơ sinh thái", "Tour khám phá biệt thự cổ", "Bữa sáng buffet miễn phí"]
+    },
+    10: {
+      hotelStars: 5,
+      roomQuality: "Biệt thự gỗ mộc mạc tinh tế ven biển, hồ bơi tràn bờ riêng tư tuyệt hảo",
+      hotelAmenities: ["Hồ bơi tràn bờ riêng biệt", "Spa Six Senses đẳng cấp thế giới", "Rạp chiếu phim ngoài trời", "Trải nghiệm xem rùa đẻ trứng", "Nhà hàng By The Beach hải sản", "Bữa sáng buffet hữu cơ"]
+    },
+    11: {
+      hotelStars: 5,
+      roomQuality: "Phòng Grand view biển Hồ Tràm thanh bình, thiết kế hiện đại trang nhã rộng rãi",
+      hotelAmenities: ["Sân golf The Bluffs chuẩn quốc tế", "Khu phức hợp sòng bài giải trí", "Hệ thống 4 hồ bơi tràn bờ", "Spa trị liệu cao cấp", "Rạp chiếu phim hiện đại", "Bữa sáng buffet miễn phí"]
+    },
+    12: {
+      hotelStars: 5,
+      roomQuality: "Biệt thự vườn nhiệt đới thanh bình, bồn tắm bằng đá nguyên khối ngắm vườn cây xanh mát",
+      hotelAmenities: ["Hồ bơi vô cực hướng biển", "Anantara Spa cao cấp", "Nhà hàng L'Anmien ẩm thực Á-Âu", "Hoạt động thể thao dưới nước", "Lớp học pha chế cocktail", "Bữa sáng buffet miễn phí"]
+    }
+  };
+
+  const profile = profiles[item.id] || {
+    hotelStars: 5,
+    roomQuality: "Phòng nghỉ dưỡng chất lượng cao, ban công thoáng đãng, trang thiết bị tiện nghi chuẩn 5 sao",
+    hotelAmenities: ["Bãi tắm riêng", "Hồ bơi vô cực ngoài trời", "Trung tâm Spa", "Nhà hàng Á-Âu", "Bữa sáng miễn phí"]
+  };
+
+  return {
+    ...item,
+    ...profile
+  };
+};
+
+const enrichedMockData = mockData.map(item => {
+  const enrichedItem = enrichMockWithHotelProfile(item);
+  return {
+    ...enrichedItem,
+    aiRecommendation: generateMockAiRecommendation(item.location)
+  };
+});
+
 const regions = [
   { id: 'all', label: 'Tất cả điểm đến' },
   { id: 'Miền Bắc', label: 'Miền Bắc' },
@@ -200,6 +306,7 @@ const regions = [
 
 export default function ComboList() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [selectedCombo, setSelectedCombo] = useState(null);
   const [customizingCombo, setCustomizingCombo] = useState(null);
@@ -214,8 +321,42 @@ export default function ComboList() {
     budget: 0
   });
   
-  const [combos, setCombos] = useState(mockData);
+  const [combos, setCombos] = useState(enrichedMockData);
   const [isSearching, setIsSearching] = useState(false);
+
+  // Hook to parse initial URL search parameters on mount/navigation
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const fromVal = queryParams.get('from');
+    const toVal = queryParams.get('to');
+    const dateVal = queryParams.get('date');
+    const guestsVal = queryParams.get('guests');
+
+    const parsedParams = {
+      origin: fromVal || '',
+      destination: toVal || '',
+      departureDate: dateVal || '',
+      guests: parseInt(guestsVal) || 1,
+      budget: 0
+    };
+
+    if (fromVal || toVal || dateVal || guestsVal) {
+      setSearchParams(parsedParams);
+    }
+    
+    const fetchInitialCombos = async () => {
+      setIsSearching(true);
+      try {
+        const res = await searchCombosApi(parsedParams);
+        setCombos(res.data || []);
+      } catch (err) {
+        console.error("Initial combos search error:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+    fetchInitialCombos();
+  }, [location.search]);
 
   // 1. Establish STOMP connection over SockJS and subscribe to topic
   useEffect(() => {
@@ -313,13 +454,13 @@ export default function ComboList() {
     // Perform local destination filtering if matches found
     if (resolvedDestination) {
       const dest = resolvedDestination.toLowerCase().trim();
-      const filtered = mockData.filter(c => 
+      const filtered = enrichedMockData.filter(c => 
         c.location.toLowerCase().includes(dest) || 
         c.title.toLowerCase().includes(dest)
       );
       setCombos(filtered);
     } else {
-      setCombos(mockData);
+      setCombos(enrichedMockData);
     }
   };
 
@@ -500,15 +641,18 @@ export default function ComboList() {
                   onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=800&q=80' }}
                 />
                 
-                {/* AI Recommendation Badge */}
-                {item.aiRecommendation === 'best_price' && (
-                  <div className="absolute bottom-3 left-3 bg-emerald-600/95 backdrop-blur-sm text-white px-2.5 py-1 rounded-xl text-[8px] font-black uppercase tracking-wider shadow-sm z-10 border border-emerald-500/20">
-                     ✨ [AI Khuyên dùng: Giá tốt nhất tuần]
-                  </div>
-                )}
-                {item.aiRecommendation === 'price_up' && (
-                  <div className="absolute bottom-3 left-3 bg-red-600/95 backdrop-blur-sm text-white px-2.5 py-1 rounded-xl text-[8px] font-black uppercase tracking-wider shadow-sm z-10 animate-pulse border border-red-500/20">
-                     🔥 [Xu hướng: Giá sắp tăng]
+                {/* AI Recommendation Weather Badge */}
+                {item.aiRecommendation && (
+                  <div className={`absolute bottom-3 left-3 backdrop-blur-sm text-white px-2.5 py-1 rounded-xl text-[8px] font-black uppercase tracking-wider shadow-sm z-10 border ${
+                    item.aiRecommendation.includes('☀️') 
+                      ? 'bg-amber-600/95 border-amber-500/20' 
+                      : item.aiRecommendation.includes('🌧️') 
+                        ? 'bg-sky-600/95 border-sky-500/20' 
+                        : 'bg-slate-600/95 border-slate-500/20'
+                  }`}>
+                    {item.aiRecommendation.includes('☀️') && '☀️ Nắng đẹp • Ngoài trời'}
+                    {item.aiRecommendation.includes('🌧️') && '🌧️ Mưa rào • Nghỉ dưỡng'}
+                    {item.aiRecommendation.includes('⛅') && '⛅ Nhiều mây • Dạo phố'}
                   </div>
                 )}
 
@@ -568,6 +712,71 @@ export default function ComboList() {
                     </div>
                   )}
                 </div>
+
+                {/* Dynamic Weather & Itinerary Suggestion */}
+                {(() => {
+                  const rec = item.aiRecommendation;
+                  if (!rec) return null;
+                  
+                  let theme = {
+                    bg: 'bg-slate-50/80',
+                    border: 'border-slate-200/50',
+                    text: 'text-slate-700',
+                    badgeBg: 'bg-slate-200/60',
+                    badgeText: 'text-slate-700',
+                    title: 'Dự báo thời tiết'
+                  };
+
+                  if (rec.includes('☀️')) {
+                    theme = {
+                      bg: 'bg-amber-50/60',
+                      border: 'border-amber-100',
+                      text: 'text-amber-950',
+                      badgeBg: 'bg-amber-100/60',
+                      badgeText: 'text-amber-800',
+                      title: 'Thời tiết: Nắng đẹp'
+                    };
+                  } else if (rec.includes('🌧️')) {
+                    theme = {
+                      bg: 'bg-sky-50/60',
+                      border: 'border-sky-100',
+                      text: 'text-sky-950',
+                      badgeBg: 'bg-sky-100/60',
+                      badgeText: 'text-sky-800',
+                      title: 'Thời tiết: Có mưa'
+                    };
+                  } else if (rec.includes('⛅')) {
+                    theme = {
+                      bg: 'bg-indigo-50/40',
+                      border: 'border-indigo-100/60',
+                      text: 'text-indigo-950',
+                      badgeBg: 'bg-indigo-100/50',
+                      badgeText: 'text-indigo-800',
+                      title: 'Thời tiết: Nhiều mây'
+                    };
+                  }
+
+                  // Strip weather emoji prefix from the paragraph to look clean
+                  const cleanRec = rec.replace(/^[☀️🌧️⛅]\s*/, '');
+
+                  return (
+                    <div className={`mt-3 p-3 ${theme.bg} rounded-2xl border ${theme.border} text-[11px] leading-relaxed font-medium transition-all duration-300 hover:shadow-sm`}>
+                      <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                          </span>
+                          <span className={`text-[9px] font-black uppercase tracking-wider ${theme.badgeText}`}>{theme.title}</span>
+                        </div>
+                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md ${theme.badgeBg} ${theme.badgeText}`}>AI Gợi ý</span>
+                      </div>
+                      <p className={`line-clamp-3 text-[10px] ${theme.text}`}>
+                        {cleanRec}
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 {/* Card Footer */}
                 <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between gap-1">
@@ -658,7 +867,7 @@ function CustomizationModal({ combo, onClose, onConfirm }) {
       ...combo,
       price: currentPrice,
       selectedRoomTypeId: roomOption,
-      selectedFlightId: combo.flight?.id || 1,
+      selectedFlightId: combo.flightResponse?.id || combo.flight?.id || combo.selectedFlightId || 1,
       passengerCount: passengers
     });
   };
@@ -684,7 +893,12 @@ function CustomizationModal({ combo, onClose, onConfirm }) {
                 Tùy chỉnh Combo
               </span>
               <h3 className="text-xl font-black mt-3 leading-tight tracking-tight text-white">{combo.title}</h3>
-              <p className="text-xs text-slate-300 mt-1 font-medium">{combo.location} • Khách sạn 5★</p>
+              <p className="text-xs text-slate-300 mt-1 font-medium flex items-center gap-1.5">
+                {combo.location} • Khách sạn {combo.hotelStars || 5}★
+                <span className="flex text-[8px]">
+                  {Array.from({ length: combo.hotelStars || 5 }).map((_, i) => "⭐")}
+                </span>
+              </p>
             </div>
 
             <div className="space-y-4">
@@ -692,7 +906,7 @@ function CustomizationModal({ combo, onClose, onConfirm }) {
                 <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-300 shrink-0">
                   <FaHotel size={14} />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-black">Lưu trú</p>
                   <p className="text-xs font-bold text-white truncate mt-0.5">{combo.hotelName}</p>
                   <p className="text-[10px] text-slate-300 mt-0.5 font-medium">
@@ -700,6 +914,18 @@ function CustomizationModal({ combo, onClose, onConfirm }) {
                     {roomOption === 'deluxe' && 'Hạng phòng: Deluxe Ocean (+750k₫)'}
                     {roomOption === 'suite' && 'Hạng phòng: Suite VIP (+2.0M₫)'}
                   </p>
+                  <p className="text-[9px] text-slate-300 mt-2 leading-relaxed italic bg-white/5 p-2.5 rounded-xl border border-white/5">
+                    🏨 {combo.roomQuality || "Phòng nghỉ dưỡng cao cấp view đẹp"}
+                  </p>
+                  {combo.hotelAmenities && (
+                    <div className="mt-2.5 flex flex-wrap gap-1 max-h-[120px] overflow-y-auto pt-2 border-t border-white/5">
+                      {combo.hotelAmenities.map((amenity, idx) => (
+                        <span key={idx} className="px-2 py-0.5 bg-white/10 hover:bg-white/20 border border-white/5 text-[8px] text-slate-200 rounded-full font-medium transition-colors">
+                          ✨ {amenity}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

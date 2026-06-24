@@ -42,7 +42,7 @@ export default function BookingModal({ combo, onClose }) {
     try {
       const payload = {
         comboId: combo.id,
-        selectedFlightId: combo.selectedFlightId || combo.flight?.id || 1,
+        selectedFlightId: combo.selectedFlightId || combo.flightResponse?.id || combo.flight?.id || 1,
         selectedRoomTypeId: combo.selectedRoomTypeId || 'std',
         passengerName: formData.fullName,
         passengerEmail: formData.email,
@@ -93,7 +93,12 @@ export default function BookingModal({ combo, onClose }) {
                 Tóm tắt combo
               </span>
               <h3 className="text-xl font-black mt-3 leading-tight tracking-tight text-white">{combo.title}</h3>
-              <p className="text-xs text-slate-300 mt-1 font-medium">{combo.location} • Khách sạn 5★</p>
+              <p className="text-xs text-slate-300 mt-1 font-medium flex items-center gap-1.5">
+                {combo.location} • Khách sạn {combo.hotelStars || 5}★
+                <span className="flex text-[8px]">
+                  {Array.from({ length: combo.hotelStars || 5 }).map((_, i) => "⭐")}
+                </span>
+              </p>
             </div>
 
             <div className="space-y-4">
@@ -102,10 +107,22 @@ export default function BookingModal({ combo, onClose }) {
                 <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-300 shrink-0">
                   <FaHotel size={14} />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nơi lưu trú</p>
                   <p className="text-xs font-bold text-white truncate mt-0.5">{combo.hotelName}</p>
                   <p className="text-[10px] text-slate-300 mt-0.5">{combo.duration}</p>
+                  <p className="text-[9px] text-slate-300 mt-2 leading-relaxed italic bg-white/5 p-2.5 rounded-xl border border-white/5">
+                    🏨 {combo.roomQuality || "Phòng nghỉ dưỡng cao cấp view đẹp"}
+                  </p>
+                  {combo.hotelAmenities && (
+                    <div className="mt-2.5 flex flex-wrap gap-1 max-h-[120px] overflow-y-auto pt-2 border-t border-white/5">
+                      {combo.hotelAmenities.map((amenity, idx) => (
+                        <span key={idx} className="px-2 py-0.5 bg-white/10 hover:bg-white/20 border border-white/5 text-[8px] text-slate-200 rounded-full font-medium transition-colors">
+                          ✨ {amenity}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -225,11 +225,37 @@ const mockCombos = [
 
 export const searchCombosApi = async (params) => {
   try {
-    const response = await api.get('/combos', { params });
+    const response = await api.get('/v1/combos/search', { params });
     return response;
   } catch (err) {
-    console.warn("Backend /api/combos endpoint not found. Performing local filter fallback.", err);
-    let results = [...mockCombos];
+    console.warn("Backend /api/v1/combos/search endpoint not found. Performing local filter fallback.", err);
+    
+    // Stable hash-based weather recommendation matching the Java service
+    const getWeatherForecast = (location) => {
+      if (!location) return "Sunny";
+      const loc = location.trim().toLowerCase();
+      let hash = 0;
+      for (let i = 0; i < loc.length; i++) {
+        hash = loc.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      hash = Math.abs(hash);
+      const statuses = ["Sunny", "Rainy", "Cloudy"];
+      const weather = statuses[hash % statuses.length];
+      
+      if (weather === "Sunny") {
+        return `☀️ Thời tiết hôm nay tại ${location} đang nắng đẹp 28°C. AI gợi ý bạn tham gia các hoạt động tắm biển, lặn ngắm san hô và thưởng thức tiệc BBQ bãi biển vào chiều nay!`;
+      } else if (weather === "Rainy") {
+        return `🌧️ ${location} hôm nay có mưa rào. Để chuyến đi trọn vẹn, AI gợi ý bạn dành thời gian thư giãn tại Spa của resort, trải nghiệm lớp học nấu ăn truyền thống và thưởng thức cafe ngắm mưa.`;
+      } else {
+        return `⛅ Thời tiết ${location} hôm nay dịu mát, nhiều mây rất thích hợp cho việc đi dạo phố cổ, tham quan bảo tàng hoặc check-in các địa điểm di sản mà không lo bị nắng gắt.`;
+      }
+    };
+
+    let results = mockCombos.map(combo => ({
+      ...combo,
+      aiRecommendation: getWeatherForecast(combo.location)
+    }));
+
     if (params?.destination) {
       const dest = params.destination.toLowerCase().trim();
       results = results.filter(c => 

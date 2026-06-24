@@ -105,10 +105,24 @@ function SearchPage() {
 	}, [searchParams])
 
 	useEffect(() => {
-		if (location?.state?.initialSearch) {
+		const queryParams = new URLSearchParams(location.search)
+		const fromVal = queryParams.get('from')
+		const toVal = queryParams.get('to')
+		const dateVal = queryParams.get('date')
+		const guestsVal = queryParams.get('guests')
+
+		if (fromVal || toVal || dateVal || guestsVal) {
+			setSearchParams({
+				from: fromVal || '',
+				to: toVal || '',
+				date: dateVal || '',
+				passengers: Number(guestsVal || 1),
+				tripType: 'oneway'
+			})
+		} else if (location?.state?.initialSearch) {
 			setSearchParams(location.state.initialSearch)
 		}
-	}, [location?.state?.initialSearch, setSearchParams])
+	}, [location, setSearchParams])
 
 	// 3. REACTIVE FILTERING EFFECT (No "Áp dụng" button click required)
 	useEffect(() => {

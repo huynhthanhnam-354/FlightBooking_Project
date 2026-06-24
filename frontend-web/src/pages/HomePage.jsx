@@ -1,43 +1,70 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import SearchBar from '../components/SearchBar'
 import AIInsightsWidget from '../components/AIInsightsWidget'
 import AIDestinationExplorer from '../components/AIDestinationExplorer'
 import SpecialDeals from '../components/SpecialDeals'
+import api from '../services/api'
 
-const DESTINATIONS = [
+const FALLBACK_DESTINATIONS = [
   {
     id: 1,
     name: 'Vịnh Hạ Long',
     description: 'Khám phá kỳ quan thiên nhiên thế giới',
     price: '1.290.000₫',
-    image: 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=600&q=80'
+    image: 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=600&q=80',
+    destinationCode: 'HAN'
   },
   {
     id: 2,
     name: 'Đà Nẵng',
     description: 'Thành phố của những cây cầu',
     price: '890.000₫',
-    image: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=600&q=80'
+    image: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=600&q=80',
+    destinationCode: 'DAD'
   },
   {
     id: 3,
     name: 'Hà Nội',
     description: 'Nét đẹp nghìn năm văn hiến',
     price: '1.050.000₫',
-    image: 'https://images.unsplash.com/photo-1555661530-68c8e98db4e6?auto=format&fit=crop&w=600&q=80'
+    image: 'https://images.unsplash.com/photo-1555661530-68c8e98db4e6?auto=format&fit=crop&w=600&q=80',
+    destinationCode: 'HAN'
   },
   {
     id: 4,
     name: 'Phú Quốc',
     description: 'Thiên đường đảo ngọc',
     price: '1.450.000₫',
-    image: 'https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?auto=format&fit=crop&w=600&q=80'
+    image: 'https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?auto=format&fit=crop&w=600&q=80',
+    destinationCode: 'PQC'
   }
 ]
 
 function HomePage() {
   const heroImage = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80'
   const [searchContext, setSearchContext] = useState(null)
+  const [initialSearch, setInitialSearch] = useState(null)
+  const [recommendations, setRecommendations] = useState([])
+
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      try {
+        const res = await api.get('/v1/recommendations')
+        setRecommendations(res.data || [])
+      } catch (err) {
+        console.error("Fetch recommendations error, using fallbacks:", err)
+        setRecommendations(FALLBACK_DESTINATIONS)
+      }
+    }
+    fetchRecommendations()
+  }, [])
+
+  const handleDestinationClick = (dest) => {
+    setInitialSearch({
+      to: `${dest.name} (${dest.destinationCode})`
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   return (
     <div className="w-full">
@@ -59,7 +86,7 @@ function HomePage() {
 
           <div className="grid grid-cols-1 gap-8 items-start lg:grid-cols-12">
             <div className="lg:col-span-8">
-              <SearchBar onInsightsChange={setSearchContext} />
+              <SearchBar onInsightsChange={setSearchContext} initialSearch={initialSearch} />
             </div>
             <div className="lg:col-span-4 h-full">
               <AIInsightsWidget searchContext={searchContext} />
@@ -79,9 +106,10 @@ function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {DESTINATIONS.map((dest) => (
+          {recommendations.map((dest) => (
             <div 
               key={dest.id}
+              onClick={() => handleDestinationClick(dest)}
               className="group relative overflow-hidden rounded-2xl shadow-sm border border-slate-100 bg-white cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
             >
               <div className="h-48 w-full overflow-hidden">

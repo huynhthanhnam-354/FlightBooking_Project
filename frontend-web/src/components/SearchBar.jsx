@@ -133,19 +133,18 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
       return match ? match[1] : str;
     };
 
-    const payload = isAIMode
-      ? { searchMode: 'ai', query: aiQuery, tripType, passengers, cabinClass }
-      : { 
-          tripType, 
-          from: getCode(from, fromCode), 
-          to: getCode(to, toCode), 
-          date: departDate, // Đổi tên cho đồng bộ với SearchPage
-          departDate, 
-          returnDate: tripType === 'oneway' ? null : returnDate, 
-          passengers: passengers.adults + passengers.children, 
-          cabinClass 
-        }
-    navigate('/search', { state: { initialSearch: payload } })
+    const depCode = getCode(from, fromCode);
+    const arrCode = getCode(to, toCode);
+    const guestCount = passengers.adults + passengers.children;
+
+    if (searchMode === 'combo') {
+      navigate(`/combos/search?from=${depCode}&to=${arrCode}&date=${departDate}&guests=${guestCount}`);
+    } else if (searchMode === 'ai') {
+      const payload = { searchMode: 'ai', query: aiQuery, tripType, passengers, cabinClass };
+      navigate('/search', { state: { initialSearch: payload } });
+    } else {
+      navigate(`/flights?from=${depCode}&to=${arrCode}&date=${departDate}&guests=${guestCount}`);
+    }
   }
 
   function updateSegment(idx, field, value) {
@@ -167,7 +166,7 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
             setSearchMode('classic')
             setTripType('oneway')
           }}
-          className={`px-4 py-2 rounded-full text-sm transition ${searchMode !== 'ai' && tripType === 'oneway' ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+          className={`px-4 py-2 rounded-full text-sm transition ${searchMode === 'classic' && tripType === 'oneway' ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
         >Một chiều</button>
         <button
           type="button"
@@ -175,7 +174,7 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
             setSearchMode('classic')
             setTripType('roundtrip')
           }}
-          className={`px-4 py-2 rounded-full text-sm transition ${searchMode !== 'ai' && tripType === 'roundtrip' ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+          className={`px-4 py-2 rounded-full text-sm transition ${searchMode === 'classic' && tripType === 'roundtrip' ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
         >Khứ hồi</button>
         <button
           type="button"
@@ -183,8 +182,16 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
             setSearchMode('classic')
             setTripType('multicity')
           }}
-          className={`px-4 py-2 rounded-full text-sm transition ${searchMode !== 'ai' && tripType === 'multicity' ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+          className={`px-4 py-2 rounded-full text-sm transition ${searchMode === 'classic' && tripType === 'multicity' ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
         >Đa chặng</button>
+        <button
+          type="button"
+          onClick={() => {
+            setSearchMode('combo')
+            setTripType('oneway')
+          }}
+          className={`px-4 py-2 rounded-full text-sm transition ${searchMode === 'combo' ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+        >Combo Vé & Khách sạn</button>
         <button
           type="button"
           onClick={() => setSearchMode('ai')}

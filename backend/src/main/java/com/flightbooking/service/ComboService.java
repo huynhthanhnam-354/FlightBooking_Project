@@ -48,6 +48,8 @@ public class ComboService {
     private final AppUserRepository appUserRepository;
     private final PnrGenerator pnrGenerator;
     private final SimpMessagingTemplate messagingTemplate;
+    private final WeatherService weatherService;
+    private final AirlabsService airlabsService;
 
     @Value("${app.vnpay.tmn-code:2QXUI8KI}")
     private String vnp_TmnCode;
@@ -63,18 +65,18 @@ public class ComboService {
     private String vnp_ReturnUrl;
 
     private static final List<ComboBase> COMBO_BASES = Arrays.asList(
-            new ComboBase(1L, "Kỳ nghỉ trọn gói Đà Nẵng 3N2Đ", "Đà Nẵng", "DAD", "InterContinental Danang Sun Peninsula Resort", 6890000L, "Miền Trung", "Tuyệt tác nghỉ dưỡng bên vịnh Bán đảo Sơn Trà hoang sơ, tận hưởng dịch vụ đẳng cấp thế giới cùng bãi biển riêng tư tuyệt đẹp.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1559592481-74418d7cd362?auto=format&fit=crop&w=600&q=80", 95, 20, "best_price"),
-            new ComboBase(2L, "Khám phá Đảo Ngọc Phú Quốc 4N3Đ", "Phú Quốc", "PQC", "JW Marriott Phu Quoc Emerald Bay Resort", 9450000L, "Miền Nam", "Tuyệt tác thiết kế mang cảm hứng học đường cổ điển bên Bãi Khem cát trắng mịn, trải nghiệm ẩm thực đỉnh cao và hồ bơi vỏ sò độc đáo.", "4 ngày 3 đêm", "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=600&q=80", 98, 15, "price_up"),
-            new ComboBase(3L, "Nha Trang Biển Gọi 3N2Đ", "Nha Trang", "CXR", "Amiana Resort Nha Trang", 5900000L, "Miền Trung", "Thư giãn bên hồ bơi vô cực nước biển tự nhiên rộng lớn cùng bãi tắm cát trắng riêng tư yên bình giữa vịnh Nha Trang lộng gió.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80", 88, 10, null),
-            new ComboBase(4L, "Sapa Mây Ngàn Kỳ Thú 3N2Đ", "Sa Pa", "HAN", "Hotel de la Coupole - MGallery", 4890000L, "Miền Bắc", "Trải nghiệm nét lãng mạn phong cách Pháp hòa quyện nét văn hóa Tây Bắc độc đáo giữa thị trấn mờ sương đẹp như tranh vẽ.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?auto=format&fit=crop&w=600&q=80", 92, 25, "best_price"),
-            new ComboBase(5L, "Vịnh Hạ Long Du Thuyền Sang Trọng 2N1Đ", "Hạ Long", "HAN", "Paradise Elegance Cruise Halong", 5490000L, "Miền Bắc", "Hành trình di sản kỳ diệu lênh đênh giữa vịnh biển kỳ vĩ, ngắm hoàng hôn buông xuống từ cabin ban công riêng cao cấp.", "2 ngày 1 đêm", "https://images.unsplash.com/photo-1524413840807-0c3cb6fa808d?auto=format&fit=crop&w=600&q=80", 87, 18, null),
-            new ComboBase(6L, "Hùng Vĩ Cao Nguyên Đá Hà Giang 3N2Đ", "Hà Giang", "HAN", "P'apiu Resort Hà Giang", 6200000L, "Miền Bắc", "Chinh phục cung đường đèo hiểm trở, ngắm mùa hoa tam giác mạch rực rỡ và ẩn mình tại resort sinh thái đẳng cấp biệt lập.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=600&q=80", 89, 12, null),
-            new ComboBase(7L, "Hội An Hoài Niệm Phố Cổ 3N2Đ", "Hội An", "DAD", "Anantara Hoi An Resort", 4500000L, "Miền Trung", "Lưu trú bên dòng sông Hoài thơ mộng, thả đèn hoa đăng lung linh và len lỏi qua từng con hẻm rêu phong nhuộm màu thời gian.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80", 91, 30, "best_price"),
-            new ComboBase(8L, "Quy Nhơn Hoang Sơ Kỳ Vĩ 3N2Đ", "Quy Nhơn", "UIH", "Anantara Quy Nhon Villas", 7800000L, "Miền Trung", "Bờ biển nguyên sơ cát vàng mịn màng bao quanh bởi những mỏm đá tuyệt tác, tận hưởng hồ bơi riêng biệt độc bản xa hoa.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=600&q=80", 84, 14, null),
-            new ComboBase(9L, "Đà Lạt Sương Mờ Lãng Mạn 3N2Đ", "Đà Lạt", "DLI", "Ana Mandara Villas Dalat Resort & Spa", 3950000L, "Miền Trung", "Ẩn mình dưới những tán thông ngút ngàn, biệt thự kiến trúc Pháp cổ kính mở ra không gian lãng mạn ấm áp giữa cao nguyên.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80", 93, 22, "price_up"),
-            new ComboBase(10L, "Côn Đảo Thiên Đường Tự Nhiên 3N2Đ", "Côn Đảo", "VCS", "Six Senses Con Dao Resort", 12500000L, "Miền Nam", "Thiên đường bảo tồn thiên nhiên biển đảo đỉnh cao, biệt thự gỗ sang trọng ven biển lộng gió mang lại sự thư thái tuyệt hảo.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80", 96, 8, null),
-            new ComboBase(11L, "Gió Biển Hồ Tràm Thanh Bình 3N2Đ", "Vũng Tàu", "SGN", "InterContinental Grand Ho Tram", 3200000L, "Miền Nam", "Trải nghiệm không gian sòng bài, sân golf chuẩn quốc tế ven bãi biển Hồ Tràm hoang sơ cách TP.HCM chỉ hơn 2 giờ di chuyển.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=600&q=80", 82, 16, null),
-            new ComboBase(12L, "Combo Mũi Né Cát Vàng Lấp Lánh 3N2Đ", "Mũi Né", "SGN", "Anantara Mui Ne Resort", 4100000L, "Miền Nam", "Những rặng dừa xanh đung đưa trước gió bên bờ biển êm đềm, khám phá đồi cát bay trứ danh và thưởng ngoạn hoàng hôn tuyệt mỹ.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=600&q=80", 86, 21, null)
+            new ComboBase(1L, "Kỳ nghỉ trọn gói Đà Nẵng 3N2Đ", "Đà Nẵng", "DAD", "InterContinental Danang Sun Peninsula Resort", 5, "Cao cấp, biệt thự sườn đồi view biển Sơn Trà trọn vẹn, nội thất tinh xảo đậm chất văn hóa Việt", Arrays.asList("Bãi biển riêng tư", "Hồ bơi vô cực ngoài trời", "Harnn Heritage Spa", "Nhà hàng La Maison 1888", "Trung tâm thể hình hiện đại", "Bữa sáng buffet thượng hạng"), 6890000L, "Miền Trung", "Tuyệt tác nghỉ dưỡng bên vịnh Bán đảo Sơn Trà hoang sơ, tận hưởng dịch vụ đẳng cấp thế giới cùng bãi biển riêng tư tuyệt đẹp.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1559592481-74418d7cd362?auto=format&fit=crop&w=600&q=80", 95, 20, "best_price"),
+            new ComboBase(2L, "Khám phá Đảo Ngọc Phú Quốc 4N3Đ", "Phú Quốc", "PQC", "JW Marriott Phu Quoc Emerald Bay Resort", 5, "Tuyệt tác thiết kế Bãi Khem, phòng Deluxe view biển ngoạn mục, nội thất cổ điển chuẩn xa hoa", Arrays.asList("Hồ bơi vỏ sò độc đáo", "Spa by JW cao cấp", "Nhà hàng Pink Pearl ẩm thực Pháp", "Bãi tắm cát trắng riêng tư", "Lớp học làm bánh miễn phí", "Bữa sáng buffet chuẩn quốc tế"), 9450000L, "Miền Nam", "Tuyệt tác thiết kế mang cảm hứng học đường cổ điển bên Bãi Khem cát trắng mịn, trải nghiệm ẩm thực đỉnh cao và hồ bơi vỏ sò độc đáo.", "4 ngày 3 đêm", "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=600&q=80", 98, 15, "price_up"),
+            new ComboBase(3L, "Nha Trang Biển Gọi 3N2Đ", "Nha Trang", "CXR", "Amiana Resort Nha Trang", 5, "Biệt thự sát biển lãng mạn, phòng tắm mở hòa mình vào thiên nhiên, view vịnh Nha Trang xanh mát", Arrays.asList("Hồ bơi nước biển tự nhiên", "Hồ bơi nước ngọt vô cực", "Tắm bùn khoáng nóng ôn tuyền", "Bãi tắm riêng yên bình", "Nhà hàng hải sản tươi sống", "Bữa sáng buffet miễn phí"), 5900000L, "Miền Trung", "Thư giãn bên hồ bơi vô cực nước biển tự nhiên rộng lớn cùng bãi tắm cát trắng riêng tư yên bình giữa vịnh Nha Trang lộng gió.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80", 88, 10, null),
+            new ComboBase(4L, "Sapa Mây Ngàn Kỳ Thú 3N2Đ", "Sa Pa", "HAN", "Hotel de la Coupole - MGallery", 5, "Phòng Indochine Pháp cổ kính quyến rũ, view núi Fansipan hùng vĩ, bồn tắm đứng nghệ thuật", Arrays.asList("Hồ bơi nước nóng Le Grand Bassin", "Nuages Spa cao cấp", "Nhà hàng Chic ẩm thực Pháp-Việt", "Quầy bar ngoài trời trên tầng mái", "Câu lạc bộ trẻ em", "Bữa sáng buffet miễn phí"), 4890000L, "Miền Bắc", "Trải nghiệm nét lãng mạn phong cách Pháp hòa quyện nét văn hóa Tây Bắc độc đáo giữa thị trấn mờ sương đẹp như tranh vẽ.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?auto=format&fit=crop&w=600&q=80", 92, 25, "best_price"),
+            new ComboBase(5L, "Vịnh Hạ Long Du Thuyền Sang Trọng 2N1Đ", "Hạ Long", "HAN", "Paradise Elegance Cruise Halong", 5, "Cabin sang trọng ban công riêng ngắm vịnh di sản, nội thất gỗ ấm cúng quý phái", Arrays.asList("Spa trị liệu chuyên sâu", "Lớp học Taichi sáng sớm", "Nhà hàng Le Marin ẩm thực cao cấp", "Boong tàu tắm nắng 360 độ", "Trải nghiệm chèo thuyền kayak", "Tiệc tối hoàng hôn lãng mạn"), 5490000L, "Miền Bắc", "Hành trình di sản kỳ diệu lênh đênh giữa vịnh biển kỳ vĩ, ngắm hoàng hôn buông xuống từ cabin ban công riêng cao cấp.", "2 ngày 1 đêm", "https://images.unsplash.com/photo-1524413840807-0c3cb6fa808d?auto=format&fit=crop&w=600&q=80", 87, 18, null),
+            new ComboBase(6L, "Hùng Vĩ Cao Nguyên Đá Hà Giang 3N2Đ", "Hà Giang", "HAN", "P'apiu Resort Hà Giang", 5, "Biệt thự biệt lập ẩn mình giữa thiên nhiên cao nguyên đá, nội thất gỗ thủ công tinh tế", Arrays.asList("Hồ Jacuzzi ngoài trời", "Dịch vụ quản gia riêng 24/7", "Trải nghiệm đi bộ trekking", "Rạp chiếu phim ngoài trời", "Bữa tối BBQ tại đỉnh núi", "Bữa sáng tại phòng miễn phí"), 6200000L, "Miền Bắc", "Chinh phục cung đường đèo hiểm trở, ngắm mùa hoa tam giác mạch rực rỡ và ẩn mình tại resort sinh thái đẳng cấp biệt lập.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=600&q=80", 89, 12, null),
+            new ComboBase(7L, "Hội An Hoài Niệm Phố Cổ 3N2Đ", "Hội An", "DAD", "Anantara Hoi An Resort", 5, "Phòng suite ban công lớn hướng sông Hoài thơ mộng, nội thất gỗ mang âm hưởng phố cổ", Arrays.asList("Hồ bơi ngoài trời xanh mát", "Lớp học nấu ăn truyền thống", "Spa chăm sóc thảo dược", "Du thuyền sông Hoài hoàng hôn", "Nhà hàng ẩm thực Hội An", "Bữa sáng buffet miễn phí"), 4500000L, "Miền Trung", "Lưu trú bên dòng sông Hoài thơ mộng, thả đèn hoa đăng lung linh và len lỏi qua từng con hẻm rêu phong nhuộm màu thời gian.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80", 91, 30, "best_price"),
+            new ComboBase(8L, "Quy Nhơn Hoang Sơ Kỳ Vĩ 3N2Đ", "Quy Nhơn", "UIH", "Anantara Quy Nhon Villas", 5, "Biệt thự hồ bơi riêng hướng vịnh Quy Nhơn, nội thất đá tự nhiên và gỗ tếch đẳng cấp", Arrays.asList("Hồ bơi riêng biệt độc bản", "Trị liệu Spa bên bờ đá", "Dịch vụ ăn uống tại biệt thự", "Lớp dạy Yoga sáng sớm", "Trung tâm thể hình hiện đại", "Bữa sáng buffet miễn phí"), 7800000L, "Miền Trung", "Bờ biển nguyên sơ cát vàng mịn màng bao quanh bởi những mỏm đá tuyệt tác, tận hưởng hồ bơi riêng biệt độc bản xa hoa.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=600&q=80", 84, 14, null),
+            new ComboBase(9L, "Đà Lạt Sương Mờ Lãng Mạn 3N2Đ", "Đà Lạt", "DLI", "Ana Mandara Villas Dalat Resort & Spa", 5, "Biệt thự Pháp cổ kính nép mình dưới rừng thông, lò sưởi ấm cúng và bồn tắm vintage", Arrays.asList("Hồ bơi nước ấm ngoài trời", "La Cochinchine Spa", "Nhà hàng Le Petit ẩm thực Pháp", "Vườn rau hữu cơ sinh thái", "Tour khám phá biệt thự cổ", "Bữa sáng buffet miễn phí"), 3950000L, "Miền Trung", "Ẩn mình dưới những tán thông ngút ngàn, biệt thự kiến trúc Pháp cổ kính mở ra không gian lãng mạn ấm áp giữa cao nguyên.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80", 93, 22, "price_up"),
+            new ComboBase(10L, "Côn Đảo Thiên Đường Tự Nhiên 3N2Đ", "Côn Đảo", "VCS", "Six Senses Con Dao Resort", 5, "Biệt thự gỗ mộc mạc tinh tế ven biển, hồ bơi tràn bờ riêng tư tuyệt hảo", Arrays.asList("Hồ bơi tràn bờ riêng biệt", "Spa Six Senses đẳng cấp thế giới", "Rạp chiếu phim ngoài trời", "Trải nghiệm xem rùa đẻ trứng", "Nhà hàng By The Beach hải sản", "Bữa sáng buffet hữu cơ"), 12500000L, "Miền Nam", "Thiên đường bảo tồn thiên nhiên biển đảo đỉnh cao, biệt thự gỗ sang trọng ven biển lộng gió mang lại sự thư thái tuyệt hảo.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80", 96, 8, null),
+            new ComboBase(11L, "Gió Biển Hồ Tràm Thanh Bình 3N2Đ", "Vũng Tàu", "SGN", "InterContinental Grand Ho Tram", 5, "Phòng Grand view biển Hồ Tràm thanh bình, thiết kế hiện đại trang nhã rộng rãi", Arrays.asList("Sân golf The Bluffs chuẩn quốc tế", "Khu phức hợp sòng bài giải trí", "Hệ thống 4 hồ bơi tràn bờ", "Spa trị liệu cao cấp", "Rạp chiếu phim hiện đại", "Bữa sáng buffet miễn phí"), 3200000L, "Miền Nam", "Trải nghiệm không gian sòng bài, sân golf chuẩn quốc tế ven bãi biển Hồ Tràm hoang sơ cách TP.HCM chỉ hơn 2 giờ di chuyển.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=600&q=80", 82, 16, null),
+            new ComboBase(12L, "Combo Mũi Né Cát Vàng Lấp Lánh 3N2Đ", "Mũi Né", "SGN", "Anantara Mui Ne Resort", 5, "Biệt thự vườn nhiệt đới thanh bình, bồn tắm bằng đá nguyên khối ngắm vườn cây xanh mát", Arrays.asList("Hồ bơi vô cực hướng biển", "Anantara Spa cao cấp", "Nhà hàng L'Anmien ẩm thực Á-Âu", "Hoạt động thể thao dưới nước", "Lớp học pha chế cocktail", "Bữa sáng buffet miễn phí"), 4100000L, "Miền Nam", "Những rặng dừa xanh đung đưa trước gió bên bờ biển êm đềm, khám phá đồi cát bay trứ danh và thưởng ngoạn hoàng hôn tuyệt mỹ.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=600&q=80", 86, 21, null)
     );
 
     public List<ComboResponse> search(String departure, String arrival, String dateStr, Integer guests, String sortBy) {
@@ -105,33 +107,44 @@ public class ComboService {
                 continue;
             }
 
-            Flight bestFlight = null;
-            if (!matchingFlights.isEmpty()) {
-                bestFlight = matchingFlights.get(0);
-            } else {
-                List<Flight> fallbackFlights = flightRepository.findByDepartureAirportAndArrivalAirportOrderByDepartureAtAsc("HAN", base.destinationCode);
-                if (fallbackFlights.isEmpty()) {
-                    fallbackFlights = flightRepository.findByDepartureAirportAndArrivalAirportOrderByDepartureAtAsc("SGN", base.destinationCode);
+            FlightResponse flightResponse = null;
+            try {
+                List<FlightResponse> apiFlights = airlabsService.getRealTimeSchedules(base.destinationCode);
+                if (apiFlights != null && !apiFlights.isEmpty()) {
+                    flightResponse = apiFlights.get(0);
                 }
-                if (!fallbackFlights.isEmpty()) {
-                    bestFlight = fallbackFlights.get(0);
-                }
+            } catch (Exception e) {
+                log.error("Error fetching Airlabs schedules for {}, falling back to local: {}", base.destinationCode, e.getMessage());
             }
 
-            FlightResponse flightResponse = null;
-            if (bestFlight != null) {
-                flightResponse = new FlightResponse(
-                        bestFlight.getId(),
-                        bestFlight.getFlightNumber(),
-                        bestFlight.getAirline(),
-                        bestFlight.getDepartureAirport(),
-                        bestFlight.getArrivalAirport(),
-                        bestFlight.getDepartureAt(),
-                        bestFlight.getArrivalAt(),
-                        bestFlight.getDurationMinutes(),
-                        bestFlight.getPrice(),
-                        bestFlight.isPremiumCabin()
-                );
+            if (flightResponse == null) {
+                Flight bestFlight = null;
+                if (!matchingFlights.isEmpty()) {
+                    bestFlight = matchingFlights.get(0);
+                } else {
+                    List<Flight> fallbackFlights = flightRepository.findByDepartureAirportAndArrivalAirportOrderByDepartureAtAsc("HAN", base.destinationCode);
+                    if (fallbackFlights.isEmpty()) {
+                        fallbackFlights = flightRepository.findByDepartureAirportAndArrivalAirportOrderByDepartureAtAsc("SGN", base.destinationCode);
+                    }
+                    if (!fallbackFlights.isEmpty()) {
+                        bestFlight = fallbackFlights.get(0);
+                    }
+                }
+
+                if (bestFlight != null) {
+                    flightResponse = new FlightResponse(
+                            bestFlight.getId(),
+                            bestFlight.getFlightNumber(),
+                            bestFlight.getAirline(),
+                            bestFlight.getDepartureAirport(),
+                            bestFlight.getArrivalAirport(),
+                            bestFlight.getDepartureAt(),
+                            bestFlight.getArrivalAt(),
+                            bestFlight.getDurationMinutes(),
+                            bestFlight.getPrice(),
+                            bestFlight.isPremiumCabin()
+                    );
+                }
             }
 
             List<RoomTypeResponse> rooms = Arrays.asList(
@@ -151,11 +164,26 @@ public class ComboService {
             );
             int availableSlots = Math.max(0, 5 - (int) activeBookingsCount);
 
+            WeatherService.WeatherInfo weatherInfo = weatherService.getWeatherForecast(base.location);
+            String weather = weatherInfo.status();
+            int temp = weatherInfo.temperature();
+            String aiRecommendationText;
+            if ("Sunny".equalsIgnoreCase(weather)) {
+                aiRecommendationText = "☀️ " + base.location + " hiện tại nắng đẹp " + temp + "°C. AI gợi ý bạn nên trải nghiệm các hoạt động ngoài trời, tắm biển hoặc check-in các điểm tham quan tự nhiên ngay chiều nay. Đừng quên chuẩn bị mũ và kem chống nắng nhé!";
+            } else if ("Rainy".equalsIgnoreCase(weather)) {
+                aiRecommendationText = "🌧️ Khu vực " + base.location + " đang có mưa, nhiệt độ khoảng " + temp + "°C. Để chuyến đi trọn vẹn, AI gợi ý bạn đổi lịch trình sang các hoạt động trong nhà: thư giãn tại Spa của resort, tham quan bảo tàng hoặc thưởng thức ẩm thực địa phương.";
+            } else {
+                aiRecommendationText = "⛅ Thời tiết tại " + base.location + " se lạnh " + temp + "°C, trời nhiều mây dịu mát. Đây là thời điểm lý tưởng để bạn đi dạo phố cổ, đi bộ trekking hoặc chụp ảnh check-in ngoại cảnh mà không lo nắng gắt.";
+            }
+
             responses.add(new ComboResponse(
                     base.id,
                     base.title,
                     base.location,
                     base.hotelName,
+                    base.hotelStars,
+                    base.roomQuality,
+                    base.hotelAmenities,
                     base.price,
                     base.region,
                     base.description,
@@ -163,7 +191,7 @@ public class ComboService {
                     base.image,
                     base.popularity,
                     base.discount,
-                    base.aiRecommendation,
+                    aiRecommendationText,
                     availableSlots,
                     flightResponse,
                     rooms
@@ -241,8 +269,17 @@ public class ComboService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Combo not found with ID: " + request.comboId()));
 
-        Flight flight = flightRepository.findByIdForUpdate(request.selectedFlightId())
-                .orElseThrow(() -> new IllegalArgumentException("Flight not found with ID: " + request.selectedFlightId()));
+        Flight flight = flightRepository.findByIdForUpdate(request.selectedFlightId()).orElse(null);
+        Long flightId = request.selectedFlightId();
+        if (flight == null) {
+            log.warn("Flight with ID {} not found for checkout. Falling back to the first available flight in database.", request.selectedFlightId());
+            List<Flight> allFlights = flightRepository.findAll();
+            if (allFlights.isEmpty()) {
+                throw new IllegalArgumentException("Không tìm thấy chuyến bay nào trong hệ thống để làm dự phòng.");
+            }
+            flight = allFlights.get(0);
+            flightId = flight.getId();
+        }
 
         log.info("Successfully requested room lock for RoomType '{}' at hotel '{}' for user '{}'",
                 request.selectedRoomTypeId(), base.hotelName, userEmail);
@@ -250,7 +287,7 @@ public class ComboService {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
 
-        ComboPriceRequest priceRequest = new ComboPriceRequest(request.comboId(), request.selectedFlightId(), request.selectedRoomTypeId());
+        ComboPriceRequest priceRequest = new ComboPriceRequest(request.comboId(), flightId, request.selectedRoomTypeId());
         ComboPriceResponse priceResponse = calculatePrice(priceRequest);
 
         int passengerCount = request.passengerCount() != null ? request.passengerCount() : 1;
@@ -440,6 +477,9 @@ public class ComboService {
         String location;
         String destinationCode;
         String hotelName;
+        int hotelStars;
+        String roomQuality;
+        List<String> hotelAmenities;
         Long price;
         String region;
         String description;
@@ -449,12 +489,15 @@ public class ComboService {
         int discount;
         String aiRecommendation;
 
-        ComboBase(Long id, String title, String location, String destinationCode, String hotelName, Long price, String region, String description, String duration, String image, int popularity, int discount, String aiRecommendation) {
+        ComboBase(Long id, String title, String location, String destinationCode, String hotelName, int hotelStars, String roomQuality, List<String> hotelAmenities, Long price, String region, String description, String duration, String image, int popularity, int discount, String aiRecommendation) {
             this.id = id;
             this.title = title;
             this.location = location;
             this.destinationCode = destinationCode;
             this.hotelName = hotelName;
+            this.hotelStars = hotelStars;
+            this.roomQuality = roomQuality;
+            this.hotelAmenities = hotelAmenities;
             this.price = price;
             this.region = region;
             this.description = description;

@@ -35,8 +35,10 @@ public class BookingTimeoutScheduler {
             
             for (Booking booking : expiredBookings) {
                 booking.setStatus(BookingStatus.EXPIRED);
-                booking.setSeatNumber(null);
-                log.info("System Scheduler: PNR {} status changed to EXPIRED and seat number nullified.", booking.getPnr());
+                // 🛠️ Set to 'CANCELLED' to release seat and satisfy NOT NULL DB constraint
+                booking.setSeatNumber("CANCELLED");
+                booking.setStatus(BookingStatus.EXPIRED);
+                log.info("System Scheduler: PNR {} status changed to EXPIRED and seat number set to CANCELLED.", booking.getPnr());
                 if (booking.getComboId() != null) {
                     try {
                         comboService.updateAndBroadcastAvailability(booking.getComboId(), null);
