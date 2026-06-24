@@ -10,6 +10,7 @@ import com.flightbooking.model.PaymentTransaction;
 import com.flightbooking.repository.AppUserRepository;
 import com.flightbooking.repository.BookingRepository;
 import com.flightbooking.repository.FlightRepository;
+import com.flightbooking.repository.SeatHoldRepository;
 import com.flightbooking.time.VietnamTime;
 import com.flightbooking.validation.InputValidator;
 import com.flightbooking.web.dto.BaggageUpdateRequest;
@@ -65,6 +66,7 @@ public class BookingService {
     private final FlightService flightService;
     private final EmailService emailService;
     private final PnrGenerator pnrGenerator;
+    private final SeatHoldRepository seatHoldRepository;
 
     @Value("${app.vnpay.tmn-code:2QXUI8KI}")
     private String vnp_TmnCode;
@@ -139,6 +141,14 @@ public class BookingService {
                 throw new IllegalStateException("Ghế này đã bị người khác đặt trước, vui lòng chọn ghế khác");
             }
         }
+        for (String seat : parseSeatNumbers(seatNumber)) {
+            seatHoldRepository.findByFlightAndSeatNumberAndExpiresAtAfter(flight, seat, VietnamTime.nowLocal())
+                    .ifPresent(hold -> {
+                        if (!hold.getUser().getId().equals(user.getId())) {
+                            throw new IllegalStateException("Seat is being held by another user. Please choose another seat.");
+                        }
+                    });
+        }
         int passengerCount = request.passengerCount() == null ? 1 : request.passengerCount();
         String paymentMethod = clean(request.paymentMethod());
         int baggageKg = normalizeBaggageKg(request.baggageKg());
@@ -180,6 +190,7 @@ public class BookingService {
                 .providerReference(booking.getPnr())
                 .build());
         bookingRepository.save(booking);
+        seatHoldRepository.deleteByFlightAndUserAndSeatNumberIn(flight, user, parseSeatNumbers(seatNumber));
         return toResponse(booking);
     }
 
@@ -427,7 +438,11 @@ public class BookingService {
     @Transactional(readOnly = true)
     public List<String> listOccupiedSeats(Long flightId) {
         Flight flight = flightService.getByIdOrThrow(flightId);
-        return occupiedSeatsForFlight(flight).stream().toList();
+        Set<String> out = new LinkedHashSet<>(occupiedSeatsForFlight(flight));
+        seatHoldRepository.findByFlightAndExpiresAtAfter(flight, VietnamTime.nowLocal()).stream()
+                .map(hold -> hold.getSeatNumber().toUpperCase(Locale.ROOT))
+                .forEach(out::add);
+        return out.stream().toList();
     }
 
     private BookingResponse toResponse(Booking b) {
@@ -465,7 +480,7 @@ public class BookingService {
         );
     }
 
-    private Set<String> occupiedSeatsForFlight(Flight flight) {
+    public Set<String> occupiedSeatsForFlight(Flight flight) {
         Set<String> out = new LinkedHashSet<>();
         bookingRepository.findByFlightAndStatusNot(flight, BookingStatus.CANCELLED)
                 .forEach(b -> {

@@ -1,11 +1,14 @@
 package com.flightbooking.web;
 
 import com.flightbooking.service.BookingService;
+import com.flightbooking.service.SeatHoldService;
 import com.flightbooking.web.dto.BaggageUpdateRequest;
 import com.flightbooking.web.dto.BookingResponse;
 import com.flightbooking.web.dto.CheckInRequest;
 import com.flightbooking.web.dto.CreateBookingRequest;
 import com.flightbooking.web.dto.PaymentSuccessRequest;
+import com.flightbooking.web.dto.SeatHoldRequest;
+import com.flightbooking.web.dto.SeatHoldResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -31,6 +34,7 @@ import java.util.List;
 public class BookingController {
 
     private final BookingService bookingService;
+    private final SeatHoldService seatHoldService;
 
     @GetMapping("/me")
     public List<BookingResponse> myBookings(@AuthenticationPrincipal UserDetails user) {
@@ -45,6 +49,23 @@ public class BookingController {
     @GetMapping("/occupied-seats")
     public List<String> occupiedSeats(@RequestParam Long flightId) {
         return bookingService.listOccupiedSeats(flightId);
+    }
+
+    @PostMapping("/seat-holds")
+    public SeatHoldResponse holdSeat(
+            @AuthenticationPrincipal UserDetails user,
+            @Valid @RequestBody SeatHoldRequest request
+    ) {
+        return seatHoldService.hold(user.getUsername(), request.flightId(), request.seatNumber());
+    }
+
+    @PostMapping("/seat-holds/release")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void releaseSeat(
+            @AuthenticationPrincipal UserDetails user,
+            @Valid @RequestBody SeatHoldRequest request
+    ) {
+        seatHoldService.release(user.getUsername(), request.flightId(), request.seatNumber());
     }
 
     @PostMapping

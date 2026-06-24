@@ -5,7 +5,7 @@ import { useSearch } from '../context/SearchContext';
 import { useAuth } from '../context/AuthContext';
 import AppIcon from '../components/AppIcon';
 import { useNavigation } from '@react-navigation/native';
-import { createBookingApi, listOccupiedSeatsApi } from '../services/bookingApi';
+import { createBookingApi, holdSeatApi, listOccupiedSeatsApi, releaseSeatHoldApi } from '../services/bookingApi';
 import { formatAuthError } from '../services/authApi';
 import {
   isValidEmail,
@@ -264,6 +264,7 @@ export default function BookingScreen() {
   const [occupiedSeats, setOccupiedSeats] = useState<Set<string>>(new Set());
   const seatMap = useMemo(() => generateSeatMap(occupiedSeats), [occupiedSeats]);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [holdingSeatId, setHoldingSeatId] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<'credit_card' | 'bank_transfer' | 'e_wallet' | 'cod'>('credit_card');
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', idCard: '' });
   const [errors, setErrors] = useState<{ fullName?: string; email?: string; phone?: string }>({});
@@ -382,17 +383,47 @@ export default function BookingScreen() {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const toggleSeat = (seat: SeatItem) => {
+  const toggleSeat = async (seat: SeatItem) => {
     if (seat.status === 'booked') return;
-    setSelectedSeats((prev) => {
-      if (prev.includes(seat.id)) {
-        return prev.length === 1 ? prev : prev.filter((id) => id !== seat.id);
+    if (!user) {
+      Alert.alert(t('login_title'), t('booking_need_login'));
+      return;
+    }
+    const flightId = parseInt(flight.id, 10);
+    if (Number.isNaN(flightId)) return;
+
+    const wasSelected = selectedSeats.includes(seat.id);
+    if (wasSelected && selectedSeats.length === 1) return;
+
+    setHoldingSeatId(seat.id);
+    try {
+      if (wasSelected) {
+        await releaseSeatHoldApi({ flightId, seatNumber: seat.id });
+        setSelectedSeats((prev) => prev.filter((id) => id !== seat.id));
+        return;
       }
-      if (prev.length >= passengerCount) {
-        return [...prev.slice(1), seat.id];
-      }
-      return [...prev, seat.id];
-    });
+
+      await holdSeatApi({ flightId, seatNumber: seat.id });
+      setSelectedSeats((prev) => {
+        if (prev.includes(seat.id)) return prev;
+        if (prev.length >= passengerCount) {
+          const released = prev[0];
+          if (released) {
+            void releaseSeatHoldApi({ flightId, seatNumber: released });
+          }
+          return [...prev.slice(1), seat.id];
+        }
+        return [...prev, seat.id];
+      });
+    } catch (e) {
+      Alert.alert(t('confirm'), formatAuthError(e));
+      try {
+        const seats = await listOccupiedSeatsApi(flightId);
+        setOccupiedSeats(new Set(seats));
+      } catch {}
+    } finally {
+      setHoldingSeatId(null);
+    }
   };
 
   const selectBaggage = (kg: number, fee: number) => {
@@ -536,7 +567,7 @@ export default function BookingScreen() {
                         <TouchableOpacity
                           key={seat.id}
                           onPress={() => toggleSeat(seat)}
-                          disabled={seat.status === 'booked'}
+                          disabled={seat.status === 'booked' || holdingSeatId !== null}
                           style={[
                             styles.seat,
                             styles.businessSeat,
@@ -556,7 +587,7 @@ export default function BookingScreen() {
                         <TouchableOpacity
                           key={seat.id}
                           onPress={() => toggleSeat(seat)}
-                          disabled={seat.status === 'booked'}
+                          disabled={seat.status === 'booked' || holdingSeatId !== null}
                           style={[
                             styles.seat,
                             styles.businessSeat,
@@ -582,7 +613,7 @@ export default function BookingScreen() {
                         <TouchableOpacity
                           key={seat.id}
                           onPress={() => toggleSeat(seat)}
-                          disabled={seat.status === 'booked'}
+                          disabled={seat.status === 'booked' || holdingSeatId !== null}
                           style={[
                             styles.seat,
                             seat.extra && styles.extraLegroomSeat,
@@ -602,7 +633,7 @@ export default function BookingScreen() {
                         <TouchableOpacity
                           key={seat.id}
                           onPress={() => toggleSeat(seat)}
-                          disabled={seat.status === 'booked'}
+                          disabled={seat.status === 'booked' || holdingSeatId !== null}
                           style={[
                             styles.seat,
                             seat.extra && styles.extraLegroomSeat,

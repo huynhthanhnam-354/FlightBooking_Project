@@ -19,11 +19,13 @@ public class BookingTimeoutScheduler {
 
     private final BookingRepository bookingRepository;
     private final ComboService comboService;
+    private final SeatHoldService seatHoldService;
 
     @Scheduled(cron = "*/30 * * * * *")
     @Transactional
     public void releaseExpiredSeats() {
         log.info("System Scheduler: Scanning for expired pending payment bookings...");
+        seatHoldService.cleanupExpired();
         
         List<Booking> expiredBookings = bookingRepository.findByStatusAndExpiresAtBefore(
                 BookingStatus.PENDING_PAYMENT, 

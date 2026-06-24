@@ -120,6 +120,20 @@ export async function checkInBookingApi(body: { pnr: string; passengerLastName: 
   return normalizeBookingDto(data);
 }
 
+export async function holdSeatApi(body: { flightId: number; seatNumber: string }): Promise<void> {
+  await axios.post(`${API_BASE_URL}/api/bookings/seat-holds`, body, {
+    headers: await authHeaders(),
+    timeout: 25000,
+  });
+}
+
+export async function releaseSeatHoldApi(body: { flightId: number; seatNumber: string }): Promise<void> {
+  await axios.post(`${API_BASE_URL}/api/bookings/seat-holds/release`, body, {
+    headers: await authHeaders(),
+    timeout: 25000,
+  });
+}
+
 export async function listOccupiedSeatsApi(flightId: number): Promise<string[]> {
   const { data } = await axios.get<string[]>(`${API_BASE_URL}/api/bookings/occupied-seats`, {
     params: { flightId },
