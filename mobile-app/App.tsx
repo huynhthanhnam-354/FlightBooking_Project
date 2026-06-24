@@ -52,6 +52,7 @@ function MainTabs() {
         tabBarShowLabel: true,
         tabBarActiveTintColor: '#0064D2',
         tabBarInactiveTintColor: '#9CA3AF',
+        tabBarHideOnKeyboard: true,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabLabel,
         tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,

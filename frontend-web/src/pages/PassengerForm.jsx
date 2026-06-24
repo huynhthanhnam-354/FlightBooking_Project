@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useBookingStore } from '../store/bookingStore'
+import { useAuth } from '../context/AuthContext'
 import BookingForm from '../components/BookingForm'
 import BookingSummary from '../components/BookingSummary'
 import { FiCheck } from 'react-icons/fi'
@@ -8,6 +9,7 @@ import { FiCheck } from 'react-icons/fi'
 export default function PassengerForm() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { user } = useAuth()
   
   const selectedFlight = useBookingStore((state) => state.selectedFlight)
   const passengerCount = useBookingStore((state) => state.searchParams.passengers)
@@ -16,8 +18,16 @@ export default function PassengerForm() {
   const flight = selectedFlight || location.state?.flight || null
   const passengers = passengerCount || location.state?.passengers || 1
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [])
+
   function handleFormSubmit(booking) {
     navigate('/booking/checkout', { state: { booking } })
+  }
+
+  function handleBackToSeats() {
+    navigate(`/booking/seat?id=${flight?.id || ''}`, { state: { flight, passengers } })
   }
 
   const steps = [
@@ -68,6 +78,8 @@ export default function PassengerForm() {
               <BookingForm 
                 flight={flight} 
                 passengers={passengers} 
+                initialPassenger={user}
+                onBack={handleBackToSeats}
                 onSubmit={handleFormSubmit}
               />
             </div>

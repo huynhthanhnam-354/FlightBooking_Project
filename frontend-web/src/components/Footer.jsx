@@ -104,7 +104,7 @@ const Footer = () => {
         </div>
 
         {/* Contact & Social Info */}
-        <div className="pt-10 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-center">
+        <div className="pt-10 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           
           <div className="flex flex-col gap-3">
              <div className="flex items-center gap-3 text-slate-600 text-sm font-bold">
@@ -129,11 +129,6 @@ const Footer = () => {
             ))}
           </div>
 
-          <div className="text-right md:text-left lg:text-right">
-             <p className="text-slate-500 text-xs italic font-medium">
-                Cung cấp bởi FlightBook AI Technology v1.0.0
-             </p>
-          </div>
         </div>
 
         {/* Copyright */}

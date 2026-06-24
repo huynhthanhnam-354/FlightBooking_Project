@@ -23,6 +23,7 @@ public record BookingResponse(
         long baggageFeeVnd,
         long totalPriceVnd,
         Instant createdAt,
+        Instant expiresAt,
         Instant checkedInAt,
         String checkInChannel,
         FlightResponse flight,

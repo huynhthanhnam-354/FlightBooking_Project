@@ -14,6 +14,13 @@ const BAGGAGE_OPTIONS = [
   { id: '40', kg: 40, fee: 480000, title: '40kg ký gửi', note: '+480.000₫' },
 ]
 
+const TAX_RATE = 0.1
+const SERVICE_FEE_VND = 50000
+const BUSINESS_ROWS = 2
+const BUSINESS_SEAT_FEE_VND = 500000
+const EXTRA_LEGROOM_ROWS = new Set([6, 7])
+const EXTRA_LEGROOM_SEAT_FEE_VND = 150000
+
 /**
  * Clean & Professional Checkout
  * Optimized to remove oversized checkmarks and intrusive markers.
@@ -28,12 +35,14 @@ export default function CheckoutPage() {
   const bookingState = location.state?.booking || null
   const flight = bookingState?.flight || { id: 1, price: 1200000, originCode: 'HAN', destinationCode: 'SGN', airline: 'Vietnam Airlines' }
   const passengers = bookingState?.passengers || 1
+  const rawUser = localStorage.getItem('fb_user')
+  const currentUser = rawUser ? JSON.parse(rawUser) : null
 
   // --- LOCAL STATE ---
   const [formData, setFormData] = useState({
     name: bookingState?.passenger?.fullName || '',
     phone: bookingState?.contact?.phone || '',
-    email: bookingState?.contact?.email || '',
+    email: currentUser?.email || bookingState?.contact?.email || '',
   })
   
   const [isLoading, setIsLoading] = useState(false)
@@ -47,14 +56,16 @@ export default function CheckoutPage() {
   // --- CALCULATIONS ---
   const getSeatSurcharge = (seatId) => {
     const row = parseInt(seatId.match(/\d+/)[0]);
-    if (row <= 2) return 500000; // Business (VIP)
-    if (row === 6 || row === 7) return 150000; // Exit Row (Extra Legroom)
+    if (row <= BUSINESS_ROWS) return BUSINESS_SEAT_FEE_VND;
+    if (EXTRA_LEGROOM_ROWS.has(row)) return EXTRA_LEGROOM_SEAT_FEE_VND;
     return 0;
   };
   const seatSurcharge = selectedSeats.reduce((sum, seat) => sum + getSeatSurcharge(seat), 0);
   const subtotal = Number(flight.price) * passengers
   const baggageFee = BAGGAGE_OPTIONS.find(b => b.id === baggage)?.fee || 0
-  const total = subtotal + baggageFee + seatSurcharge + 45000 
+  const tax = Math.round(subtotal * TAX_RATE)
+  const serviceFee = SERVICE_FEE_VND * passengers
+  const total = subtotal + baggageFee + seatSurcharge + tax + serviceFee
 
   useEffect(() => {
     const rawUser = localStorage.getItem('fb_user');
@@ -87,7 +98,7 @@ export default function CheckoutPage() {
         flightId: flight.id,
         seatNumber: selectedSeats.join(', ') || 'Auto',
         passengerName: formData.name.toUpperCase(),
-        passengerEmail: formData.email,
+        passengerEmail: currentUser?.email || formData.email,
         passengerPhone: formData.phone,
         passengerCount: passengers,
         totalPriceVnd: total,
@@ -247,7 +258,8 @@ export default function CheckoutPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email nhận vé</label>
-                <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 border-none font-bold focus:ring-1 focus:ring-sky-500" placeholder="customer@email.com" />
+                <input type="email" value={formData.email} disabled className="w-full p-4 rounded-xl bg-slate-100 border-none font-bold text-slate-500 cursor-not-allowed" placeholder="customer@email.com" />
+                <p className="mt-2 text-xs font-medium text-slate-400">Email nhận vé được lấy theo tài khoản đang đăng nhập.</p>
               </div>
             </div>
           </section>
@@ -289,7 +301,8 @@ export default function CheckoutPage() {
                   <div className="flex justify-between items-center"><span className="text-slate-400">Phí chọn ghế</span> <span className="font-bold text-sky-300">+{seatSurcharge.toLocaleString()}₫</span></div>
                 )}
                 <div className="flex justify-between items-center"><span className="text-slate-400">Hành lý</span> <span className="font-bold text-sky-300">+{baggageFee.toLocaleString()}₫</span></div>
-                <div className="flex justify-between items-center text-sky-200"><span className="font-medium italic">Thuế & Phí</span> <span className="font-bold">45.000₫</span></div>
+                <div className="flex justify-between items-center text-sky-200"><span className="font-medium italic">Thuế (10%)</span> <span className="font-bold">{tax.toLocaleString()}₫</span></div>
+                <div className="flex justify-between items-center text-sky-200"><span className="font-medium italic">Phí dịch vụ</span> <span className="font-bold">{serviceFee.toLocaleString()}₫</span></div>
               </div>
               <div className="flex justify-between items-end pt-8 border-t border-white/10">
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tổng cộng</span>

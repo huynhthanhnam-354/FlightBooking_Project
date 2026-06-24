@@ -86,6 +86,8 @@ export const bookingApi = {
   getMine: () => api.get('/bookings/me'),
   cancel: (id) => api.post(`/bookings/${id}/cancel`),
   cancelPut: (id) => api.put(`/bookings/${id}/cancel`),
+  holdSeat: (flightId, seatNumber) => api.post('/bookings/seat-holds', { flightId, seatNumber }),
+  releaseSeatHold: (flightId, seatNumber) => api.post('/bookings/seat-holds/release', { flightId, seatNumber }),
 };
 
 const mockCombos = [

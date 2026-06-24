@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
 import { FaPlane, FaHotel, FaCalendarAlt, FaUser, FaPhone, FaEnvelope, FaIdCard, FaTimes, FaMinus, FaPlus } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-import api from '../services/api';
+import api, { bookingApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function BookingModal({ combo, onClose }) {
-  if (!combo) return null;
+  const { user } = useAuth();
 
-  const [passengers, setPassengers] = useState(combo.passengerCount || 1);
+  const [passengers, setPassengers] = useState(combo?.passengerCount || 1);
   const [isLoading, setIsLoading] = useState(false);
+  const [paymentStep, setPaymentStep] = useState(null);
   const [formData, setFormData] = useState({
-    fullName: '',
-    phone: '',
+    fullName: user?.fullName || '',
+    phone: user?.phone || '',
     passport: '',
-    email: '',
+    email: user?.email || '',
   });
+
+  if (!combo) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -45,7 +49,7 @@ export default function BookingModal({ combo, onClose }) {
         selectedFlightId: combo.selectedFlightId || combo.flightResponse?.id || combo.flight?.id || 1,
         selectedRoomTypeId: combo.selectedRoomTypeId || 'std',
         passengerName: formData.fullName,
-        passengerEmail: formData.email,
+        passengerEmail: user?.email || formData.email,
         passengerPhone: formData.phone,
         passengerIdCard: formData.passport,
         passengerCount: passengers,
@@ -54,11 +58,11 @@ export default function BookingModal({ combo, onClose }) {
       };
 
       const res = await api.post('/v1/combos/checkout', payload);
-      const { paymentUrl } = res.data || {};
+      const { bookingId, pnr } = res.data || {};
 
-      if (paymentUrl) {
-        toast.info('Đang chuyển hướng sang cổng thanh toán VNPAY...');
-        window.location.href = paymentUrl;
+      if (bookingId) {
+        setPaymentStep({ bookingId, pnr });
+        toast.info('Đã tạo booking combo. Vui lòng xác nhận thanh toán.');
       } else {
         toast.success(`Đặt thành công Combo ${combo.location} cho ${passengers} hành khách!`);
         onClose();
@@ -71,10 +75,64 @@ export default function BookingModal({ combo, onClose }) {
     }
   };
 
+  const confirmComboPayment = async () => {
+    if (!paymentStep?.bookingId) return;
+    setIsLoading(true);
+    try {
+      await bookingApi.paymentSuccess(paymentStep.bookingId);
+      toast.success('Thanh toán combo thành công. Vé đã được thêm vào lịch sử.');
+      onClose();
+      window.location.href = '/user-dashboard';
+    } catch (err) {
+      console.error('Combo payment confirmation error:', err);
+      toast.error(err.response?.data?.message || 'Không thể xác nhận thanh toán combo.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const totalPrice = combo.price * passengers;
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300">
+      {paymentStep && (
+        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-[2rem] bg-white p-8 text-center shadow-2xl">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-lg font-black text-white">
+              QR
+            </div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Thanh toán combo</p>
+            <h3 className="mt-2 text-2xl font-black text-slate-900">Xác nhận thanh toán</h3>
+            <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+              Booking combo {paymentStep.pnr ? `#${paymentStep.pnr}` : ''} đã được tạo. Bấm xác nhận để chuyển sang trạng thái đã thanh toán.
+            </p>
+            <div className="my-7 rounded-3xl border border-slate-100 bg-slate-50 p-5">
+              <img
+                src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=FlightBooking_Combo_Payment"
+                alt="QR"
+                className="mx-auto h-52 w-52 rounded-xl"
+              />
+            </div>
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={confirmComboPayment}
+                disabled={isLoading}
+                className="w-full rounded-2xl bg-blue-600 py-4 text-sm font-black uppercase tracking-widest text-white hover:bg-blue-700 disabled:bg-slate-400"
+              >
+                {isLoading ? 'Đang xác nhận...' : 'Xác nhận thanh toán'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentStep(null)}
+                className="w-full rounded-2xl bg-slate-100 py-4 text-sm font-black uppercase tracking-widest text-slate-500 hover:bg-slate-200"
+              >
+                Quay lại
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col md:flex-row relative animate-in zoom-in-95 duration-300">
         
         {/* Close Button */}
@@ -248,11 +306,12 @@ export default function BookingModal({ combo, onClose }) {
                   type="email"
                   name="email"
                   value={formData.email}
-                  onChange={handleChange}
+                  disabled
                   placeholder="email@example.com"
-                  className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent rounded-2xl font-bold text-sm focus:border-blue-600 focus:bg-white outline-none transition-all"
+                  className="w-full px-5 py-3.5 bg-slate-100 border-2 border-transparent rounded-2xl font-bold text-sm text-slate-500 cursor-not-allowed outline-none transition-all"
                   required
                 />
+                <p className="text-[10px] text-slate-400 font-medium">Email nhận vé được lấy theo tài khoản đang đăng nhập.</p>
               </div>
 
               {/* Action Buttons */}

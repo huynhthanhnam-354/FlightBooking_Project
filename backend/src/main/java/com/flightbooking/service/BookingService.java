@@ -10,6 +10,7 @@ import com.flightbooking.model.PaymentTransaction;
 import com.flightbooking.repository.AppUserRepository;
 import com.flightbooking.repository.BookingRepository;
 import com.flightbooking.repository.FlightRepository;
+import com.flightbooking.repository.SeatHoldRepository;
 import com.flightbooking.time.VietnamTime;
 import com.flightbooking.validation.InputValidator;
 import com.flightbooking.web.dto.BaggageUpdateRequest;
@@ -53,6 +54,11 @@ import javax.crypto.spec.SecretKeySpec;
 public class BookingService {
 
     private static final Logger log = LoggerFactory.getLogger(BookingService.class);
+    private static final List<BookingStatus> PAID_REVENUE_STATUSES = List.of(
+            BookingStatus.CONFIRMED,
+            BookingStatus.CHECKED_IN,
+            BookingStatus.COMPLETED
+    );
 
     private final BookingRepository bookingRepository;
     private final AppUserRepository appUserRepository;
@@ -60,6 +66,7 @@ public class BookingService {
     private final FlightService flightService;
     private final EmailService emailService;
     private final PnrGenerator pnrGenerator;
+    private final SeatHoldRepository seatHoldRepository;
 
     @Value("${app.vnpay.tmn-code:2QXUI8KI}")
     private String vnp_TmnCode;
@@ -120,6 +127,12 @@ public class BookingService {
         String passengerEmail = request.passengerEmail() == null || request.passengerEmail().isBlank()
                 ? null
                 : InputValidator.requireEmail(request.passengerEmail());
+        if (passengerEmail == null) {
+            passengerEmail = user.getEmail();
+        }
+        if (!passengerEmail.equalsIgnoreCase(user.getEmail())) {
+            throw new IllegalArgumentException("Email nhận vé phải trùng với email tài khoản đang đăng nhập.");
+        }
         String passengerPhone = InputValidator.optionalPhone(request.passengerPhone());
         String passengerIdCard = InputValidator.optionalIdCard(request.passengerIdCard());
         Set<String> occupied = occupiedSeatsForFlight(flight);
@@ -127,6 +140,14 @@ public class BookingService {
             if (occupied.contains(seat)) {
                 throw new IllegalStateException("Ghế này đã bị người khác đặt trước, vui lòng chọn ghế khác");
             }
+        }
+        for (String seat : parseSeatNumbers(seatNumber)) {
+            seatHoldRepository.findByFlightAndSeatNumberAndExpiresAtAfter(flight, seat, VietnamTime.nowLocal())
+                    .ifPresent(hold -> {
+                        if (!hold.getUser().getId().equals(user.getId())) {
+                            throw new IllegalStateException("Seat is being held by another user. Please choose another seat.");
+                        }
+                    });
         }
         int passengerCount = request.passengerCount() == null ? 1 : request.passengerCount();
         String paymentMethod = clean(request.paymentMethod());
@@ -169,6 +190,7 @@ public class BookingService {
                 .providerReference(booking.getPnr())
                 .build());
         bookingRepository.save(booking);
+        seatHoldRepository.deleteByFlightAndUserAndSeatNumberIn(flight, user, parseSeatNumbers(seatNumber));
         return toResponse(booking);
     }
 
@@ -176,8 +198,7 @@ public class BookingService {
     public List<BookingResponse> listMine(String userEmail) {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
                 .orElseThrow(() -> new UsernameNotFoundException(userEmail));
-        return bookingRepository.findByUserOrderByCreatedAtDesc(user).stream()
-                .filter(b -> b.getComboId() != null || "COMBO".equalsIgnoreCase(b.getSourceChannel()) || b.getComboId() == null)
+        return bookingRepository.findMineOrderByCreatedAtDesc(user, user.getEmail()).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -205,17 +226,19 @@ public class BookingService {
         long checkedIn = bookingRepository.countByStatus(BookingStatus.CHECKED_IN);
         long completed = bookingRepository.countByStatus(BookingStatus.COMPLETED);
         long cancelled = bookingRepository.countByStatus(BookingStatus.CANCELLED);
+        long expired = bookingRepository.countByStatus(BookingStatus.EXPIRED);
+        long refundPending = bookingRepository.countByStatus(BookingStatus.REFUND_PENDING);
         List<Booking> bookings = bookingRepository.findAll();
         long onlineCheckedIn = bookings.stream()
                 .filter(b -> b.getStatus() == BookingStatus.CHECKED_IN)
                 .filter(b -> "ONLINE".equalsIgnoreCase(b.getCheckInChannel()))
                 .count();
         long revenue = bookings.stream()
-                .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
+                .filter(b -> PAID_REVENUE_STATUSES.contains(b.getStatus()))
                 .mapToLong(b -> b.getTotalPriceVnd() == null ? 0L : b.getTotalPriceVnd())
                 .sum();
         long baggageRevenue = bookings.stream()
-                .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
+                .filter(b -> PAID_REVENUE_STATUSES.contains(b.getStatus()))
                 .mapToLong(b -> b.getBaggageFeeVnd() == null ? 0L : b.getBaggageFeeVnd())
                 .sum();
         return new BookingAdminSummaryResponse(
@@ -233,7 +256,9 @@ public class BookingService {
                         "CONFIRMED", confirmed,
                         "CHECKED_IN", checkedIn,
                         "COMPLETED", completed,
-                        "CANCELLED", cancelled
+                        "CANCELLED", cancelled,
+                        "EXPIRED", expired,
+                        "REFUND_PENDING", refundPending
                 )
         );
     }
@@ -413,7 +438,11 @@ public class BookingService {
     @Transactional(readOnly = true)
     public List<String> listOccupiedSeats(Long flightId) {
         Flight flight = flightService.getByIdOrThrow(flightId);
-        return occupiedSeatsForFlight(flight).stream().toList();
+        Set<String> out = new LinkedHashSet<>(occupiedSeatsForFlight(flight));
+        seatHoldRepository.findByFlightAndExpiresAtAfter(flight, VietnamTime.nowLocal()).stream()
+                .map(hold -> hold.getSeatNumber().toUpperCase(Locale.ROOT))
+                .forEach(out::add);
+        return out.stream().toList();
     }
 
     private BookingResponse toResponse(Booking b) {
@@ -438,6 +467,7 @@ public class BookingService {
                 b.getBaggageFeeVnd() == null ? 0L : b.getBaggageFeeVnd(),
                 b.getTotalPriceVnd(),
                 VietnamTime.toInstant(b.getCreatedAt()),
+                b.getExpiresAt() == null ? null : VietnamTime.toInstant(b.getExpiresAt()),
                 b.getCheckedInAt() == null ? null : VietnamTime.toInstant(b.getCheckedInAt()),
                 b.getCheckInChannel(),
                 flightService.toResponse(f),
@@ -450,7 +480,7 @@ public class BookingService {
         );
     }
 
-    private Set<String> occupiedSeatsForFlight(Flight flight) {
+    public Set<String> occupiedSeatsForFlight(Flight flight) {
         Set<String> out = new LinkedHashSet<>();
         bookingRepository.findByFlightAndStatusNot(flight, BookingStatus.CANCELLED)
                 .forEach(b -> {

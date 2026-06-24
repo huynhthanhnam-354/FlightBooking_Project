@@ -15,8 +15,16 @@ import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
-    @Query("SELECT b FROM Booking b WHERE b.user = :user OR (b.user = :user AND (b.sourceChannel = 'COMBO' OR b.comboId IS NOT NULL)) ORDER BY b.createdAt DESC")
-    List<Booking> findByUserOrderByCreatedAtDesc(@org.springframework.data.repository.query.Param("user") AppUser user);
+    @Query("""
+            SELECT DISTINCT b FROM Booking b
+            WHERE b.user = :user
+               OR LOWER(b.passengerEmail) = LOWER(:email)
+            ORDER BY b.createdAt DESC
+            """)
+    List<Booking> findMineOrderByCreatedAtDesc(
+            @org.springframework.data.repository.query.Param("user") AppUser user,
+            @org.springframework.data.repository.query.Param("email") String email
+    );
 
     List<Booking> findAllByOrderByCreatedAtDesc();
 

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useBookingStore } from '../store/bookingStore'
+import { bookingApi } from '../services/api'
 import BookingSummary from '../components/BookingSummary'
 import FlightCard from '../components/FlightCard'
 import { MOCK_FLIGHTS } from '../data/mockFlights'
@@ -16,6 +17,7 @@ export default function BookingSeat() {
   const selectedSeats = useBookingStore((state) => state.selectedSeats)
   const passengerCount = useBookingStore((state) => state.searchParams.passengers)
   const setSelectedFlight = useBookingStore((state) => state.setSelectedFlight)
+  const setSelectedSeats = useBookingStore((state) => state.setSelectedSeats)
   
   const query = new URLSearchParams(location.search)
   const idFromQuery = query.get('id')
@@ -25,6 +27,9 @@ export default function BookingSeat() {
   const passengers = passengerCount || 1
 
   const [timeLeft, setTimeLeft] = useState(600) // 10 minutes
+  const selectedSeatsRef = useRef([])
+  const flightIdRef = useRef(null)
+  const continuingRef = useRef(false)
 
   useEffect(() => {
     if (flight && !selectedFlight) {
@@ -37,13 +42,53 @@ export default function BookingSeat() {
     return () => clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    selectedSeatsRef.current = selectedSeats || []
+  }, [selectedSeats])
+
+  useEffect(() => {
+    flightIdRef.current = flight?.id || null
+  }, [flight?.id])
+
+  useEffect(() => {
+    return () => {
+      if (continuingRef.current) return
+      const flightId = flightIdRef.current
+      const seats = selectedSeatsRef.current || []
+      if (!flightId || seats.length === 0) return
+
+      seats.forEach((seatNumber) => {
+        void bookingApi.releaseSeatHold(flightId, seatNumber).catch(() => {})
+      })
+      setSelectedSeats([])
+    }
+  }, [setSelectedSeats])
+
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60)
     const s = seconds % 60
     return `${m}:${s < 10 ? '0' : ''}${s}`
   }
 
+  const getCabinLabel = () => {
+    if (!selectedSeats?.length) return 'Chưa chọn ghế'
+
+    const hasBusiness = selectedSeats.some((seat) => {
+      const row = parseInt(String(seat).match(/\d+/)?.[0] || '', 10)
+      return row > 0 && row <= 2
+    })
+    const hasEconomy = selectedSeats.some((seat) => {
+      const row = parseInt(String(seat).match(/\d+/)?.[0] || '', 10)
+      return row > 2
+    })
+
+    if (hasBusiness && hasEconomy) return 'Thương gia / Phổ thông'
+    if (hasBusiness) return 'Thương gia / Linh hoạt'
+    return 'Phổ thông / Linh hoạt'
+  }
+
   const handleNextStep = () => {
+    continuingRef.current = true
     navigate('/booking/passenger', { state: { flight, passengers } })
   }
 
@@ -160,7 +205,7 @@ export default function BookingSeat() {
             </div>
 
             {/* Sticky Sidebar */}
-            <aside className="lg:col-span-4 lg:sticky lg:top-24 space-y-6">
+            <aside className="lg:col-span-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-2 space-y-6">
               <BookingSummary 
                 flight={flight} 
                 passengers={passengers} 
@@ -178,7 +223,7 @@ export default function BookingSeat() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500 font-medium">Hạng vé</span>
-                    <span className="font-black text-slate-900">Phổ thông / Linh hoạt</span>
+                    <span className="font-black text-slate-900">{getCabinLabel()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500 font-medium">Máy bay</span>

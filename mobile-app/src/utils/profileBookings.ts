@@ -9,6 +9,8 @@ export type ProfileBookingRow = {
   statusKey: 'confirmed' | 'pending_payment' | 'completed' | 'cancelled' | 'checked_in';
   statusColor: string;
   priceVND: number;
+  createdAt: string;
+  expiresAt?: string | null;
   ticket: {
     pnr: string;
     passenger: string;
@@ -58,6 +60,8 @@ export function mapBookingDtoToProfileRow(b: BookingDto): ProfileBookingRow {
     statusKey,
     statusColor,
     priceVND: b.totalPriceVnd,
+    createdAt: b.createdAt,
+    expiresAt: b.expiresAt,
     ticket: {
       pnr: b.pnr,
       passenger: b.passengerName,

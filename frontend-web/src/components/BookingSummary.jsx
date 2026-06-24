@@ -1,25 +1,32 @@
 import React from "react";
 import { FaPlane, FaUsers, FaChair, FaInfoCircle } from 'react-icons/fa';
 
+const TAX_RATE = 0.1;
+const SERVICE_FEE_VND = 50000;
+const BUSINESS_ROWS = 2;
+const BUSINESS_SEAT_FEE_VND = 500000;
+const EXTRA_LEGROOM_ROWS = new Set([6, 7]);
+const EXTRA_LEGROOM_SEAT_FEE_VND = 150000;
+
 export default function BookingSummary({ flight, passengers = 1, selectedSeats = [] }) {
   if (!flight) return <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">Không có chuyến được chọn.</div>;
 
   const getSeatSurcharge = (seatId) => {
     const row = parseInt(seatId.match(/\d+/)[0]);
-    if (row <= 2) return 500000; // Business
-    if (row === 6 || row === 7) return 150000; // Exit Row
+    if (row <= BUSINESS_ROWS) return BUSINESS_SEAT_FEE_VND;
+    if (EXTRA_LEGROOM_ROWS.has(row)) return EXTRA_LEGROOM_SEAT_FEE_VND;
     return 0;
   };
 
   const priceNumber = Number(String(flight.price).replace(/[^0-9]/g, "")) || 0;
   const subtotal = priceNumber * passengers;
   const seatSurcharge = selectedSeats.reduce((sum, seat) => sum + getSeatSurcharge(seat), 0);
-  const tax = Math.round((subtotal + seatSurcharge) * 0.1);
-  const serviceFee = 50000 * passengers;
+  const tax = Math.round(subtotal * TAX_RATE);
+  const serviceFee = SERVICE_FEE_VND * passengers;
   const total = subtotal + seatSurcharge + tax + serviceFee;
 
   return (
-    <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden sticky top-24">
+    <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
       <div className="bg-slate-900 p-6 text-white">
         <h3 className="text-xl font-bold flex items-center gap-2">
           <FaPlane className="rotate-45 text-sky-400" />

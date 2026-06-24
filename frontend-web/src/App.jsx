@@ -31,13 +31,11 @@ function AppContent() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/booking" element={<SearchPage />} />
-          <Route path="/flights" element={<SearchPage />} />
           <Route path="/booking/seat" element={<BookingSeat />} />
           <Route path="/booking/passenger" element={<PassengerForm />} />
           <Route path="/booking/checkout" element={<CheckoutPage />} />
           <Route path="/booking/confirmation" element={<BookingConfirmation />} />
           <Route path="/combos" element={<ComboList />} />
-          <Route path="/combos/search" element={<ComboList />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/check-in" element={<CheckInPage />} />
           <Route path="/user-dashboard" element={<UserDashboard />} />

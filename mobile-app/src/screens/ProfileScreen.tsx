@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Switch, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
@@ -29,6 +29,12 @@ export default function ProfileScreen() {
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [bookingActionId, setBookingActionId] = useState<number | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const loadBookings = useCallback(async () => {
     if (!user) {
@@ -67,6 +73,19 @@ export default function ProfileScreen() {
 
   const fillTemplate = (template: string, values: Record<string, string>) =>
     Object.entries(values).reduce((out, [key, value]) => out.replace(`{${key}}`, value), template);
+
+  const paymentHoldState = (booking: ProfileBookingRow) => {
+    if (booking.status !== 'PENDING_PAYMENT') return null;
+    const expiresAt = booking.expiresAt ? new Date(booking.expiresAt).getTime() : new Date(booking.createdAt).getTime() + 10 * 60 * 1000;
+    if (!Number.isFinite(expiresAt)) return null;
+    const remaining = Math.max(0, Math.floor((expiresAt - nowMs) / 1000));
+    const minutes = Math.floor(remaining / 60).toString().padStart(2, '0');
+    const seconds = (remaining % 60).toString().padStart(2, '0');
+    return {
+      expired: remaining <= 0,
+      label: `${minutes}:${seconds}`,
+    };
+  };
 
   const payBooking = (booking: ProfileBookingRow) => {
     Alert.alert(t('payment_confirm_title'), fillTemplate(t('payment_confirm_message'), {
@@ -299,7 +318,9 @@ export default function ProfileScreen() {
             ) : null}
             {!(user && bookingsLoading) &&
               bookingsToShow.map((b) => {
-              const canPay = b.status === 'PENDING_PAYMENT';
+              const holdState = paymentHoldState(b);
+              const holdExpired = Boolean(holdState?.expired);
+              const canPay = b.status === 'PENDING_PAYMENT' && !holdExpired;
               const canCancel = b.status === 'PENDING_PAYMENT';
               const canCheckIn = b.status === 'CONFIRMED';
               const canViewTicket = b.status === 'CONFIRMED' || b.status === 'CHECKED_IN' || b.status === 'COMPLETED';
@@ -326,6 +347,14 @@ export default function ProfileScreen() {
                     </View>
                     <Text style={styles.bookingPrice}>{formatPrice(b.priceVND, currency)}</Text>
                   </View>
+                  {holdState ? (
+                    <View style={styles.holdTimer}>
+                      <AppIcon name="payment" size={14} color="#B45309" />
+                      <Text style={styles.holdTimerText}>
+                        {holdState.expired ? 'Đã hết thời gian giữ chỗ. Vui lòng đặt lại.' : `Còn ${holdState.label} để thanh toán giữ chỗ`}
+                      </Text>
+                    </View>
+                  ) : null}
                 </TouchableOpacity>
                 {(canPay || canCancel || canViewTicket || canCheckIn) && (
                   <View style={styles.bookingActions}>
@@ -417,6 +446,8 @@ const styles = StyleSheet.create({
   bookingBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   bookingDate:   { fontSize: 13, color: '#6B7280' },
   bookingPrice:  { fontSize: 15, fontWeight: '800', color: '#0064D2' },
+  holdTimer:     { marginTop: 12, borderRadius: 10, backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A', paddingHorizontal: 10, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  holdTimerText: { flex: 1, color: '#92400E', fontSize: 12, fontWeight: '700' },
   bookingActions:{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
   payActionBtn:  { flex: 1, backgroundColor: '#0064D2', borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
   payActionText: { color: '#fff', fontSize: 13, fontWeight: '800' },
