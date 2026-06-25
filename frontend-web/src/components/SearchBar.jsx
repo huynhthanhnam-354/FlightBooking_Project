@@ -55,6 +55,7 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
   const [returnDate, setReturnDate] = useState('')
   const [segments, setSegments] = useState([{ id: 1, from: '', to: '', date: '' }, { id: 2, from: '', to: '', date: '' }])
   const [aiQuery, setAiQuery] = useState('')
+  const todayStr = new Date().toLocaleDateString('sv')
 
   const [showFromSuggest, setShowFromSuggest] = useState(false)
   const [showToSuggest, setShowToSuggest] = useState(false)
@@ -141,9 +142,9 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
       navigate(`/combos/search?from=${depCode}&to=${arrCode}&date=${departDate}&guests=${guestCount}`);
     } else if (searchMode === 'ai') {
       const payload = { searchMode: 'ai', query: aiQuery, tripType, passengers, cabinClass };
-      navigate('/search', { state: { initialSearch: payload } });
+      navigate('/booking', { state: { initialSearch: payload } });
     } else {
-      navigate(`/flights?from=${depCode}&to=${arrCode}&date=${departDate}&guests=${guestCount}`);
+      navigate(`/booking?from=${depCode}&to=${arrCode}&date=${departDate}&guests=${guestCount}`);
     }
   }
 
@@ -264,6 +265,7 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
                     value={departDate}
                     onChange={(e) => setDepartDate(e.target.value)}
                     type="date"
+                    min={todayStr}
                     className="w-full p-3 rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-sky-500 hover:shadow-sm transition"
                   />
                 </div>
@@ -274,6 +276,7 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
                     value={returnDate}
                     onChange={(e) => setReturnDate(e.target.value)}
                     type="date"
+                    min={departDate || todayStr}
                     disabled={tripType === 'oneway'}
                     className={`w-full p-3 rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-sky-500 hover:shadow-sm transition ${tripType === 'oneway' ? 'opacity-50 cursor-not-allowed' : ''}`}
                   />
@@ -366,7 +369,7 @@ export default function SearchBar({ onSearch, onInsightsChange, initialSearch })
                     </div>
                     <div>
                       <label className="text-xs text-slate-600">Ngày</label>
-                      <input value={s.date} onChange={e => updateSegment(idx, 'date', e.target.value)} type="date" className="w-full p-3 rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-sky-500 hover:shadow-sm transition" />
+                      <input value={s.date} onChange={e => updateSegment(idx, 'date', e.target.value)} type="date" min={todayStr} className="w-full p-3 rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-sky-500 hover:shadow-sm transition" />
                     </div>
                     <div className="flex items-end">
                       <button type="button" onClick={() => setSegments(prev => prev.filter((_, i) => i !== idx))} className="px-4 py-2 bg-red-50 text-red-600 rounded">Xóa</button>

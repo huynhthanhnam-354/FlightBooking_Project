@@ -149,6 +149,9 @@ public class BookingService {
                 .orElseThrow(() -> new UsernameNotFoundException(userEmail));
         Flight flight = flightRepository.findById(request.flightId())
                 .orElseThrow(() -> new IllegalArgumentException("Flight not found: " + request.flightId()));
+        if (flight.getDepartureAt().isBefore(VietnamTime.nowLocal())) {
+            throw new IllegalArgumentException("Không thể đặt vé cho chuyến bay đã cất cánh hoặc ở trong quá khứ.");
+        }
         String seatNumber = normalizeSeatNumbers(request.seatNumber());
         String passengerName = InputValidator.requirePersonName(request.passengerName());
         String passengerEmail = request.passengerEmail() == null || request.passengerEmail().isBlank()

@@ -9,11 +9,12 @@ export default function HeroSearch() {
   const [departDate, setDepartDate] = useState('')
   const [returnDate, setReturnDate] = useState('')
   const [passengers, setPassengers] = useState(1)
+  const todayStr = new Date().toLocaleDateString('sv')
 
   function onSearch(e) {
     e.preventDefault()
     const payload = { tripType, from, to, departDate, returnDate: tripType === 'oneway' ? null : returnDate, passengers }
-    navigate('/search', { state: { initialSearch: payload } })
+    navigate('/booking', { state: { initialSearch: payload } })
   }
 
   return (
@@ -34,12 +35,12 @@ export default function HeroSearch() {
         </div>
         <div className="md:col-span-1">
           <label className="text-xs text-slate-600">Ngày đi</label>
-          <input value={departDate} onChange={e => setDepartDate(e.target.value)} type="date" className="w-full border p-2 rounded" />
+          <input value={departDate} onChange={e => setDepartDate(e.target.value)} type="date" min={todayStr} className="w-full border p-2 rounded" />
         </div>
 
         <div className="md:col-span-1">
           <label className="text-xs text-slate-600">Ngày về</label>
-          <input value={returnDate} onChange={e => setReturnDate(e.target.value)} type="date" disabled={tripType==='oneway'} className={`w-full border p-2 rounded ${tripType==='oneway' ? 'opacity-50' : ''}`} />
+          <input value={returnDate} onChange={e => setReturnDate(e.target.value)} type="date" min={departDate || todayStr} disabled={tripType==='oneway'} className={`w-full border p-2 rounded ${tripType==='oneway' ? 'opacity-50' : ''}`} />
         </div>
 
         <div className="md:col-span-2">

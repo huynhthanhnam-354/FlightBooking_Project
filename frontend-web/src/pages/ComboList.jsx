@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  FaPlane, FaHotel, FaCalendarAlt, FaStar, FaSlidersH, FaSearch, FaUser, FaTimes, FaMinus, FaPlus 
+  FaPlane, FaHotel, FaCalendarAlt, FaStar, FaSlidersH, FaSearch, FaUser, FaTimes, FaMinus, FaPlus,
+  FaChevronLeft, FaChevronRight, FaCheckCircle
 } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { searchCombosApi } from '../services/api';
@@ -55,7 +56,7 @@ const mockData = [
     region: 'Miền Trung',
     description: 'Thư giãn bên hồ bơi vô cực nước biển tự nhiên rộng lớn cùng bãi tắm cát trắng riêng tư yên bình giữa vịnh Nha Trang lộng gió.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1588668214407-6eb95270273e?auto=format&fit=crop&w=600&q=80',
     popularity: 88,
     discount: 10,
     availableSlots: 8
@@ -84,7 +85,7 @@ const mockData = [
     region: 'Miền Bắc',
     description: 'Hành trình di sản kỳ diệu lênh đênh giữa vịnh biển kỳ vĩ, ngắm hoàng hôn buông xuống từ cabin ban công riêng cao cấp.',
     duration: '2 ngày 1 đêm',
-    image: 'https://images.unsplash.com/photo-1524413840807-0c3cb6fa808d?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=600&q=80',
     popularity: 87,
     discount: 18,
     availableSlots: 6
@@ -127,7 +128,7 @@ const mockData = [
     region: 'Miền Trung',
     description: 'Bờ biển nguyên sơ cát vàng mịn màng bao quanh bởi những mỏm đá tuyệt tác, tận hưởng hồ bơi riêng biệt độc bản xa hoa.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1610444583731-9e1e2d4400cc?auto=format&fit=crop&w=600&q=80',
     popularity: 84,
     discount: 14,
     availableSlots: 7
@@ -141,7 +142,7 @@ const mockData = [
     region: 'Miền Trung',
     description: 'Ẩn mình dưới những tán thông ngút ngàn, biệt thự kiến trúc Pháp cổ kính mở ra không gian lãng mạn ấm áp giữa cao nguyên.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1589136777351-fdc9c9c8c480?auto=format&fit=crop&w=600&q=80',
     popularity: 93,
     discount: 22,
     aiRecommendation: 'price_up',
@@ -156,7 +157,7 @@ const mockData = [
     region: 'Miền Nam',
     description: 'Thiên đường bảo tồn thiên nhiên biển đảo đỉnh cao, biệt thự gỗ sang trọng ven biển lộng gió mang lại sự thái tuyệt hảo.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=600&q=80',
     popularity: 96,
     discount: 8,
     availableSlots: 5
@@ -184,7 +185,7 @@ const mockData = [
     region: 'Miền Nam',
     description: 'Những rặng dừa xanh đung đưa trước gió bên bờ biển êm đềm, khám phá đồi cát bay trứ danh và thưởng ngoạn hoàng hôn tuyệt mỹ.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=600&q=80',
     popularity: 86,
     discount: 21,
     availableSlots: 4
@@ -283,9 +284,382 @@ const enrichMockWithHotelProfile = (item) => {
     hotelAmenities: ["Bãi tắm riêng", "Hồ bơi vô cực ngoài trời", "Trung tâm Spa", "Nhà hàng Á-Âu", "Bữa sáng miễn phí"]
   };
 
+  const locationNormalized = (item.location || "").toLowerCase().trim();
+
+  // Mapping specific Unsplash images for all 12 locations to ensure correct images are displayed
+  const locationImageMapping = {
+    "đà nẵng": [
+      "https://images.unsplash.com/photo-1559592481-74418d7cd362?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1563492065561-831135efded3?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1568402102990-bc541580b59f?auto=format&fit=crop&w=800&q=80"
+    ],
+    "phú quốc": [
+      "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80"
+    ],
+    "nha trang": [
+      "https://images.unsplash.com/photo-1588668214407-6eb95270273e?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1552074284-5e88ef1aef18?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=800&q=80"
+    ],
+    "sa pa": [
+      "https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?auto=format&fit=crop&w=800&q=80"
+    ],
+    "sapa": [
+      "https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?auto=format&fit=crop&w=800&q=80"
+    ],
+    "hạ long": [
+      "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1552074284-5e88ef1aef18?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=800&q=80"
+    ],
+    "ha long": [
+      "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1552074284-5e88ef1aef18?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=800&q=80"
+    ],
+    "hà giang": [
+      "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1627664819818-e147d6221422?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1608976781255-a27076d54238?auto=format&fit=crop&w=800&q=80"
+    ],
+    "ha giang": [
+      "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1627664819818-e147d6221422?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1608976781255-a27076d54238?auto=format&fit=crop&w=800&q=80"
+    ],
+    "hội an": [
+      "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1610444583731-9e1e2d4400cc?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1599708149870-22e70ee649c0?auto=format&fit=crop&w=800&q=80"
+    ],
+    "hoi an": [
+      "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1610444583731-9e1e2d4400cc?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1599708149870-22e70ee649c0?auto=format&fit=crop&w=800&q=80"
+    ],
+    "quy nhơn": [
+      "https://images.unsplash.com/photo-1610444583731-9e1e2d4400cc?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1589136777351-fdc9c9c8c480?auto=format&fit=crop&w=800&q=80"
+    ],
+    "quy nhon": [
+      "https://images.unsplash.com/photo-1610444583731-9e1e2d4400cc?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1589136777351-fdc9c9c8c480?auto=format&fit=crop&w=800&q=80"
+    ],
+    "đà lạt": [
+      "https://images.unsplash.com/photo-1589136777351-fdc9c9c8c480?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=800&q=80"
+    ],
+    "da lat": [
+      "https://images.unsplash.com/photo-1589136777351-fdc9c9c8c480?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=800&q=80"
+    ],
+    "côn đảo": [
+      "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1540206395-68808572332f?auto=format&fit=crop&w=800&q=80"
+    ],
+    "con dao": [
+      "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1540206395-68808572332f?auto=format&fit=crop&w=800&q=80"
+    ],
+    "vũng tàu": [
+      "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"
+    ],
+    "vung tau": [
+      "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"
+    ],
+    "hồ tràm": [
+      "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"
+    ],
+    "ho tram": [
+      "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"
+    ],
+    "mũi né": [
+      "https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=800&q=80"
+    ],
+    "mui ne": [
+      "https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=800&q=80"
+    ]
+  };
+
+  const matchedImages = locationImageMapping[locationNormalized] || [
+    item.image,
+    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1540206395-68808572332f?auto=format&fit=crop&w=800&q=80"
+  ];
+
+  const destinationImages = [
+    item.image || matchedImages[0],
+    matchedImages[1] || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+    matchedImages[2] || "https://images.unsplash.com/photo-1540206395-68808572332f?auto=format&fit=crop&w=800&q=80"
+  ];
+
+  // Helper to generate event information matching the destination
+  const getCustomEvents = (locName) => {
+    const loc = (locName || "").toLowerCase().trim();
+    if (loc.includes("đà nẵng")) {
+      return [
+        {
+          title: "Lễ hội pháo hoa quốc tế Đà Nẵng (DIFF)",
+          date: "Tháng 6 - Tháng 7 hàng năm",
+          description: "Lễ hội trình diễn pháo hoa đỉnh cao quy tụ nhiều đội thi quốc tế, thắp sáng bầu trời đêm sông Hàn rực rỡ sắc màu.",
+          image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          title: "Trình diễn phun Lửa & Nước tại Cầu Rồng",
+          date: "21:00 tối thứ Bảy, Chủ nhật hàng tuần",
+          description: "Chiêm ngưỡng biểu tượng Cầu Rồng độc đáo phun lửa và phun mưa đầy nghệ thuật thu hút hàng ngàn du khách.",
+          image: "https://images.unsplash.com/photo-1563492065561-831135efded3?auto=format&fit=crop&w=600&q=80"
+        }
+      ];
+    } else if (loc.includes("phú quốc")) {
+      return [
+        {
+          title: "Lễ hội Hoàng hôn Phú Quốc",
+          date: "Hàng ngày từ 16:30 - 18:30",
+          description: "Tận hưởng khoảnh khắc hoàng hôn đỏ rực buông xuống biển Tây tại các bãi biển đẹp nhất hòn đảo, kết hợp nhạc sống acoustic.",
+          image: "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          title: "Trải nghiệm Chợ đêm Phú Quốc & Ẩm thực biển",
+          date: "Hàng tối từ 18:00 - 23:00",
+          description: "Khám phá thế giới ẩm thực phong phú với các món hải sản tươi sống đặc trưng của đảo Ngọc như nhum nướng, gỏi cá trích.",
+          image: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=600&q=80"
+        }
+      ];
+    } else if (loc.includes("nha trang")) {
+      return [
+        {
+          title: "Festival Biển Nha Trang",
+          date: "Tháng 6 hai năm một lần",
+          description: "Lễ hội du lịch biển lớn nhất Khánh Hòa với chuỗi hoạt động triển lãm di sản văn hóa, biểu diễn nghệ thuật và thể thao bãi biển sôi động.",
+          image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          title: "Hành hương Tháp Bà Ponagar lịch sử",
+          date: "Tháng 3 âm lịch hàng năm",
+          description: "Lễ hội tôn vinh Thiên Y Thánh Mẫu Ana tại ngôi đền Chăm cổ kính độc đáo nghìn năm tuổi uy nghiêm hướng ra cửa biển Nha Trang.",
+          image: "https://images.unsplash.com/photo-1552074284-5e88ef1aef18?auto=format&fit=crop&w=600&q=80"
+        }
+      ];
+    } else if (loc.includes("sapa") || loc.includes("sa pa")) {
+      return [
+        {
+          title: "Lễ hội hoa ban và hoa hồng Fansipan",
+          date: "Tháng 4 - Tháng 6 hàng năm",
+          description: "Triển lãm thung lũng hoa hồng rộng lớn bậc nhất Tây Bắc kết hợp với các chương trình vũ điệu trên mây vô cùng ảo diệu.",
+          image: "https://images.unsplash.com/photo-1526218626217-dc65a29bb444?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          title: "Chợ tình Sa Pa văn hoá độc đáo",
+          date: "Tối thứ Bảy hàng tuần",
+          description: "Điểm hẹn giao duyên văn nghệ truyền thống của nam thanh nữ tú người Mông, Dao đỏ trong tiếng khèn lá mộc mạc réo rắt.",
+          image: "https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?auto=format&fit=crop&w=600&q=80"
+        }
+      ];
+    } else if (loc.includes("hạ long") || loc.includes("ha long")) {
+      return [
+        {
+          title: "Carnival Hạ Long rực rỡ sắc màu",
+          date: "Tháng 4 - 5 dịp lễ 30/4",
+          description: "Lễ hội biểu diễn nghệ thuật quy mô lớn trên đường phố và bãi biển với vũ đoàn chuyên nghiệp trong nước và quốc tế.",
+          image: "https://images.unsplash.com/photo-1472653431158-6364773b2a56?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          title: "Khám phá Vịnh Di sản bằng Kayak tự do",
+          date: "Hàng ngày",
+          description: "Trải nghiệm luồn lách qua các hang luồn, ngắm nhìn cận cảnh các hòn đảo đá vôi kỳ vĩ và những rặng san hô tự nhiên tuyệt đẹp.",
+          image: "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=600&q=80"
+        }
+      ];
+    } else if (loc.includes("hà giang") || loc.includes("ha giang")) {
+      return [
+        {
+          title: "Lễ hội hoa tam giác mạch Hà Giang",
+          date: "Tháng 10 - Tháng 11 hàng năm",
+          description: "Tận hưởng không gian thung lũng đá tai mèo nở rộ sắc hoa tam giác mạch hồng phấn dịu dàng, tổ chức các cuộc thi cồng chiêng, khèn Mông.",
+          image: "https://images.unsplash.com/photo-1627664819818-e147d6221422?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          title: "Phiên chợ lùi Đồng Văn cổ kính",
+          date: "Cuối tuần so le các ngày",
+          description: "Nơi giao lưu văn hóa, trao đổi nông thổ sản của đồng bào các dân tộc thiểu số và thưởng thức bát thắng cố nóng hổi.",
+          image: "https://images.unsplash.com/photo-1526218626217-dc65a29bb444?auto=format&fit=crop&w=600&q=80"
+        }
+      ];
+    } else if (loc.includes("hội an") || loc.includes("hoi an")) {
+      return [
+        {
+          title: "Đêm rằm phố cổ Hội An huyền ảo",
+          date: "Ngày 14 âm lịch hàng tháng",
+          description: "Tất cả các ngôi nhà cổ tắt điện, treo đèn lồng lung linh và thả đèn hoa đăng lãng mạn bên dòng sông Hoài thơ mộng.",
+          image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          title: "Show diễn thực cảnh Ký ức Hội An hoành tráng",
+          date: "Tối hàng ngày từ 20:00 - 21:00",
+          description: "Show thực cảnh đẹp nhất thế giới tái hiện câu chuyện lịch sử thương cảng Faifo sầm uất với hơn 500 diễn viên trên sân khấu nước hiện đại.",
+          image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80"
+        }
+      ];
+    } else if (loc.includes("quy nhơn") || loc.includes("quy nhon")) {
+      return [
+        {
+          title: "Giải đua thuyền buồm quốc tế Quy Nhơn",
+          date: "Tháng 8 hàng năm",
+          description: "Cuộc thi thuyền buồm thể thao đẳng cấp diễn ra tại bãi biển Quy Nhơn đón luồng gió mát rượi đặc trưng cực kỳ sôi động.",
+          image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          title: "Ngắm bình minh độc bản tại Eo Gió",
+          date: "Hàng ngày lúc 5:00 - 6:30",
+          description: "Đón những tia nắng đầu tiên của ngày mới tại địa điểm ngắm bình minh đẹp nhất Việt Nam với vách núi ôm trọn biển xanh kỳ vĩ.",
+          image: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=600&q=80"
+        }
+      ];
+    } else if (loc.includes("đà lạt") || loc.includes("da lat")) {
+      return [
+        {
+          title: "Festival Hoa Đà Lạt rực rỡ sắc màu",
+          date: "Tháng 12 hai năm một lần",
+          description: "Lễ hội trưng bày nghệ thuật sắp đặt hoa tươi quy mô lớn xung quanh hồ Xuân Hương và các công viên trung tâm thành phố ngàn hoa.",
+          image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          title: "Nhạc hội mây lang thang giữa sương mù",
+          date: "Thứ Sáu, Thứ Bảy hàng tuần",
+          description: "Các buổi hòa nhạc live acoustic trên đỉnh đồi lộng gió, đón chiều hoàng hôn lãng mạn hòa trong làn sương mây mờ ảo.",
+          image: "https://images.unsplash.com/photo-1589136777351-fdc9c9c8c480?auto=format&fit=crop&w=600&q=80"
+        }
+      ];
+    } else if (loc.includes("côn đảo") || loc.includes("con dao")) {
+      return [
+        {
+          title: "Lễ hội Thả Rùa về biển tự nhiên",
+          date: "Tháng 7 - Tháng 9 hàng năm",
+          description: "Tham gia cùng các nhân viên kiểm lâm bảo tồn thiên nhiên biển đảo, thả các chú rùa con mới nở chập chững bò ra biển khơi xanh ngắt.",
+          image: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          title: "Viếng nghĩa trang Hàng Dương linh thiêng",
+          date: "23:00 hàng đêm",
+          description: "Hoạt động tâm linh trang nghiêm, thắp hương viếng mộ nữ anh hùng Võ Thị Sáu và các chiến sĩ cách mạng dưới bóng những cây dương cổ thụ.",
+          image: "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=600&q=80"
+        }
+      ];
+    } else if (loc.includes("vũng tàu") || loc.includes("vung tau") || loc.includes("hồ tràm") || loc.includes("ho tram")) {
+      return [
+        {
+          title: "Lễ hội diều nghệ thuật Vũng Tàu",
+          date: "Dịp lễ 30/4 hàng năm",
+          description: "Trình diễn diều khổng lồ quy tụ các nghệ nhân trong nước và quốc tế tạo nên bức tranh bầu trời biển sặc sỡ, sống động.",
+          image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          title: "Thưởng thức ẩm thực ốc đêm hải sản",
+          date: "Hàng tối",
+          description: "Trải nghiệm thế giới ốc đêm vô cùng phong phú tại các khu chợ ẩm thực Vũng Tàu với các hương vị ốc len xào dừa, hàu nướng mỡ hành.",
+          image: "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=600&q=80"
+        }
+      ];
+    } else if (loc.includes("mũi né") || loc.includes("mui ne")) {
+      return [
+        {
+          title: "Lễ hội trượt cát đồi cát bay Mũi Né",
+          date: "Hàng ngày lúc 15:30 - 18:00",
+          description: "Trải nghiệm chinh phục đồi cát bay trứ danh bằng máng trượt nhựa và ghi lại các khoảnh khắc chụp ảnh nghệ thuật tuyệt đẹp.",
+          image: "https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          title: "Giải lướt ván diều quốc tế Mũi Né",
+          date: "Tháng 2 hàng năm",
+          description: "Giải đấu mạo hiểm lướt ván diều thế giới quy tụ các vận động viên tài ba nhờ bãi biển Mũi Né nổi tiếng lộng gió lý tưởng.",
+          image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80"
+        }
+      ];
+    }
+    
+    // Default fallback
+    return [
+      {
+        title: `Lễ hội Văn hóa & Ẩm thực tại ${locName}`,
+        date: "Tháng 6 - Tháng 8 hàng năm",
+        description: `Sự kiện lễ hội đặc sắc giới thiệu tinh hoa ẩm thực, âm nhạc đường phố và các hoạt động trình diễn văn nghệ truyền thống tại ${locName}.`,
+        image: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        title: `Khám phá thắng cảnh nổi tiếng ${locName}`,
+        date: "Hàng ngày",
+        description: `Hành trình dạo quanh các địa danh check-in nổi bật tại ${locName}, tìm hiểu lịch sử địa phương cùng hướng dẫn viên bản địa.`,
+        image: "https://images.unsplash.com/photo-1582236968032-de067f9be6d5?auto=format&fit=crop&w=600&q=80"
+      }
+    ];
+  };
+
+  const events = getCustomEvents(item.location);
+
+  const roomTypes = [
+    {
+      key: 'std',
+      name: 'Standard Room',
+      size: '42m²',
+      bed: '1 Giường King hoặc 2 Giường đơn',
+      maxGuests: '2 Người lớn & 1 Trẻ em',
+      priceDiff: 0,
+      description: 'Không gian ấm cúng, thiết kế trang nhã với ban công hướng ra khu vườn nhiệt đới xanh ngát.',
+      image: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=600&q=80'
+    },
+    {
+      key: 'deluxe',
+      name: 'Deluxe Ocean View',
+      size: '56m²',
+      bed: '1 Giường King lớn',
+      maxGuests: '2 Người lớn & 2 Trẻ em',
+      priceDiff: 750000,
+      description: 'Tầm nhìn ngoạn mục hướng ra đại dương lộng gió, trang bị bồn tắm nằm cao cấp thư giãn.',
+      image: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80'
+    },
+    {
+      key: 'suite',
+      name: 'Executive Suite VIP',
+      size: '88m²',
+      bed: '1 Giường King lớn + 1 Giường phụ',
+      maxGuests: '3 Người lớn & 2 Trẻ em',
+      priceDiff: 2000000,
+      description: 'Căn hộ tổng thống thu nhỏ với phòng khách riêng biệt, quầy bar mini và lối đi riêng ra bãi tắm.',
+      image: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=600&q=80'
+    }
+  ];
+
   return {
     ...item,
-    ...profile
+    ...profile,
+    destinationImages,
+    events,
+    roomTypes
   };
 };
 
@@ -296,6 +670,16 @@ const enrichedMockData = mockData.map(item => {
     aiRecommendation: generateMockAiRecommendation(item.location)
   };
 });
+
+const enrichComboItems = (items) => {
+  return (items || []).map(item => {
+    const enrichedItem = enrichMockWithHotelProfile(item);
+    return {
+      ...enrichedItem,
+      aiRecommendation: item.aiRecommendation || generateMockAiRecommendation(item.location)
+    };
+  });
+};
 
 const regions = [
   { id: 'all', label: 'Tất cả điểm đến' },
@@ -310,6 +694,7 @@ export default function ComboList() {
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [selectedCombo, setSelectedCombo] = useState(null);
   const [customizingCombo, setCustomizingCombo] = useState(null);
+  const [selectedComboDetail, setSelectedComboDetail] = useState(null);
   const [sortOption, setSortOption] = useState('');
 
   // Search Bar & Filter States
@@ -320,6 +705,7 @@ export default function ComboList() {
     guests: 1,
     budget: 0
   });
+  const todayStr = new Date().toLocaleDateString('sv');
   
   const [combos, setCombos] = useState(enrichedMockData);
   const [isSearching, setIsSearching] = useState(false);
@@ -348,7 +734,7 @@ export default function ComboList() {
       setIsSearching(true);
       try {
         const res = await searchCombosApi(parsedParams);
-        setCombos(res.data || []);
+        setCombos(enrichComboItems(res.data || []));
       } catch (err) {
         console.error("Initial combos search error:", err);
       } finally {
@@ -419,7 +805,7 @@ export default function ComboList() {
     setIsSearching(true);
     try {
       const res = await searchCombosApi(searchParams);
-      setCombos(res.data || []);
+      setCombos(enrichComboItems(res.data || []));
       toast.success('Đã cập nhật danh sách Combo!');
     } catch (err) {
       console.error("Search error:", err);
@@ -540,6 +926,7 @@ export default function ComboList() {
                   type="date" 
                   value={searchParams.departureDate}
                   onChange={e => setSearchParams({...searchParams, departureDate: e.target.value})}
+                  min={todayStr}
                   className="w-full pl-9 pr-4 py-3 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-1 focus:ring-blue-500" 
                 />
               </div>
@@ -629,7 +1016,7 @@ export default function ComboList() {
           {sortedCombos.map((item) => (
             <div 
               key={item.id} 
-              onClick={() => navigate('/combos/' + item.id)}
+              onClick={() => setSelectedComboDetail(item)}
               className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-md border border-slate-100 flex flex-col transition-all duration-300 hover:-translate-y-1 cursor-pointer relative"
             >
               {/* Card Image */}
@@ -826,6 +1213,17 @@ export default function ComboList() {
           onConfirm={(customizedCombo) => {
             setCustomizingCombo(null);
             setSelectedCombo(customizedCombo);
+          }}
+        />
+      )}
+
+      {/* Combo Detail Modal Component */}
+      {selectedComboDetail && (
+        <ComboDetailModal 
+          combo={selectedComboDetail} 
+          onClose={() => setSelectedComboDetail(null)} 
+          onBook={(item) => {
+            setCustomizingCombo(item);
           }}
         />
       )}
@@ -1056,6 +1454,224 @@ function CustomizationModal({ combo, onClose, onConfirm }) {
                 Xác nhận & Đặt chỗ
               </button>
             </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+function ComboDetailModal({ combo, onClose, onBook }) {
+  const [activeTab, setActiveTab] = useState('info');
+  const [imgIndex, setImgIndex] = useState(0);
+
+  const images = combo.destinationImages || [combo.image];
+
+  const handleNextImg = (e) => {
+    e.stopPropagation();
+    setImgIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const handlePrevImg = (e) => {
+    e.stopPropagation();
+    setImgIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-4xl w-full h-[90vh] md:h-auto md:max-h-[85vh] overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-300">
+        
+        {/* Close Button */}
+        <button 
+          type="button"
+          onClick={onClose}
+          className="absolute top-6 right-6 z-[160] text-slate-700 bg-white/80 hover:bg-white p-2 rounded-full shadow transition-colors active:scale-95"
+        >
+          <FaTimes size={16} />
+        </button>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Hero Gallery Header */}
+          <div className="relative h-64 md:h-80 bg-slate-100 group">
+            <img 
+              src={images[imgIndex]} 
+              alt={combo.title} 
+              className="w-full h-full object-cover transition-all duration-500"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+            
+            {/* Gallery Controls */}
+            {images.length > 1 && (
+              <>
+                <button 
+                  type="button"
+                  onClick={handlePrevImg}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/40 hover:bg-white/80 text-slate-800 p-2 rounded-full backdrop-blur-sm transition-all"
+                >
+                  <FaChevronLeft size={16} />
+                </button>
+                <button 
+                  type="button"
+                  onClick={handleNextImg}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/40 hover:bg-white/80 text-slate-800 p-2 rounded-full backdrop-blur-sm transition-all"
+                >
+                  <FaChevronRight size={16} />
+                </button>
+              </>
+            )}
+
+            {/* Bottom Header Text */}
+            <div className="absolute bottom-6 left-8 right-8 text-white">
+              <span className="px-3 py-1 bg-blue-500 border border-blue-400/30 text-white rounded-full text-[9px] font-black uppercase tracking-wider inline-block">
+                {combo.location}
+              </span>
+              <h2 className="text-2xl md:text-3xl font-black mt-2 leading-tight tracking-tight">{combo.title}</h2>
+              <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-300">
+                <span>🏨 {combo.hotelName}</span>
+                <span>•</span>
+                <span>⏱️ {combo.duration}</span>
+                <span>•</span>
+                <span className="flex text-amber-400">
+                  {Array.from({ length: combo.hotelStars || 5 }).map((_, i) => "★")}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tab Navigation */}
+          <div className="flex border-b border-slate-100 px-8 bg-slate-50/50">
+            <button 
+              type="button"
+              onClick={() => setActiveTab('info')}
+              className={`py-4 px-4 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'info' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+            >
+              Điểm đến & Sự kiện
+            </button>
+            <button 
+              type="button"
+              onClick={() => setActiveTab('hotel')}
+              className={`py-4 px-4 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'hotel' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+            >
+              Khách sạn & Phòng nghỉ
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-8">
+            {activeTab === 'info' && (
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-2">Giới thiệu hành trình</h4>
+                  <p className="text-sm text-slate-600 leading-relaxed font-medium">{combo.description}</p>
+                </div>
+
+                {combo.aiRecommendation && (
+                  <div className="bg-sky-50 border border-sky-100 p-4 rounded-2xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-black uppercase text-sky-800 bg-sky-100 px-2 py-0.5 rounded-md">Trợ lý AI gợi ý</span>
+                    </div>
+                    <p className="text-xs text-sky-950 font-medium leading-relaxed">{combo.aiRecommendation}</p>
+                  </div>
+                )}
+
+                {/* Events & Activities */}
+                {combo.events && combo.events.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-bold text-slate-800">Sự kiện & Hoạt động nổi bật</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {combo.events.map((evt, idx) => (
+                        <div key={idx} className="flex gap-4 p-4 border border-slate-100 rounded-2xl bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                          <img src={evt.image} alt={evt.title} className="w-16 h-16 object-cover rounded-xl shrink-0" />
+                          <div className="min-w-0">
+                            <h5 className="text-xs font-bold text-slate-900 truncate">{evt.title}</h5>
+                            <p className="text-[10px] text-blue-600 font-bold mt-0.5">{evt.date}</p>
+                            <p className="text-[10px] text-slate-500 mt-1 leading-normal font-medium">{evt.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'hotel' && (
+              <div className="space-y-6">
+                {/* Hotel General Info */}
+                <div className="flex flex-col md:flex-row gap-6 items-start">
+                  <div className="flex-1 space-y-3">
+                    <h4 className="text-sm font-bold text-slate-800">Trải nghiệm nghỉ dưỡng đẳng cấp</h4>
+                    <p className="text-sm text-slate-600 leading-relaxed font-medium">{combo.roomQuality}</p>
+                    
+                    {/* Amenities list */}
+                    <div className="pt-2">
+                      <h5 className="text-xs font-bold text-slate-800 mb-2">Dịch vụ & Tiện ích khách sạn:</h5>
+                      <div className="grid grid-cols-2 gap-2">
+                        {combo.hotelAmenities && combo.hotelAmenities.map((amenity, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-xs text-slate-600 font-medium">
+                            <FaCheckCircle className="text-emerald-500 shrink-0" size={12} />
+                            <span>{amenity}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Room Layouts */}
+                {combo.roomTypes && (
+                  <div className="space-y-3 pt-4 border-t border-slate-100">
+                    <h4 className="text-sm font-bold text-slate-800">Cấu trúc các hạng phòng</h4>
+                    <div className="space-y-3">
+                      {combo.roomTypes.map((room) => (
+                        <div key={room.key} className="flex flex-col sm:flex-row gap-4 p-4 border border-slate-100 rounded-2xl hover:border-slate-200 transition-colors">
+                          <img src={room.image} alt={room.name} className="w-full sm:w-28 h-20 object-cover rounded-xl shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start gap-2">
+                              <h5 className="text-xs font-bold text-slate-900">{room.name}</h5>
+                              <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded font-black">
+                                {room.priceDiff === 0 ? 'Mặc định' : `+${room.priceDiff.toLocaleString()}₫`}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-0.5 font-bold">Diện tích: {room.size} • Giường: {room.bed} • Sức chứa: {room.maxGuests}</p>
+                            <p className="text-[10px] text-slate-500 mt-1 leading-normal font-medium">{room.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer Area */}
+        <div className="bg-slate-50 border-t border-slate-100 px-8 py-5 flex items-center justify-between">
+          <div>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest font-black">Giá chỉ từ</p>
+            <p className="text-xl font-black text-slate-900 mt-0.5">{combo.price.toLocaleString()}₫</p>
+          </div>
+          <div className="flex gap-3">
+            <button 
+              type="button"
+              onClick={onClose}
+              className="px-6 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+            >
+              Đóng
+            </button>
+            <button 
+              type="button"
+              onClick={() => {
+                onBook(combo);
+                onClose();
+              }}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+            >
+              Tùy chỉnh & Đặt ngay
+            </button>
           </div>
         </div>
 

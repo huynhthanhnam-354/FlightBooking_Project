@@ -43,6 +43,10 @@ public class SeatHoldService {
         Flight flight = flightRepository.findById(flightId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thông tin chuyến bay: " + flightId));
         
+        if (flight.getDepartureAt().isBefore(VietnamTime.nowLocal())) {
+            throw new IllegalArgumentException("Không thể giữ ghế cho chuyến bay đã cất cánh hoặc ở trong quá khứ.");
+        }
+        
         String seatNumber = normalizeSeat(rawSeatNumber);
         LocalDateTime now = VietnamTime.nowLocal();
 

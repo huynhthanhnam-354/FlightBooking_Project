@@ -45,7 +45,7 @@ public class RecommendationController {
                         "Đà Nẵng",
                         "Thành phố của những cây cầu",
                         formatter.format(danangPrice) + "₫",
-                        "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=600&q=80",
+                        "https://images.unsplash.com/photo-1559592481-74418d7cd362?auto=format&fit=crop&w=600&q=80",
                         "DAD"
                 ),
                 new RecommendationDTO(
@@ -61,7 +61,7 @@ public class RecommendationController {
                         "Phú Quốc",
                         "Thiên đường đảo ngọc",
                         formatter.format(phuquocPrice) + "₫",
-                        "https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?auto=format&fit=crop&w=600&q=80",
+                        "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=600&q=80",
                         "PQC"
                 )
         );

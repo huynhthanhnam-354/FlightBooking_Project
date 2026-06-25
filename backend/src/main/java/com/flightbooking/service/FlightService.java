@@ -33,12 +33,18 @@ public class FlightService {
         String dep = (departureAirport != null) ? departureAirport.trim().toUpperCase() : "";
         String arr = (arrivalAirport != null) ? arrivalAirport.trim().toUpperCase() : "";
         
+        LocalDateTime now = VietnamTime.nowLocal();
+        LocalDateTime effectiveStart = (start == null || start.isBefore(now)) ? now : start;
+
         List<Flight> flights;
-        if (start == null || end == null) {
-            flights = flightRepository.findByDepartureAirportAndArrivalAirportOrderByDepartureAtAsc(dep, arr);
+        if (end == null) {
+            flights = flightRepository.findByDepartureAirportAndArrivalAirportAndDepartureAtAfterOrderByDepartureAtAsc(dep, arr, effectiveStart);
         } else {
+            if (end.isBefore(effectiveStart)) {
+                return List.of();
+            }
             flights = flightRepository.findByDepartureAirportAndArrivalAirportAndDepartureAtBetweenOrderByDepartureAtAsc(
-                    dep, arr, start, end
+                    dep, arr, effectiveStart, end
             );
         }
 
@@ -46,11 +52,11 @@ public class FlightService {
         if (flights.isEmpty() && dep.length() == 3 && arr.length() == 3) {
             airLabsSyncService.syncSchedulesForRoute(dep, arr);
             // Re-query after sync to return the fresh data
-            if (start == null || end == null) {
-                flights = flightRepository.findByDepartureAirportAndArrivalAirportOrderByDepartureAtAsc(dep, arr);
+            if (end == null) {
+                flights = flightRepository.findByDepartureAirportAndArrivalAirportAndDepartureAtAfterOrderByDepartureAtAsc(dep, arr, effectiveStart);
             } else {
                 flights = flightRepository.findByDepartureAirportAndArrivalAirportAndDepartureAtBetweenOrderByDepartureAtAsc(
-                        dep, arr, start, end
+                        dep, arr, effectiveStart, end
                 );
             }
         }

@@ -58,6 +58,7 @@ export default function FlightSearchForm({ onSearch }) {
   const [toCode, setToCode] = useState("");
   const [date, setDate] = useState("");
   const [passengers, setPassengers] = useState(1);
+  const todayStr = new Date().toLocaleDateString('sv');
 
   const [showFromSuggest, setShowFromSuggest] = useState(false);
   const [showToSuggest, setShowToSuggest] = useState(false);
@@ -137,6 +138,7 @@ export default function FlightSearchForm({ onSearch }) {
             value={date}
             onChange={e => setDate(e.target.value)}
             type="date"
+            min={todayStr}
             className="w-full p-3 rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-sky-500 hover:shadow-sm transition text-slate-900 font-medium"
           />
         </div>

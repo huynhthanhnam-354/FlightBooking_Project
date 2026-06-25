@@ -123,7 +123,7 @@ const mockCombos = [
     region: 'Miền Trung',
     description: 'Thư giãn bên hồ bơi vô cực nước biển tự nhiên rộng lớn cùng bãi tắm cát trắng riêng tư yên bình giữa vịnh Nha Trang lộng gió.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80'
+    image: 'https://images.unsplash.com/photo-1588668214407-6eb95270273e?auto=format&fit=crop&w=600&q=80'
   },
   {
     id: 4,
@@ -145,7 +145,7 @@ const mockCombos = [
     region: 'Miền Bắc',
     description: 'Hành trình di sản kỳ diệu lênh đênh giữa vịnh biển kỳ vĩ, ngắm hoàng hôn buông xuống từ cabin ban công riêng cao cấp.',
     duration: '2 ngày 1 đêm',
-    image: 'https://images.unsplash.com/photo-1524413840807-0c3cb6fa808d?auto=format&fit=crop&w=600&q=80'
+    image: 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=600&q=80'
   },
   {
     id: 6,
@@ -178,7 +178,7 @@ const mockCombos = [
     region: 'Miền Trung',
     description: 'Bờ biển nguyên sơ cát vàng mịn màng bao quanh bởi những mỏm đá tuyệt tác, tận hưởng hồ bơi riêng biệt độc bản xa hoa.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=600&q=80'
+    image: 'https://images.unsplash.com/photo-1610444583731-9e1e2d4400cc?auto=format&fit=crop&w=600&q=80'
   },
   {
     id: 9,
@@ -189,7 +189,7 @@ const mockCombos = [
     region: 'Miền Trung',
     description: 'Ẩn mình dưới những tán thông ngút ngàn, biệt thự kiến trúc Pháp cổ kính mở ra không gian lãng mạn ấm áp giữa cao nguyên.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80'
+    image: 'https://images.unsplash.com/photo-1589136777351-fdc9c9c8c480?auto=format&fit=crop&w=600&q=80'
   },
   {
     id: 10,
@@ -200,7 +200,7 @@ const mockCombos = [
     region: 'Miền Nam',
     description: 'Thiên đường bảo tồn thiên nhiên biển đảo đỉnh cao, biệt thự gỗ sang trọng ven biển lộng gió mang lại sự thư thái tuyệt hảo.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80'
+    image: 'https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=600&q=80'
   },
   {
     id: 11,
@@ -222,7 +222,7 @@ const mockCombos = [
     region: 'Miền Nam',
     description: 'Những rặng dừa xanh đung đưa trước gió bên bờ biển êm đềm, khám phá đồi cát bay trứ danh và thưởng ngoạn hoàng hôn tuyệt mỹ.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=600&q=80'
+    image: 'https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=600&q=80'
   }
 ];
 

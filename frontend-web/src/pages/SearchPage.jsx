@@ -129,9 +129,14 @@ function SearchPage() {
 		let filtered = flights.filter(f => {
 			const p = Number(f.price) || 0
 			if (p > maxPrice) return false
-			if (selectedAirlines.length > 0 && !selectedAirlines.includes(f.airline)) return false
-			if (directOnly && Number(f.stops || 0) > 0) return false
-			return true
+			if (selectedAirlines.length > 0) {
+				const hasMatch = selectedAirlines.some(sel => 
+					sel.toLowerCase().replace(/\s+/g, '') === f.airline.toLowerCase().replace(/\s+/g, '')
+				);
+				if (!hasMatch) return false;
+			}
+			if (directOnly && Number(f.stops || 0) > 0) return false;
+			return true;
 		})
 
 		if (sortBy === 'priceAsc') filtered.sort((a, b) => a.price - b.price)

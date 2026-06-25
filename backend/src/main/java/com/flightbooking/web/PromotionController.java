@@ -24,7 +24,7 @@ public class PromotionController {
                         35,
                         "FLIGHT",
                         Arrays.asList("SEASONAL", "CULTURE"),
-                        "https://images.unsplash.com/photo-1502101872923-d48509bff386?auto=format&fit=crop&w=800&q=80",
+                        "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=800&q=80",
                         true
                 ),
                 new PromotionDTO(
@@ -34,7 +34,7 @@ public class PromotionController {
                         50,
                         "COMBO",
                         Arrays.asList("FULL PACKAGE", "BEACH"),
-                        "https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=800&q=80",
+                        "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=800&q=80",
                         false
                 ),
                 new PromotionDTO(
@@ -44,7 +44,7 @@ public class PromotionController {
                         25,
                         "HOTEL",
                         Arrays.asList("BEACH", "RELAX"),
-                        "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=800&q=80",
+                        "https://images.unsplash.com/photo-1588668214407-6eb95270273e?auto=format&fit=crop&w=800&q=80",
                         false
                 ),
                 new PromotionDTO(

@@ -26,6 +26,12 @@ public interface FlightRepository extends JpaRepository<Flight, Long> {
             LocalDateTime end
     );
 
+    List<Flight> findByDepartureAirportAndArrivalAirportAndDepartureAtAfterOrderByDepartureAtAsc(
+            String departureAirport,
+            String arrivalAirport,
+            LocalDateTime departureAt
+    );
+
     Optional<Flight> findByDepartureAirportAndArrivalAirportAndFlightNumberAndDepartureAt(
             String departureAirport,
             String arrivalAirport,

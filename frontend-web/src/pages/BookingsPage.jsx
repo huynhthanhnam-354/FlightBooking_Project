@@ -21,7 +21,7 @@ export default function BookingsPage() {
         <h2 className="text-2xl font-semibold mb-4">Lịch sử đặt vé</h2>
         <p>Hiện chưa có đơn đặt vé nào.</p>
         <div className="mt-4">
-          <button onClick={() => navigate('/search')} className="px-4 py-2 bg-sky-600 text-white rounded">Tìm chuyến</button>
+          <button onClick={() => navigate('/booking')} className="px-4 py-2 bg-sky-600 text-white rounded">Tìm chuyến</button>
         </div>
       </div>
     )
