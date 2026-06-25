@@ -72,6 +72,13 @@ public class JwtService {
         return !isTokenExpired(token);
     }
 
+    public java.time.LocalDateTime extractExpirationLocalDateTime(String token) {
+        Date expiration = extractExpiration(token);
+        return expiration.toInstant()
+                .atZone(java.time.ZoneId.of("Asia/Ho_Chi_Minh"))
+                .toLocalDateTime();
+    }
+
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }

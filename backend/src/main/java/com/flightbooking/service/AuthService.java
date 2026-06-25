@@ -30,6 +30,26 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final RefreshTokenService refreshTokenService;
+    private final com.flightbooking.repository.TokenBlacklistRepository tokenBlacklistRepository;
+
+    @Transactional
+    public void logout(String token) {
+        if (token == null || token.isBlank()) {
+            return;
+        }
+        try {
+            java.time.LocalDateTime expiration = jwtService.extractExpirationLocalDateTime(token);
+            if (!tokenBlacklistRepository.existsByToken(token)) {
+                com.flightbooking.model.TokenBlacklist blacklist = com.flightbooking.model.TokenBlacklist.builder()
+                        .token(token)
+                        .expiredAt(expiration)
+                        .build();
+                tokenBlacklistRepository.save(blacklist);
+            }
+        } catch (Exception e) {
+            // Token is already invalid or expired, no need to blacklist
+        }
+    }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {

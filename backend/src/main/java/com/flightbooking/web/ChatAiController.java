@@ -4,7 +4,6 @@ import com.flightbooking.service.ChatAiService;
 import com.flightbooking.service.RateLimitingService;
 import com.flightbooking.web.dto.ChatRequest;
 import com.flightbooking.web.dto.ChatResponse;
-import io.github.bucket4j.Bucket;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,10 +27,9 @@ public class ChatAiController {
     public ResponseEntity<?> chat(@RequestBody ChatRequest request, HttpServletRequest servletRequest) {
         // Xác định định danh người dùng (IP hoặc Username)
         String key = resolveClientKey(servletRequest);
-        Bucket bucket = rateLimitingService.resolveBucket(key);
 
-        // Kiểm tra token trong bucket
-        if (bucket.tryConsume(1)) {
+        // Kiểm tra token trong Redis / Bucket4j
+        if (rateLimitingService.tryConsume(key)) {
             ChatResponse response = chatAiService.generateResponse(request);
             return ResponseEntity.ok(response);
         }

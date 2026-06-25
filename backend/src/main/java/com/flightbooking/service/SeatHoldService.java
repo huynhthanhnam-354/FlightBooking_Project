@@ -1,12 +1,14 @@
 package com.flightbooking.service;
 
 import com.flightbooking.model.AppUser;
+import com.flightbooking.model.BookingStatus;
 import com.flightbooking.model.Flight;
 import com.flightbooking.model.SeatHold;
 import com.flightbooking.repository.AppUserRepository;
 import com.flightbooking.repository.BookingRepository;
 import com.flightbooking.repository.FlightRepository;
 import com.flightbooking.repository.SeatHoldRepository;
+import com.flightbooking.repository.FlightSeatRepository;
 import com.flightbooking.time.VietnamTime;
 import com.flightbooking.web.dto.SeatHoldResponse;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
 
@@ -30,27 +33,41 @@ public class SeatHoldService {
     private final FlightRepository flightRepository;
     private final AppUserRepository appUserRepository;
     private final BookingRepository bookingRepository;
-    private final BookingService bookingService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final FlightSeatRepository flightSeatRepository;
 
     @Transactional
     public SeatHoldResponse hold(String userEmail, Long flightId, String rawSeatNumber) {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
                 .orElseThrow(() -> new UsernameNotFoundException(userEmail));
-        Flight flight = flightRepository.findByIdForUpdate(flightId)
-                .orElseThrow(() -> new IllegalArgumentException("Flight not found: " + flightId));
+        Flight flight = flightRepository.findById(flightId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thông tin chuyến bay: " + flightId));
+        
         String seatNumber = normalizeSeat(rawSeatNumber);
         LocalDateTime now = VietnamTime.nowLocal();
 
-        if (bookingService.occupiedSeatsForFlight(flight).contains(seatNumber)) {
-            throw new IllegalStateException("Ghế này đã được đặt hoặc đang được giữ. Vui lòng chọn ghế khác.");
+        // 🛠️ Fine-grained lock trên thực thể FlightSeat vật lý
+        com.flightbooking.model.FlightSeat flightSeat = flightSeatRepository.findByFlightIdAndSeatNumberForUpdate(flightId, seatNumber)
+                .orElse(null);
+        if (flightSeat != null && flightSeat.isBooked()) {
+            throw new IllegalStateException("Ghế này đã có người đặt trước. Vui lòng chọn ghế khác.");
+        }
+
+        // ⚡ BẺ GÃY VÒNG LẶP: Quét trực tiếp qua Repository, đẩy hiệu năng xuống MySQL Index
+        boolean isOccupied = bookingRepository.existsByFlightIdAndSeatNumberAndStatusIn(
+                flightId,
+                seatNumber,
+                Arrays.asList(BookingStatus.PENDING_PAYMENT, BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN, BookingStatus.COMPLETED)
+        );
+        if (isOccupied) {
+            throw new IllegalStateException("Ghế này đã được đặt hoặc đang chờ xử lý hóa đơn. Vui lòng chọn ghế khác.");
         }
 
         SeatHold hold = seatHoldRepository
                 .findByFlightAndSeatNumberAndExpiresAtAfter(flight, seatNumber, now)
                 .orElse(null);
         if (hold != null && !hold.getUser().getId().equals(user.getId())) {
-            throw new IllegalStateException("Ghế này đang được người khác giữ. Vui lòng chọn ghế khác.");
+            throw new IllegalStateException("Ghế này đang được một hành khách khác giữ tạm thời.");
         }
 
         LocalDateTime expiresAt = now.plusMinutes(HOLD_MINUTES);
@@ -64,7 +81,13 @@ public class SeatHoldService {
         } else {
             hold.setExpiresAt(expiresAt);
         }
-        seatHoldRepository.save(hold);
+        
+        try {
+            seatHoldRepository.saveAndFlush(hold);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new IllegalStateException("Tranh chấp hệ thống: Ghế đã có người chọn giữ trước.");
+        }
+        
         broadcast(flightId, seatNumber, "HOLD");
         return toResponse(flightId, seatNumber, expiresAt);
     }
@@ -107,7 +130,7 @@ public class SeatHoldService {
 
     private static String normalizeSeat(String seatNumber) {
         if (seatNumber == null || seatNumber.isBlank()) {
-            throw new IllegalArgumentException("Seat number is required");
+            throw new IllegalArgumentException("Số ghế ngồi bắt buộc không được để trống.");
         }
         return seatNumber.trim().toUpperCase(Locale.ROOT);
     }

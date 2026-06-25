@@ -6,7 +6,6 @@ import com.flightbooking.web.dto.BaggageUpdateRequest;
 import com.flightbooking.web.dto.BookingResponse;
 import com.flightbooking.web.dto.CheckInRequest;
 import com.flightbooking.web.dto.CreateBookingRequest;
-import com.flightbooking.web.dto.PaymentSuccessRequest;
 import com.flightbooking.web.dto.SeatHoldRequest;
 import com.flightbooking.web.dto.SeatHoldResponse;
 import jakarta.validation.Valid;
@@ -99,26 +98,63 @@ public class BookingController {
             @AuthenticationPrincipal UserDetails user,
             @PathVariable Long bookingId
     ) {
-        return bookingService.confirmMockPayment(user.getUsername(), bookingId);
+        String username = (user != null) ? user.getUsername() : null;
+        if (username == null) {
+            // Cơ chế fallback tìm email theo id đơn hàng để phục vụ luồng mock public
+            username = bookingService.listAllForAdmin().stream()
+                    .filter(b -> b.id().equals(bookingId))
+                    .map(BookingResponse::passengerEmail)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Không thể xác định thông tin tài khoản người dùng."));
+        }
+        return bookingService.confirmMockPayment(username, bookingId);
     }
 
-    /**
-     * Senior Full-Stack Fix: Explicit payment-success endpoint for flow clarity.
-     */
     @PostMapping("/payment-success")
     public BookingResponse paymentSuccess(
             @AuthenticationPrincipal UserDetails user,
-            @RequestParam(required = false) Long bookingId,
-            @RequestBody(required = false) PaymentSuccessRequest request
+            @RequestParam java.util.Map<String, String> allParams,
+            @RequestBody(required = false) java.util.Map<String, String> bodyParams
     ) {
-        Long id = bookingId;
-        if (id == null && request != null) {
-            id = request.bookingId();
+        java.util.Map<String, String> params = new java.util.HashMap<>();
+        if (allParams != null) {
+            params.putAll(allParams);
         }
-        if (id == null) {
-            throw new IllegalArgumentException("Booking ID is required");
+        if (bodyParams != null) {
+            params.putAll(bodyParams);
         }
-        return bookingService.confirmMockPayment(user.getUsername(), id);
+
+        Long id = null;
+        String bookingIdStr = params.get("bookingId");
+        if (bookingIdStr != null && !bookingIdStr.isBlank()) {
+            try {
+                id = Long.valueOf(bookingIdStr);
+            } catch (NumberFormatException ignored) {}
+        }
+
+        String username = (user != null) ? user.getUsername() : null;
+        if (username == null && id != null) {
+            final Long targetId = id;
+            username = bookingService.listAllForAdmin().stream()
+                    .filter(b -> b.id().equals(targetId))
+                    .map(BookingResponse::passengerEmail)
+                    .findFirst()
+                    .orElse(null);
+        }
+        if (username == null) {
+            throw new IllegalArgumentException("Không thể xác định thông tin tài khoản người dùng.");
+        }
+
+        // Tự động phân luồng: Nếu không có chữ ký vnp_SecureHash, đây là luồng thanh toán QR giả lập!
+        String vnp_SecureHash = params.get("vnp_SecureHash");
+        if (vnp_SecureHash == null || vnp_SecureHash.isBlank()) {
+            if (id == null) {
+                throw new IllegalArgumentException("Booking ID is required for mock payment confirmation");
+            }
+            return bookingService.confirmMockPayment(username, id);
+        }
+
+        return bookingService.confirmPaymentVnPay(username, id, params);
     }
 
     @PostMapping("/{bookingId}/cancel")

@@ -29,7 +29,7 @@ public class AirlabsService {
     private String baseUrl;
 
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     private static final DateTimeFormatter AIRLABS_DT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 

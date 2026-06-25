@@ -119,8 +119,133 @@ public class ChatAiService {
         }
     }
 
+    private static final Map<String, String> CITY_TO_IATA = new HashMap<>();
+    static {
+        CITY_TO_IATA.put("ha noi", "HAN");
+        CITY_TO_IATA.put("hà nội", "HAN");
+        CITY_TO_IATA.put("hanoi", "HAN");
+        CITY_TO_IATA.put("sai gon", "SGN");
+        CITY_TO_IATA.put("sài gòn", "SGN");
+        CITY_TO_IATA.put("tp hcm", "SGN");
+        CITY_TO_IATA.put("ho chi minh", "SGN");
+        CITY_TO_IATA.put("hồ chí minh", "SGN");
+        CITY_TO_IATA.put("da nang", "DAD");
+        CITY_TO_IATA.put("đà nẵng", "DAD");
+        CITY_TO_IATA.put("nha trang", "CXR");
+        CITY_TO_IATA.put("phu quoc", "PQC");
+        CITY_TO_IATA.put("phú quốc", "PQC");
+        CITY_TO_IATA.put("da lat", "DLI");
+        CITY_TO_IATA.put("đà lạt", "DLI");
+        CITY_TO_IATA.put("hue", "HUI");
+        CITY_TO_IATA.put("huế", "HUI");
+        CITY_TO_IATA.put("vinh", "VII");
+        CITY_TO_IATA.put("hai phong", "HPH");
+        CITY_TO_IATA.put("hải phòng", "HPH");
+        CITY_TO_IATA.put("can tho", "VCA");
+        CITY_TO_IATA.put("cần thơ", "VCA");
+    }
+
+    private List<Flight> retrieveRelevantFlights(String userMessage) {
+        String lowerMessage = userMessage.toLowerCase(java.util.Locale.ROOT);
+        String departure = null;
+        String arrival = null;
+
+        java.util.regex.Pattern routePattern = java.util.regex.Pattern.compile(
+                "(?:từ|đi từ|ở)\\s+([a-zA-Zà-ỹÀ-Ỹ\\s]+)\\s+(?:đến|đi|bay đến)\\s+([a-zA-Zà-ỹÀ-Ỹ\\s]+)",
+                java.util.regex.Pattern.CASE_INSENSITIVE
+        );
+        java.util.regex.Matcher matcher = routePattern.matcher(userMessage);
+        if (matcher.find()) {
+            String fromCity = matcher.group(1).trim().toLowerCase(java.util.Locale.ROOT);
+            String toCity = matcher.group(2).trim().toLowerCase(java.util.Locale.ROOT);
+
+            for (Map.Entry<String, String> entry : CITY_TO_IATA.entrySet()) {
+                if (fromCity.contains(entry.getKey()) || entry.getKey().contains(fromCity)) {
+                    departure = entry.getValue();
+                }
+                if (toCity.contains(entry.getKey()) || entry.getKey().contains(toCity)) {
+                    arrival = entry.getValue();
+                }
+            }
+        }
+
+        if (departure == null && arrival == null) {
+            List<String> foundIatas = new ArrayList<>();
+            for (Map.Entry<String, String> entry : CITY_TO_IATA.entrySet()) {
+                if (lowerMessage.contains(entry.getKey())) {
+                    if (!foundIatas.contains(entry.getValue())) {
+                        foundIatas.add(entry.getValue());
+                    }
+                }
+            }
+            if (foundIatas.size() >= 2) {
+                departure = foundIatas.get(0);
+                arrival = foundIatas.get(1);
+            } else if (foundIatas.size() == 1) {
+                arrival = foundIatas.get(0);
+            }
+        }
+
+        java.time.LocalDateTime start = null;
+        java.time.LocalDateTime end = null;
+        java.time.LocalDate today = java.time.LocalDate.now();
+
+        if (lowerMessage.contains("ngày mai") || lowerMessage.contains("ngay mai")) {
+            start = today.plusDays(1).atStartOfDay();
+            end = start.plusDays(1);
+        } else if (lowerMessage.contains("hôm nay") || lowerMessage.contains("hom nay")) {
+            start = today.atStartOfDay();
+            end = start.plusDays(1);
+        } else if (lowerMessage.contains("ngày kia") || lowerMessage.contains("ngay kia")) {
+            start = today.plusDays(2).atStartOfDay();
+            end = start.plusDays(1);
+        } else {
+            java.util.regex.Pattern datePattern = java.util.regex.Pattern.compile("(\\d{1,2})[-/](\\d{1,2})(?:[-/](\\d{4}))?");
+            java.util.regex.Matcher dateMatcher = datePattern.matcher(userMessage);
+            if (dateMatcher.find()) {
+                try {
+                    int day = Integer.parseInt(dateMatcher.group(1));
+                    int month = Integer.parseInt(dateMatcher.group(2));
+                    int year = today.getYear();
+                    if (dateMatcher.group(3) != null) {
+                        year = Integer.parseInt(dateMatcher.group(3));
+                    }
+                    start = java.time.LocalDate.of(year, month, day).atStartOfDay();
+                    end = start.plusDays(1);
+                } catch (Exception ignored) {}
+            }
+        }
+
+        List<Flight> flights;
+        if (departure != null && arrival != null) {
+            if (start != null) {
+                flights = flightRepository.findByDepartureAirportAndArrivalAirportAndDepartureAtBetweenOrderByDepartureAtAsc(
+                        departure, arrival, start, end
+                );
+            } else {
+                flights = flightRepository.findByDepartureAirportAndArrivalAirport(departure, arrival);
+            }
+        } else if (arrival != null) {
+            if (start != null) {
+                flights = flightRepository.findByArrivalAirportAndDepartureAtBetween(arrival, start, end);
+            } else {
+                flights = flightRepository.findByArrivalAirport(arrival);
+            }
+        } else {
+            flights = flightRepository.findUpcomingFlights(
+                    java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")),
+                    org.springframework.data.domain.PageRequest.of(0, 5)
+            );
+        }
+
+        if (flights.size() > 5) {
+            return flights.subList(0, 5);
+        }
+        return flights;
+    }
+
     private String generateOpenAiReply(String userMessage, Map<String, Object> requestContext) {
-        List<Flight> flights = flightRepository.findAll();
+        List<Flight> flights = retrieveRelevantFlights(userMessage);
 
         String flightContext = flights.stream()
                 .map(f -> String.format(

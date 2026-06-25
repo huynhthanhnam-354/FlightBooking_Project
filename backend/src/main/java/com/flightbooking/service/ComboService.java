@@ -270,7 +270,7 @@ public class ComboService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Combo not found with ID: " + request.comboId()));
 
-        Flight flight = flightRepository.findByIdForUpdate(request.selectedFlightId()).orElse(null);
+        Flight flight = flightRepository.findById(request.selectedFlightId()).orElse(null);
         Long flightId = request.selectedFlightId();
         if (flight == null) {
             log.warn("Flight with ID {} not found for checkout. Falling back to the first available flight in database.", request.selectedFlightId());
@@ -439,8 +439,8 @@ public class ComboService {
             if ((fieldValue != null) && (fieldValue.length() > 0)) {
                 try {
                     // 🛠️ MÔ PHỎNG MÃ HÓA ĐỒNG NHẤT: Tránh lệch chữ ký mã lỗi 97 trên bộ giả lập local
-                    String encodedFieldName = URLEncoder.encode(fieldName, StandardCharsets.UTF_8.toString());
-                    String encodedFieldValue = URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString());
+                    String encodedFieldName = URLEncoder.encode(fieldName, StandardCharsets.UTF_8.toString()).replace("+", "%20");
+                    String encodedFieldValue = URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString()).replace("+", "%20");
 
                     hashData.append(encodedFieldName).append("=").append(encodedFieldValue);
                     query.append(encodedFieldName).append("=").append(encodedFieldValue);

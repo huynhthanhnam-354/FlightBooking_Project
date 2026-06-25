@@ -23,7 +23,7 @@ public class WeatherService {
     private String baseUrl;
 
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     public record WeatherInfo(String status, int temperature) {}
 

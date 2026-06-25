@@ -34,11 +34,17 @@ public interface FlightRepository extends JpaRepository<Flight, Long> {
     );
 
     /**
-     * SENIOR DBA FIX: Pessimistic Write Lock to prevent double-booking of seats during high concurrency.
+     * SENIOR DBA FIX: Standard query without locking the whole flight row.
      */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT f FROM Flight f WHERE f.id = :id")
     Optional<Flight> findByIdForUpdate(Long id);
+
+    List<Flight> findByArrivalAirport(String arrivalAirport);
+
+    List<Flight> findByArrivalAirportAndDepartureAtBetween(String arrivalAirport, LocalDateTime start, LocalDateTime end);
+
+    @Query("SELECT f FROM Flight f WHERE f.departureAt >= :now ORDER BY f.departureAt ASC")
+    List<Flight> findUpcomingFlights(@Param("now") LocalDateTime now, org.springframework.data.domain.Pageable pageable);
 
     /**
      * SENIOR DEV FIX: Helper method for clean functional code and standard error handling.

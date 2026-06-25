@@ -23,6 +23,9 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "seat_holds",
+        uniqueConstraints = {
+                @jakarta.persistence.UniqueConstraint(name = "uc_flight_seat_hold", columnNames = {"flight_id", "seat_number"})
+        },
         indexes = {
                 @Index(name = "idx_seat_holds_flight_expires", columnList = "flight_id, expires_at"),
                 @Index(name = "idx_seat_holds_user_flight", columnList = "user_id, flight_id")
@@ -61,5 +64,21 @@ public class SeatHold {
         if (createdAt == null) {
             createdAt = VietnamTime.nowLocal();
         }
+    }
+
+    public AppUser getUser() {
+        return this.user;
+    }
+
+    public void setUser(AppUser user) {
+        this.user = user;
+    }
+
+    public String getSeatNumber() {
+        return this.seatNumber;
+    }
+
+    public void setSeatNumber(String seatNumber) {
+        this.seatNumber = seatNumber;
     }
 }

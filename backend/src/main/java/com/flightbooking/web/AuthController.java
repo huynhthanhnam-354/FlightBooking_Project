@@ -45,4 +45,14 @@ public class AuthController {
         authService.requestPasswordReset(request);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(jakarta.servlet.http.HttpServletRequest request) {
+        String authHeader = request.getHeader(org.springframework.http.HttpHeaders.AUTHORIZATION);
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            authService.logout(token);
+        }
+        return ResponseEntity.noContent().build();
+    }
 }

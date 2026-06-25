@@ -10,6 +10,7 @@ import com.flightbooking.model.PaymentTransaction;
 import com.flightbooking.repository.AppUserRepository;
 import com.flightbooking.repository.BookingRepository;
 import com.flightbooking.repository.FlightRepository;
+import com.flightbooking.repository.FlightSeatRepository;
 import com.flightbooking.repository.SeatHoldRepository;
 import com.flightbooking.time.VietnamTime;
 import com.flightbooking.validation.InputValidator;
@@ -31,6 +32,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -67,6 +69,7 @@ public class BookingService {
     private final EmailService emailService;
     private final PnrGenerator pnrGenerator;
     private final SeatHoldRepository seatHoldRepository;
+    private final FlightSeatRepository flightSeatRepository;
 
     @Value("${app.vnpay.tmn-code:2QXUI8KI}")
     private String vnp_TmnCode;
@@ -84,18 +87,42 @@ public class BookingService {
               * VÁ LỖI 1: Hàm checkSeatAvailability bị thiếu khiến Controller báo lỗi biên dịch
               */
     @Transactional(readOnly = true)
+    public boolean checkSeatAvailability(Long flightId, List<String> seatIds) {
+        if (seatIds == null || seatIds.isEmpty()) {
+            return true;
+        }
+        List<BookingStatus> activeStatuses = Arrays.asList(
+                BookingStatus.PENDING_PAYMENT,
+                BookingStatus.CONFIRMED,
+                BookingStatus.CHECKED_IN,
+                BookingStatus.COMPLETED
+        );
+        for (String seat : seatIds) {
+            boolean exists = bookingRepository.existsByFlightIdAndSeatNumberAndStatusIn(
+                    flightId,
+                    seat.toUpperCase(Locale.ROOT),
+                    activeStatuses
+            );
+            if (exists) {
+                return false; // Đã có ít nhất 1 ghế bị đặt trước trên chuyến bay này
+            }
+        }
+        return true;
+    }
+
+    @Transactional(readOnly = true)
     public boolean checkSeatAvailability(List<String> seatIds) {
         if (seatIds == null || seatIds.isEmpty()) {
             return true;
         }
-        // Kiểm tra xem có ghế nào nằm trong danh sách đã bị đặt hay không
+        // Fallback check globally using DB stream (deprecated - use flightId version instead)
         for (String seat : seatIds) {
             long count = bookingRepository.findAll().stream()
                     .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
                     .filter(b -> parseSeatNumbers(b.getSeatNumber()).contains(seat.toUpperCase(Locale.ROOT)))
                     .count();
             if (count > 0) {
-                return false; // Đã có ít nhất 1 ghế bị đặt trước
+                return false;
             }
         }
         return true;
@@ -113,14 +140,14 @@ public class BookingService {
         
         BookingResponse response = create(defaultUser.getEmail(), request);
         return bookingRepository.findById(response.id())
-                .orElseThrow(() -> new IllegalArgumentException("Failed to retreive created booking"));
+                .orElseThrow(() -> new IllegalArgumentException("Failed to retrieve created booking"));
     }
 
     @Transactional
     public BookingResponse create(String userEmail, CreateBookingRequest request) {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
                 .orElseThrow(() -> new UsernameNotFoundException(userEmail));
-        Flight flight = flightRepository.findByIdForUpdate(request.flightId())
+        Flight flight = flightRepository.findById(request.flightId())
                 .orElseThrow(() -> new IllegalArgumentException("Flight not found: " + request.flightId()));
         String seatNumber = normalizeSeatNumbers(request.seatNumber());
         String passengerName = InputValidator.requirePersonName(request.passengerName());
@@ -135,12 +162,12 @@ public class BookingService {
         }
         String passengerPhone = InputValidator.optionalPhone(request.passengerPhone());
         String passengerIdCard = InputValidator.optionalIdCard(request.passengerIdCard());
-        Set<String> occupied = occupiedSeatsForFlight(flight);
+
+        //
         for (String seat : parseSeatNumbers(seatNumber)) {
-            if (occupied.contains(seat)) {
-                throw new IllegalStateException("Ghế này đã bị người khác đặt trước, vui lòng chọn ghế khác");
-            }
+            lockAndCheckSeat(flight, seat);
         }
+
         for (String seat : parseSeatNumbers(seatNumber)) {
             seatHoldRepository.findByFlightAndSeatNumberAndExpiresAtAfter(flight, seat, VietnamTime.nowLocal())
                     .ifPresent(hold -> {
@@ -190,8 +217,51 @@ public class BookingService {
                 .providerReference(booking.getPnr())
                 .build());
         bookingRepository.save(booking);
+
+        // Mark locked FlightSeat records as booked
+        for (String seat : parseSeatNumbers(seatNumber)) {
+            flightSeatRepository.findByFlightIdAndSeatNumberForUpdate(flight.getId(), seat.toUpperCase(Locale.ROOT))
+                    .ifPresent(fs -> {
+                        fs.setBooked(true);
+                        flightSeatRepository.save(fs);
+                    });
+        }
+
         seatHoldRepository.deleteByFlightAndUserAndSeatNumberIn(flight, user, parseSeatNumbers(seatNumber));
         return toResponse(booking);
+    }
+
+    private void lockAndCheckSeat(Flight flight, String seat) {
+        String normalizedSeat = seat.trim().toUpperCase(Locale.ROOT);
+        com.flightbooking.model.FlightSeat flightSeat = flightSeatRepository.findByFlightIdAndSeatNumberForUpdate(flight.getId(), normalizedSeat)
+                .orElse(null);
+        if (flightSeat == null) {
+            flightSeat = com.flightbooking.model.FlightSeat.builder()
+                    .flight(flight)
+                    .seatNumber(normalizedSeat)
+                    .isBooked(false)
+                    .build();
+            try {
+                flightSeat = flightSeatRepository.saveAndFlush(flightSeat);
+            } catch (Exception e) {
+                flightSeat = flightSeatRepository.findByFlightIdAndSeatNumberForUpdate(flight.getId(), normalizedSeat)
+                        .orElseThrow(() -> new IllegalStateException("Không thể giữ ghế " + normalizedSeat + " do tranh chấp hệ thống."));
+            }
+        }
+        if (flightSeat.isBooked()) {
+            throw new IllegalStateException("Ghế " + normalizedSeat + " đã được người khác đặt trước. Vui lòng chọn ghế khác.");
+        }
+    }
+
+    private void releaseSeat(Flight flight, String seatNumber) {
+        if (seatNumber == null || seatNumber.isBlank()) return;
+        for (String seat : parseSeatNumbers(seatNumber)) {
+            flightSeatRepository.findByFlightAndSeatNumber(flight, seat.toUpperCase(Locale.ROOT))
+                    .ifPresent(fs -> {
+                        fs.setBooked(false);
+                        flightSeatRepository.save(fs);
+                    });
+        }
     }
 
     @Transactional(readOnly = true)
@@ -330,6 +400,89 @@ public class BookingService {
     }
 
     @Transactional
+    public BookingResponse confirmPaymentVnPay(String userEmail, Long bookingId, Map<String, String> allParams) {
+        AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
+                .orElseThrow(() -> new UsernameNotFoundException(userEmail));
+        
+        Booking booking;
+        if (bookingId != null) {
+            booking = bookingRepository.findById(bookingId)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng đặt vé"));
+        } else {
+            String pnr = allParams.get("vnp_TxnRef");
+            if (pnr == null || pnr.isBlank()) {
+                throw new IllegalArgumentException("Không tìm thấy thông tin mã đặt vé (PNR) để xác nhận thanh toán.");
+            }
+            booking = bookingRepository.findByPnrIgnoreCase(pnr)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng đặt vé với mã PNR: " + pnr));
+        }
+
+        if (!booking.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("Đơn hàng không thuộc về tài khoản này");
+        }
+
+        // 1. Kiểm tra chữ ký bảo mật VNPay
+        String vnp_SecureHash = allParams.get("vnp_SecureHash");
+        if (vnp_SecureHash == null || vnp_SecureHash.isBlank()) {
+            throw new IllegalArgumentException("Thiếu chữ ký bảo mật vnp_SecureHash từ VNPay");
+        }
+
+        List<String> fieldNames = allParams.keySet().stream()
+                .filter(k -> k.startsWith("vnp_") && !k.equals("vnp_SecureHash") && !k.equals("vnp_SecureHashType"))
+                .sorted()
+                .collect(Collectors.toList());
+
+        List<String> pairs = new ArrayList<>();
+        for (String fieldName : fieldNames) {
+            String fieldValue = allParams.get(fieldName);
+            if (fieldValue != null && !fieldValue.isEmpty()) {
+                pairs.add(fieldName + "=" + fieldValue);
+            }
+        }
+        String hashData = String.join("&", pairs);
+        String calculatedHash = hmacSHA512(vnp_HashSecret, hashData);
+
+        if (!calculatedHash.equalsIgnoreCase(vnp_SecureHash)) {
+            throw new IllegalArgumentException("Xác thực giao dịch không thành công: Chữ ký bảo mật không khớp (Giả mạo giao dịch).");
+        }
+
+        // 2. Kiểm tra mã kết quả giao dịch từ VNPay (vnp_ResponseCode = 00 nghĩa là thành công)
+        String responseCode = allParams.get("vnp_ResponseCode");
+        if (!"00".equals(responseCode)) {
+            throw new IllegalStateException("Thanh toán thất bại từ nhà cung cấp VNPay, mã phản hồi: " + responseCode);
+        }
+
+        // 3. Tiến hành cập nhật trạng thái đặt vé
+        if (booking.getStatus() == BookingStatus.CONFIRMED) {
+            return toResponse(booking);
+        }
+        if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
+            throw new IllegalArgumentException("Đơn hàng không ở trạng thái chờ thanh toán");
+        }
+
+        booking.setStatus(BookingStatus.CONFIRMED);
+        PaymentTransaction payment = booking.getPaymentTransaction();
+        if (payment != null) {
+            payment.setStatus(PaymentStatus.PAID);
+            payment.setPaidAt(VietnamTime.nowLocal());
+            payment.setProviderReference(allParams.getOrDefault("vnp_TransactionNo", booking.getPnr()));
+        }
+        bookingRepository.save(booking);
+        return toResponse(booking);
+    }
+
+    @Transactional(readOnly = true)
+    public String getEmailForBooking(Long bookingId, String pnr) {
+        Booking booking = null;
+        if (bookingId != null) {
+            booking = bookingRepository.findById(bookingId).orElse(null);
+        } else if (pnr != null && !pnr.isBlank()) {
+            booking = bookingRepository.findByPnrIgnoreCase(pnr).orElse(null);
+        }
+        return booking != null && booking.getUser() != null ? booking.getUser().getEmail() : null;
+    }
+
+    @Transactional
     public BookingResponse confirmMockPayment(String userEmail, Long bookingId) {
         AppUser user = appUserRepository.findByEmailIgnoreCase(userEmail)
                 .orElseThrow(() -> new UsernameNotFoundException(userEmail));
@@ -370,6 +523,9 @@ public class BookingService {
         if (booking.getStatus() != BookingStatus.PENDING_PAYMENT && booking.getStatus() != BookingStatus.CONFIRMED) {
             throw new IllegalArgumentException("Only pending or confirmed bookings can be cancelled");
         }
+        
+        releaseSeat(booking.getFlight(), booking.getSeatNumber());
+        
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setCancelledAt(VietnamTime.nowLocal());
         PaymentTransaction payment = booking.getPaymentTransaction();
@@ -420,7 +576,9 @@ public class BookingService {
 
         // State mutation: Transition to REFUND_PENDING, release seat, save details
         booking.setStatus(BookingStatus.REFUND_PENDING);
-        booking.setSeatNumber(null);
+        
+        releaseSeat(flight, booking.getSeatNumber());
+        
         booking.setCancelledAt(now);
         booking.setCancellationReason(reason != null ? reason : "Hủy trực tuyến");
         booking.setCancellationFeeVnd(fee);
@@ -482,7 +640,7 @@ public class BookingService {
 
     public Set<String> occupiedSeatsForFlight(Flight flight) {
         Set<String> out = new LinkedHashSet<>();
-        bookingRepository.findByFlightAndStatusNot(flight, BookingStatus.CANCELLED)
+        bookingRepository.findByFlightAndStatusNotIn(flight, Arrays.asList(BookingStatus.CANCELLED, BookingStatus.EXPIRED, BookingStatus.REFUND_PENDING))
                 .forEach(b -> {
                     if (b.getPassengers() == null || b.getPassengers().isEmpty()) {
                         out.addAll(parseSeatNumbers(b.getSeatNumber()));
@@ -629,8 +787,8 @@ public class BookingService {
             String fieldValue = vnp_Params.get(fieldName);
             if ((fieldValue != null) && (fieldValue.length() > 0)) {
                 try {
-                    String encodedFieldName = URLEncoder.encode(fieldName, StandardCharsets.UTF_8.toString());
-                    String encodedFieldValue = URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString());
+                    String encodedFieldName = URLEncoder.encode(fieldName, StandardCharsets.UTF_8.toString()).replace("+", "%20");
+                    String encodedFieldValue = URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString()).replace("+", "%20");
 
                     hashData.append(encodedFieldName).append("=").append(encodedFieldValue);
                     query.append(encodedFieldName).append("=").append(encodedFieldValue);

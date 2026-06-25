@@ -174,4 +174,20 @@ public class Booking {
             paymentTransaction.setBooking(this);
         }
     }
+
+    public AppUser getUser() {
+        return this.user;
+    }
+
+    public void setUser(AppUser user) {
+        this.user = user;
+    }
+
+    public String getSeatNumber() {
+        return this.seatNumber;
+    }
+
+    public void setSeatNumber(String seatNumber) {
+        this.seatNumber = seatNumber;
+    }
 }

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { authApi } from "../services/api";
 
 const AuthContext = createContext(null);
 
@@ -24,6 +25,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    authApi.logout().catch(err => console.warn("Failed to call logout API:", err));
     setUser(null);
     localStorage.removeItem("fb_user");
   };

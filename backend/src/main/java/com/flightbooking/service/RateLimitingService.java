@@ -3,31 +3,54 @@ package com.flightbooking.service;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class RateLimitingService {
 
-    // Lưu trữ các bucket theo key (IP hoặc Username)
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+    private final StringRedisTemplate redisTemplate;
+    
+    // Fallback in-memory rate limiter buckets
+    private final Map<String, Bucket> localBuckets = new ConcurrentHashMap<>();
+
+    private static final int LIMIT = 5;
+    private static final long WINDOW_SECONDS = 60;
 
     /**
-     * Lấy hoặc tạo mới một bucket cho một key cụ thể.
-     * Cấu hình mặc định: 5 request mỗi phút.
+     * Try to consume 1 token for a given key (IP or Username).
+     * Returns true if allowed, false if rate limited.
      */
-    public Bucket resolveBucket(String key) {
-        return buckets.computeIfAbsent(key, this::newBucket);
-    }
+    public boolean tryConsume(String key) {
+        try {
+            // 1. Attempt Redis-based rate limiting for multi-node support
+            long currentMinute = System.currentTimeMillis() / 60000;
+            String redisKey = "rate:limit:" + key + ":" + currentMinute;
 
-    private Bucket newBucket(String key) {
-        // Bandwidth: Cho phép tối đa 5 tokens (requests)
-        // Refill: Hồi phục 5 tokens mỗi 1 phút
-        return Bucket.builder()
-                .addLimit(Bandwidth.classic(5, Refill.intervally(5, Duration.ofMinutes(1))))
-                .build();
+            Long count = redisTemplate.opsForValue().increment(redisKey);
+            if (count != null) {
+                if (count == 1) {
+                    redisTemplate.expire(redisKey, WINDOW_SECONDS + 10, TimeUnit.SECONDS);
+                }
+                return count <= LIMIT;
+            }
+        } catch (Exception e) {
+            log.warn("Redis is unavailable for rate limiting (key: {}). Falling back to local memory Bucket4j. Error: {}", key, e.getMessage());
+        }
+
+        // 2. Fallback to in-memory Bucket4j if Redis fails or is not configured
+        Bucket bucket = localBuckets.computeIfAbsent(key, k -> Bucket.builder()
+                .addLimit(Bandwidth.classic(LIMIT, Refill.intervally(LIMIT, Duration.ofMinutes(1))))
+                .build());
+        return bucket.tryConsume(1);
     }
 }
