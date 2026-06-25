@@ -63,6 +63,9 @@ public class ComboService {
     @Value("${app.vnpay.return-url:http://localhost:5173/checkout/success}")
     private String vnp_ReturnUrl;
 
+    @Value("${app.vnpay.url}")
+    private String vnp_PayUrl;
+
     private static final List<ComboBase> COMBO_BASES = Arrays.asList(
             new ComboBase(1L, "Kỳ nghỉ trọn gói Đà Nẵng 3N2Đ", "Đà Nẵng", "DAD", "InterContinental Danang Sun Peninsula Resort", 5, "Cao cấp, biệt thự sườn đồi view biển Sơn Trà trọn vẹn, nội thất tinh xảo đậm chất văn hóa Việt", Arrays.asList("Bãi biển riêng tư", "Hồ bơi vô cực ngoài trời", "Harnn Heritage Spa", "Nhà hàng La Maison 1888", "Trung tâm thể hình hiện đại", "Bữa sáng buffet thượng hạng"), 6890000L, "Miền Trung", "Tuyệt tác nghỉ dưỡng bên vịnh Bán đảo Sơn Trà hoang sơ, tận hưởng dịch vụ đẳng cấp thế giới cùng bãi biển riêng tư tuyệt đẹp.", "3 ngày 2 đêm", "https://images.unsplash.com/photo-1585672909477-94d50e820cf0?auto=format&fit=crop&w=600&q=80", 95, 20, "best_price"),
             new ComboBase(2L, "Khám phá Đảo Ngọc Phú Quốc 4N3Đ", "Phú Quốc", "PQC", "JW Marriott Phu Quoc Emerald Bay Resort", 5, "Tuyệt tác thiết kế Bãi Khem, phòng Deluxe view biển ngoạn mục, nội thất cổ điển chuẩn xa hoa", Arrays.asList("Hồ bơi vỏ sò độc đáo", "Spa by JW cao cấp", "Nhà hàng Pink Pearl ẩm thực Pháp", "Bãi tắm cát trắng riêng tư", "Lớp học làm bánh miễn phí", "Bữa sáng buffet chuẩn quốc tế"), 9450000L, "Miền Nam", "Tuyệt tác thiết kế mang cảm hứng học đường cổ điển bên Bãi Khem cát trắng mịn, trải nghiệm ẩm thực đỉnh cao và hồ bơi vỏ sò độc đáo.", "4 ngày 3 đêm", "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=600&q=80", 98, 15, "price_up"),

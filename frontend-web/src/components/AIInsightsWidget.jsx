@@ -1,59 +1,102 @@
-import React, { useMemo, useState } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { AiOutlineCloud, AiOutlineBarChart, AiOutlineGift } from 'react-icons/ai'
 import { FiRefreshCcw } from 'react-icons/fi'
+import api from '../services/api'
 
 const insightItems = [
   {
     id: 'weather',
     title: 'Dự báo thời tiết',
     icon: AiOutlineCloud,
-    description: 'Kiểm tra điều kiện thời tiết cho điểm đến của bạn trước khi đặt vé.',
   },
   {
     id: 'price',
     title: 'Xu hướng giá vé',
     icon: AiOutlineBarChart,
-    description: 'Dự đoán xu hướng giá và giúp bạn quyết định: đợi hay đặt ngay.',
   },
   {
-    id: 'combo',
-    title: 'Gói ưu đãi du lịch',
+    id: 'tips',
+    title: 'Lời khuyên du lịch',
     icon: AiOutlineGift,
-    description: 'Gợi ý combo chuyến bay + khách sạn / trải nghiệm phù hợp với lộ trình của bạn.',
   },
 ]
 
 export default function AIInsightsWidget({ searchContext }) {
   const [activeInsight, setActiveInsight] = useState('weather')
+  const [loading, setLoading] = useState(false)
+  const [aiData, setAiData] = useState(null)
+  const [error, setError] = useState(null)
 
   const destination = useMemo(() => {
     if (!searchContext?.to) return 'điểm đến của bạn'
     return searchContext.to.split(' (')[0]
   }, [searchContext])
 
-  const dateCopy = useMemo(() => {
-    if (!searchContext?.departDate) return 'một ngày phù hợp'
-    return new Date(searchContext.departDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })
+  const fetchAiSuggestions = async () => {
+    if (!searchContext?.from || !searchContext?.to || !searchContext?.departDate) {
+      setAiData(null)
+      return
+    }
+
+    const origin = searchContext.from.split(' (')[0]
+    const destinationCity = searchContext.to.split(' (')[0]
+    const departureDate = searchContext.departDate
+    const passengerCount = (searchContext.passengers?.adults || 1) + (searchContext.passengers?.children || 0)
+
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await api.post('/ai/travel-suggestions', {
+        origin,
+        destination: destinationCity,
+        departureDate,
+        passengers: passengerCount
+      })
+      setAiData(res.data)
+    } catch (err) {
+      console.error("Error fetching AI suggestions:", err)
+      setError("Không thể kết nối với dịch vụ AI lúc này. Vui lòng thử lại sau.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAiSuggestions()
   }, [searchContext])
 
   const details = useMemo(() => {
+    if (loading) {
+      return ['Đang phân tích hành trình bằng AI...']
+    }
+    if (error) {
+      return [error]
+    }
+    if (!aiData) {
+      switch (activeInsight) {
+        case 'weather':
+          return ['Vui lòng chọn điểm đi, điểm đến và ngày khởi hành để nhận dự báo thời tiết từ AI.']
+        case 'price':
+          return ['Nhập thông tin chặng bay để phân tích xu hướng giá vé.']
+        case 'tips':
+          return ['Các lời khuyên du lịch hữu ích sẽ hiển thị tại đây sau khi chọn chặng bay.']
+        default:
+          return []
+      }
+    }
     switch (activeInsight) {
       case 'weather':
-        return searchContext?.to
-          ? [`Thời tiết ở ${destination} có thể thay đổi nhanh.`, 'Mang theo áo khoác nhẹ nếu có mưa hoặc gió.', `Nhiệt độ dự báo trong khoảng 24-28°C vào ${dateCopy}.`]
-          : ['Chọn điểm đến để xem cảnh báo thời tiết cụ thể.', 'Bạn sẽ nhận được dự báo nhiệt độ, mưa và gió.']
+        return [aiData.weather || 'Không có thông tin thời tiết.']
       case 'price':
-        return searchContext?.to
-          ? [`Giá tới ${destination} đang có xu hướng ${searchContext?.tripType === 'oneway' ? 'ổn định' : 'giảm nhẹ'} trong 2-3 ngày tới.`, 'Nếu bạn cần linh hoạt, hãy kiểm tra lại vào cuối tuần.', 'Giá tốt nhất thường xuất hiện vào buổi sáng thứ Ba.']
-          : ['Nhập điểm đến và ngày để nhận dự đoán giá chính xác.', 'Tôi sẽ dự báo ngay khi có đủ thông tin hành trình.']
-      case 'combo':
-        return searchContext?.to
-          ? [`Thử combo chuyến bay + khách sạn tại ${destination} để tiết kiệm chi phí.`, 'Xem đề xuất trải nghiệm địa phương và tour ngắn ngày.', `Ưu tiên chặng bay sáng để có thêm thời gian khám phá.`]
-          : ['Chọn điểm đến để mở các combo du lịch cá nhân hoá.', 'Combo có thể bao gồm khách sạn, xe đưa đón và tour tham quan.']
+        return [aiData.priceTrend || 'Không có phân tích xu hướng giá.']
+      case 'tips':
+        return aiData.travelTips && aiData.travelTips.length > 0 
+          ? aiData.travelTips 
+          : ['Không có lời khuyên du lịch nào cho hành trình này.']
       default:
         return []
     }
-  }, [activeInsight, destination, dateCopy, searchContext])
+  }, [activeInsight, aiData, loading, error])
 
   return (
     <div className="w-full h-auto pb-6 rounded-[32px] border border-slate-200/60 bg-white/95 backdrop-blur-md shadow-premium text-slate-900 overflow-hidden transition-all duration-500">
@@ -66,18 +109,19 @@ export default function AIInsightsWidget({ searchContext }) {
           </div>
           <button
             type="button"
-            onClick={() => setActiveInsight('weather')}
-            className="self-start rounded-full bg-white p-2 text-slate-700 shadow-md hover:bg-slate-50 border border-slate-200 transition-all active:rotate-180"
+            onClick={fetchAiSuggestions}
+            disabled={loading}
+            className="self-start rounded-full bg-white p-2 text-slate-700 shadow-md hover:bg-slate-50 border border-slate-200 transition-all active:rotate-180 disabled:opacity-50"
             aria-label="Refresh insights"
           >
-            <FiRefreshCcw className="h-4 w-4" />
+            <FiRefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
         <h3 className="mt-4 text-xl font-bold text-brand-primary tracking-tight">Trợ lý ảo AI</h3>
         <p className="mt-2 text-xs text-slate-500 leading-relaxed">
           {searchContext?.to
-            ? `Phân tích cho chặng ${searchContext.from} → ${destination}.`
+            ? `Phân tích cho chặng ${searchContext.from.split(' (')[0]} → ${destination}.`
             : 'Nhập điểm đến để nhận khuyến nghị cá nhân hóa.'}
         </p>
 

@@ -4,6 +4,8 @@ import com.flightbooking.model.Flight;
 import com.flightbooking.repository.FlightRepository;
 import com.flightbooking.web.dto.ChatRequest;
 import com.flightbooking.web.dto.ChatResponse;
+import com.flightbooking.web.dto.TravelSuggestionRequest;
+import com.flightbooking.web.dto.TravelSuggestionResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -552,4 +554,167 @@ public class ChatAiService {
             return null;
         }
     }
+
+    public TravelSuggestionResponse getTravelSuggestions(TravelSuggestionRequest request) {
+        String origin = request.getOrigin() == null ? "" : request.getOrigin().trim();
+        String destination = request.getDestination() == null ? "" : request.getDestination().trim();
+        String departureDate = request.getDepartureDate() == null ? "" : request.getDepartureDate().trim();
+        int passengers = request.getPassengers() == null ? 1 : request.getPassengers();
+
+        // 1. Try calling OpenAI if apiKey is set
+        if (apiKey != null && !apiKey.isBlank() && apiUrl != null && !apiUrl.isBlank()) {
+            try {
+                String systemPrompt = "You are a helpful travel assistant. You must analyze the trip and return travel suggestions in JSON format matching this schema:\n"
+                        + "{\n"
+                        + "  \"weather\": \"detailed weather condition and packing advice in Vietnamese\",\n"
+                        + "  \"priceTrend\": \"price trend description and booking recommendation in Vietnamese\",\n"
+                        + "  \"travelTips\": [\"tip 1 in Vietnamese\", \"tip 2 in Vietnamese\", \"tip 3 in Vietnamese\"]\n"
+                        + "}\n"
+                        + "Only return the raw JSON object. Do not include markdown wrappers (like ```json) or any extra text.";
+
+                String userPrompt = String.format(
+                        "Trip details:\n- Origin: %s\n- Destination: %s\n- Departure Date: %s\n- Passengers: %d",
+                        origin, destination, departureDate, passengers
+                );
+
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("model", model);
+                List<Map<String, String>> messages = new ArrayList<>();
+                messages.add(Map.of("role", "system", "content", systemPrompt));
+                messages.add(Map.of("role", "user", "content", userPrompt));
+                requestBody.put("messages", messages);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.setBearerAuth(apiKey);
+
+                Map<String, Object> response = restTemplate.postForObject(
+                        apiUrl,
+                        new HttpEntity<>(requestBody, headers),
+                        Map.class
+                );
+
+                if (response != null && response.containsKey("choices")) {
+                    List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+                    if (!choices.isEmpty()) {
+                        Map<String, Object> firstChoice = choices.get(0);
+                        Map<String, String> aiMessage = (Map<String, String>) firstChoice.get("message");
+                        String content = aiMessage.get("content").trim();
+                        // Clean markdown wrappers if OpenAI returned them
+                        if (content.startsWith("```json")) {
+                            content = content.substring(7);
+                        }
+                        if (content.startsWith("```")) {
+                            content = content.substring(3);
+                        }
+                        if (content.endsWith("```")) {
+                            content = content.substring(0, content.length() - 3);
+                        }
+                        content = content.trim();
+
+                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        TravelSuggestionResponse parsed = mapper.readValue(content, TravelSuggestionResponse.class);
+                        if (parsed.getWeather() != null && parsed.getPriceTrend() != null && parsed.getTravelTips() != null) {
+                            return parsed;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("OpenAI suggestion error, falling back: " + e.getMessage());
+            }
+        }
+
+        // 2. Local Fallback (Dynamic database check and rule-based generation)
+        String depCode = resolveIata(origin);
+        String arrCode = resolveIata(destination);
+
+        // Weather local mapping
+        String weatherText;
+        String destLower = destination.toLowerCase();
+        if (destLower.contains("hà nội") || destLower.contains("ha noi") || "HAN".equals(arrCode)) {
+            weatherText = "Thời tiết Hà Nội mùa này rất dễ chịu, mát mẻ vào buổi tối. Bạn nên mang theo áo khoác nhẹ và ô đề phòng mưa bay nhỏ.";
+        } else if (destLower.contains("đà nẵng") || destLower.contains("da nang") || "DAD".equals(arrCode)) {
+            weatherText = "Đà Nẵng đang có nắng đẹp, gió biển trong lành. Khuyên dùng: chuẩn bị trang phục năng động, kính râm và kem chống nắng.";
+        } else if (destLower.contains("hồ chí minh") || destLower.contains("sài gòn") || "SGN".equals(arrCode)) {
+            weatherText = "TP. Hồ Chí Minh thời tiết nóng ẩm, nhiệt độ cao và có thể có mưa rào bất chợt vào buổi chiều. Nên mang ô hoặc áo mưa tiện lợi.";
+        } else if (destLower.contains("phú quốc") || destLower.contains("phu quoc") || "PQC".equals(arrCode)) {
+            weatherText = "Phú Quốc thời tiết ngập tràn ánh nắng và rất đẹp để tắm biển hay chèo thuyền. Chuẩn bị quần áo bơi và dép đi biển.";
+        } else {
+            weatherText = "Thời tiết tại " + (destination.isEmpty() ? "điểm đến" : destination) + " khá ôn hòa và mát mẻ, thích hợp cho việc dạo chơi ngoài trời.";
+        }
+
+        // Price trend database analytics
+        String trendText;
+        if (!depCode.isEmpty() && !arrCode.isEmpty()) {
+            List<Flight> flights = flightRepository.findByDepartureAirportAndArrivalAirportOrderByDepartureAtAsc(depCode, arrCode);
+            long latestPrice = 0L;
+            double previousMean = 0.0;
+
+            if (!flights.isEmpty()) {
+                latestPrice = flights.get(flights.size() - 1).getPrice();
+                if (flights.size() > 1) {
+                    double sum = 0;
+                    for (int i = 0; i < flights.size() - 1; i++) {
+                        sum += flights.get(i).getPrice();
+                    }
+                    previousMean = sum / (flights.size() - 1);
+                } else {
+                    previousMean = latestPrice;
+                }
+            }
+
+            if (latestPrice > 0 && previousMean > 0) {
+                double changePercent = ((double) latestPrice - previousMean) / previousMean;
+                if (changePercent > 0.05) {
+                    trendText = "Giá vé đang có xu hướng TĂNG mạnh do nhu cầu chặng " + depCode + "-" + arrCode + " cao. Khuyên đặt vé NGAY BÂY GIỜ.";
+                } else if (changePercent < -0.05) {
+                    trendText = "Giá vé chặng " + depCode + "-" + arrCode + " đang có xu hướng GIẢM. Bạn có thể đặt sớm để giữ chỗ ưu đãi.";
+                } else {
+                    trendText = "Giá vé chặng " + depCode + "-" + arrCode + " đang giữ mức ỔN ĐỊNH. Nên đặt sớm để lựa chọn được chỗ ngồi ưng ý.";
+                }
+            } else {
+                trendText = "Giá vé chặng bay này đang giữ mức ổn định. Khuyên bạn nên đặt sớm trước 2-3 tuần để nhận mức giá tốt nhất.";
+            }
+        } else {
+            trendText = "Chưa có đủ dữ liệu chặng bay để phân tích xu hướng giá. Khuyên bạn nên theo dõi và đặt vé trước 15-20 ngày.";
+        }
+
+        // Travel tips generation
+        List<String> tips = new ArrayList<>();
+        if (destLower.contains("hà nội") || destLower.contains("ha noi") || "HAN".equals(arrCode)) {
+            tips.add("Thưởng thức bát phở nóng hổi và nhâm nhi cafe trứng tại khu vực Phố Cổ.");
+            tips.add("Đi dạo xung quanh Hồ Hoàn Kiếm vào sáng sớm hoặc buổi tối để cảm nhận nhịp sống Hà Nội.");
+            tips.add("Tham quan Lăng Bác, chùa Một Cột và Văn Miếu - Quốc Tử Giám để tìm hiểu văn hóa lịch sử.");
+        } else if (destLower.contains("đà nẵng") || destLower.contains("da nang") || "DAD".equals(arrCode)) {
+            tips.add("Check-in Cầu Rồng lúc 21:00 các tối cuối tuần để xem màn trình diễn phun lửa & nước độc đáo.");
+            tips.add("Dành thời gian tham quan Bán đảo Sơn Trà, viếng chùa Linh Ứng và ngắm nhìn toàn cảnh thành phố biển.");
+            tips.add("Thưởng thức mì Quảng, bánh tráng cuốn thịt heo tại các quán ăn địa phương nổi tiếng.");
+        } else if (destLower.contains("phú quốc") || destLower.contains("phu quoc") || "PQC".equals(arrCode)) {
+            tips.add("Ngắm hoàng hôn tuyệt mỹ tại bãi Trường hoặc ghé thăm các quán bar ven biển nổi tiếng.");
+            tips.add("Tham gia tour đi cano khám phá các hòn đảo nhỏ phía Nam như hòn Thơm, hòn Móng Tay.");
+            tips.add("Thưởng thức gỏi cá trích đặc sản cùng nước mắm Phú Quốc truyền thống.");
+        } else {
+            tips.add("Hãy đến sân bay trước giờ bay ít nhất 2 giờ để làm thủ tục thuận lợi và tránh cập rập.");
+            tips.add("Thực hiện check-in trực tuyến qua ứng dụng để nhận thẻ lên tàu bay điện tử sớm.");
+            tips.add("Luôn giữ giấy tờ tùy thân (CCCD/Hộ chiếu) ở nơi dễ lấy khi đi qua cổng an ninh.");
+        }
+
+        return TravelSuggestionResponse.builder()
+                .weather(weatherText)
+                .priceTrend(trendText)
+                .travelTips(tips)
+                .build();
+    }
+
+    private String resolveIata(String cityName) {
+        if (cityName == null || cityName.isBlank()) return "";
+        String normalized = normalize(cityName);
+        for (Map.Entry<String, String> entry : CITY_TO_IATA.entrySet()) {
+            if (normalized.contains(entry.getKey()) || entry.getKey().contains(normalized)) {
+                return entry.getValue();
+            }
+        }
+        return "";
+    }
 }
+

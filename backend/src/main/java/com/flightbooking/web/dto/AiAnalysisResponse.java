@@ -5,8 +5,12 @@ import java.util.List;
 public record AiAnalysisResponse(
         String departure,
         String arrival,
-        String priceTrend, // "UP", "STABLE", "DOWN"
-        String aiAdvice,   // "BUY_NOW", "MONITOR"
+        String priceTrend,
+        String priceTrendFlag,
+        String aiAdvice,
         String weatherRecommendation,
-        List<DayPricePoint> sevenDayForecast
+        List<DayPricePoint> sevenDayForecast,
+        String recommendation,
+        String weatherAdvice,
+        List<String> travelTips
 ) {}

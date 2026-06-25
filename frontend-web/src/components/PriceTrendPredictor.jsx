@@ -34,6 +34,61 @@ const CustomTooltip = ({ active, payload }) => {
   )
 }
 
+function LoadingSkeleton() {
+  return (
+    <div className="rounded-[2.5rem] bg-sky-50/50 p-8 border border-blue-100/50 animate-pulse space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-3 flex-1">
+          <div className="h-4 bg-slate-200 rounded-full w-24" />
+          <div className="h-8 bg-slate-200 rounded-full w-3/4 animate-pulse" />
+          <div className="h-4 bg-slate-200 rounded-full w-1/2" />
+        </div>
+        <div className="h-12 bg-slate-200 rounded-2xl w-36" />
+      </div>
+      <div className="grid gap-8 lg:grid-cols-12">
+        <div className="lg:col-span-8 h-[350px] bg-slate-100 rounded-[2rem] border border-slate-200/50" />
+        <div className="lg:col-span-4 space-y-6 flex flex-col justify-between">
+          <div className="h-28 bg-slate-100 rounded-[2rem]" />
+          <div className="h-16 bg-slate-100 rounded-[2rem]" />
+          <div className="h-48 bg-slate-100 rounded-[2rem]" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const CACHE_KEY_PREFIX = 'ai_analysis_';
+const CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+
+const getCachedAnalysis = (departure, arrival, date) => {
+  const key = `${CACHE_KEY_PREFIX}${departure}_${arrival}_${date}`;
+  const cached = localStorage.getItem(key);
+  if (!cached) return null;
+  try {
+    const { data, timestamp } = JSON.parse(cached);
+    if (Date.now() - timestamp < CACHE_DURATION_MS) {
+      return data;
+    }
+    localStorage.removeItem(key);
+  } catch (e) {
+    console.warn("Error reading cache:", e);
+  }
+  return null;
+};
+
+const setCachedAnalysis = (departure, arrival, date, data) => {
+  const key = `${CACHE_KEY_PREFIX}${departure}_${arrival}_${date}`;
+  const cacheValue = {
+    data,
+    timestamp: Date.now()
+  };
+  try {
+    localStorage.setItem(key, JSON.stringify(cacheValue));
+  } catch (e) {
+    console.warn("Error writing cache:", e);
+  }
+};
+
 export default function PriceTrendPredictor({ departure, arrival, date }) {
   const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -41,6 +96,17 @@ export default function PriceTrendPredictor({ departure, arrival, date }) {
 
   useEffect(() => {
     if (!departure || !arrival) return
+
+    const targetDate = date || new Date().toISOString().split('T')[0]
+
+    // Check Cache first
+    const cachedData = getCachedAnalysis(departure, arrival, targetDate);
+    if (cachedData) {
+      setAnalysis(cachedData);
+      setLoading(false);
+      setError(null);
+      return;
+    }
 
     const fetchAnalysis = async () => {
       setLoading(true)
@@ -50,13 +116,14 @@ export default function PriceTrendPredictor({ departure, arrival, date }) {
           params: { 
             departure, 
             arrival, 
-            date: date || new Date().toISOString().split('T')[0] 
+            date: targetDate
           }
         })
         setAnalysis(response.data)
+        setCachedAnalysis(departure, arrival, targetDate, response.data);
       } catch (err) {
         console.error("AI Analysis Fetch Error:", err)
-        setError("Không thể kết nối dịch vụ phân tích AI")
+        setError("Không thể kết nối dịch vụ phân tích hành trình AI. Vui lòng thử lại sau.")
       } finally {
         setLoading(false)
       }
@@ -80,15 +147,18 @@ export default function PriceTrendPredictor({ departure, arrival, date }) {
   if (!departure || !arrival) return null
 
   if (loading) {
+    return <LoadingSkeleton />
+  }
+
+  if (error) {
     return (
-      <div className="rounded-[2.5rem] bg-sky-50 p-12 border border-blue-100/50 flex flex-col items-center justify-center min-h-[300px]">
-        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-        <p className="text-xs font-black text-slate-500 uppercase tracking-widest animate-pulse">AI đang phân tích xu hướng giá...</p>
+      <div className="rounded-[2.5rem] bg-rose-50 p-8 border border-rose-100 flex flex-col items-center justify-center text-center">
+        <p className="text-sm font-bold text-rose-600">{error}</p>
       </div>
     )
   }
 
-  if (error || !analysis) return null
+  if (!analysis) return null
 
   return (
     <section className="rounded-[2.5rem] bg-sky-50 p-8 shadow-sm border border-blue-100/50">
@@ -101,7 +171,7 @@ export default function PriceTrendPredictor({ departure, arrival, date }) {
             Xu hướng giá cho <span className="text-blue-600">{departure} → {arrival}</span>
           </h2>
           <p className="mt-4 max-w-2xl text-base font-medium text-slate-500 leading-relaxed">
-            Hệ thống AI phân tích hàng triệu dữ liệu chuyến bay để dự báo biến động giá, giúp bạn chọn thời điểm đặt vé tối ưu nhất.
+            Hệ thống AI phân tích chặng bay thời gian thực kết hợp điều kiện thời tiết tại điểm đến để đưa ra khuyến nghị đặt vé tối ưu.
           </p>
         </div>
 
@@ -113,7 +183,7 @@ export default function PriceTrendPredictor({ departure, arrival, date }) {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
               </div>
               <span className="text-sm font-black uppercase tracking-widest">
-                AI ADVISES: BUY NOW
+                AI KHUYÊN: ĐẶT NGAY
               </span>
             </div>
           ) : (
@@ -123,7 +193,7 @@ export default function PriceTrendPredictor({ departure, arrival, date }) {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500" />
               </div>
               <span className="text-sm font-black uppercase tracking-widest">
-                AI ADVISES: MONITOR
+                AI KHUYÊN: THEO DÕI
               </span>
             </div>
           )}
@@ -131,7 +201,7 @@ export default function PriceTrendPredictor({ departure, arrival, date }) {
       </div>
 
       <div className="mt-10 grid gap-8 lg:grid-cols-12">
-        {/* Main Chart Area */}
+        {/* Biểu đồ */}
         <div className="lg:col-span-8 rounded-[2rem] bg-white/80 backdrop-blur-md p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             <div>
@@ -186,7 +256,7 @@ export default function PriceTrendPredictor({ departure, arrival, date }) {
           </div>
         </div>
 
-        {/* Info Panels */}
+        {/* Khung thông tin gợi ý AI */}
         <div className="lg:col-span-4 flex flex-col gap-6">
           <div className="rounded-[2rem] bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Giá hiện tại</p>
@@ -195,9 +265,7 @@ export default function PriceTrendPredictor({ departure, arrival, date }) {
             </div>
             <div className="mt-4 p-3 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-              {analysis?.aiAdvice === 'BUY_NOW' 
-                ? "Mức giá tốt nhất để đặt ngay hôm nay" 
-                : "Theo dõi thêm biến động giá vé trước khi đặt"}
+              {analysis?.recommendation || "Theo dõi thêm biến động giá vé trước khi đặt"}
             </div>
           </div>
 
@@ -213,37 +281,42 @@ export default function PriceTrendPredictor({ departure, arrival, date }) {
           </div>
 
           <div className="flex-1 rounded-[2rem] bg-white p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
-            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6">Khuyến nghị thời tiết & AI</h4>
+            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6">Phân tích chi tiết AI</h4>
             <div className="space-y-6">
               <div className="flex gap-4">
-                <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 shadow-sm" />
-                <div>
+                <div className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 shadow-sm" />
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-black text-slate-800 tracking-tight">Xu hướng thị trường</p>
                   <p className="mt-1 text-xs font-medium text-slate-500 leading-relaxed">
-                    {analysis?.priceTrend === 'UP' 
-                      ? "Giá vé đang trong chu kỳ tăng mạnh (>5% so với trung bình lịch sử)." 
-                      : analysis?.priceTrend === 'DOWN' 
-                        ? "Giá vé đang trong xu hướng giảm nhẹ, cơ hội tốt để săn khuyến mãi." 
-                        : "Giá vé duy trì trạng thái ổn định, ít biến động đột biến."}
+                    {analysis?.priceTrend || "Giá vé duy trì trạng thái ổn định."}
                   </p>
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-blue-400 shadow-sm" />
-                <div>
+                <div className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-blue-400 shadow-sm" />
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-black text-slate-800 tracking-tight">Khuyến nghị thời tiết</p>
                   <p className="mt-1 text-xs font-medium text-slate-500 leading-relaxed">
-                    {analysis?.weatherRecommendation}
+                    {analysis?.weatherAdvice || "Không có thông tin thời tiết."}
                   </p>
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-400 shadow-sm" />
-                <div>
-                  <p className="text-sm font-black text-slate-800 tracking-tight">Độ tin cậy dự báo</p>
-                  <p className="mt-1 text-xs font-medium text-slate-500 leading-relaxed">
-                    Dự báo phân tích dựa trên hơn 95% độ chính xác từ dữ liệu lịch sử các chuyến bay trước đây.
-                  </p>
+                <div className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-400 shadow-sm" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black text-slate-800 tracking-tight">Lời khuyên chuyến đi</p>
+                  <ul className="mt-2 space-y-2">
+                    {analysis?.travelTips && analysis.travelTips.length > 0 ? (
+                      analysis.travelTips.map((tip, idx) => (
+                        <li key={idx} className="text-xs font-medium text-slate-500 flex items-start gap-1.5 leading-normal">
+                          <span className="text-amber-500 mt-0.5">•</span>
+                          <span>{tip}</span>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="text-xs font-medium text-slate-500">Nên đến sân bay sớm 2 tiếng.</li>
+                    )}
+                  </ul>
                 </div>
               </div>
             </div>
