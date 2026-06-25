@@ -89,6 +89,7 @@ export const bookingApi = {
   cancelPut: (id) => api.put(`/bookings/${id}/cancel`),
   holdSeat: (flightId, seatNumber) => api.post('/bookings/seat-holds', { flightId, seatNumber }),
   releaseSeatHold: (flightId, seatNumber) => api.post('/bookings/seat-holds/release', { flightId, seatNumber }),
+  createPayment: (bookingId) => api.post('/payments/create-payment', { bookingId }),
 };
 
 const mockCombos = [

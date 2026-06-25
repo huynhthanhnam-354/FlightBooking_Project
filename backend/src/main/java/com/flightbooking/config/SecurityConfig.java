@@ -51,7 +51,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/v1/combos/checkout").authenticated()
                         // Mở khóa public cho các API trang chủ, gợi ý, ưu đãi và bộ mô phỏng vnpay-mock
-                        .requestMatchers("/api/health", "/api/auth/**", "/api/ai/chat/**", "/api/ai/analyze", "/api/v1/ai/**", "/api/v1/combos/**", "/api/v1/promotions", "/api/v1/recommendations", "/api/v1/payments/vnpay-mock/**", "/api/bookings/payment-success/**", "/api/bookings/*/payment/mock-confirm/**").permitAll()
+                        .requestMatchers("/api/health", "/api/auth/**", "/api/ai/chat/**", "/api/ai/analyze", "/api/v1/ai/**", "/api/v1/combos/**", "/api/v1/promotions", "/api/v1/recommendations", "/api/v1/payments/vnpay-mock/**", "/api/bookings/payment-success/**", "/api/bookings/*/payment/mock-confirm/**", "/api/payments/vnpay-return/**", "/api/payments/vnpay-ipn/**").permitAll()
                         .requestMatchers("/api/agent/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/flights/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/flights/**").permitAll()

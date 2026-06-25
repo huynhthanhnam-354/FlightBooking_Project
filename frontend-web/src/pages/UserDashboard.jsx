@@ -502,15 +502,33 @@ export default function UserDashboard() {
     else navigate('/login')
   }, [user, navigate])
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get('paymentStatus');
+    if (paymentStatus === 'success') {
+      toast.success('Thanh toán vé qua cổng VNPAY thành công!');
+      // Clear query params to prevent toast from repeating on refresh
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (paymentStatus === 'failed') {
+      toast.error('Thanh toán qua cổng VNPAY không thành công hoặc đã bị hủy.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   const handlePayBooking = async (booking) => {
     if (!booking?.id) return
     try {
-      await bookingApi.paymentSuccess(booking.id)
-      setBookings(prev => (prev || []).map(b => b?.id === booking.id ? { ...b, status: 'CONFIRMED' } : b))
-      toast.success('Thanh toán thành công.')
+      const resPay = await bookingApi.createPayment(booking.id)
+      const paymentUrl = resPay.data?.paymentUrl
+      if (paymentUrl) {
+        toast.info('Đang chuyển hướng sang cổng thanh toán VNPAY...')
+        window.location.href = paymentUrl
+      } else {
+        throw new Error('Không nhận được link thanh toán từ hệ thống.')
+      }
     } catch (err) {
-      console.error('Mock payment error:', err)
-      const msg = err.response?.data?.message || 'Không thể xác nhận thanh toán.'
+      console.error('VNPAY payment initialization error:', err)
+      const msg = err.response?.data?.message || err.message || 'Không thể khởi tạo giao dịch thanh toán.'
       toast.error(msg)
     }
   }

@@ -439,7 +439,11 @@ public class BookingService {
         for (String fieldName : fieldNames) {
             String fieldValue = allParams.get(fieldName);
             if (fieldValue != null && !fieldValue.isEmpty()) {
-                pairs.add(fieldName + "=" + fieldValue);
+                try {
+                    pairs.add(fieldName + "=" + URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString()));
+                } catch (Exception e) {
+                    log.error("URL Encoding error in confirmPaymentVnPay: ", e);
+                }
             }
         }
         String hashData = String.join("&", pairs);
