@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FaPlane, FaHotel, FaSuitcase, FaChevronRight, FaTicketAlt } from 'react-icons/fa';
 import api from '../services/api';
 import { DEALS_DATA } from '../data/dealsData';
+import resort1 from '../assets/resort-1.jpg';
 
 /**
  * SpecialDeals Component
@@ -116,7 +117,7 @@ const SpecialDeals = () => {
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                 onError={(e) => {
                   e.target.onerror = null; // Prevent infinite loops
-                  e.target.src = 'https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&w=800&q=80'; // Fallback
+                  e.target.src = resort1; // Fallback
                 }}
               />
               {/* Inner border / Overlay for contrast */}

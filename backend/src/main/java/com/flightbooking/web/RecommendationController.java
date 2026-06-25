@@ -45,7 +45,7 @@ public class RecommendationController {
                         "Đà Nẵng",
                         "Thành phố của những cây cầu",
                         formatter.format(danangPrice) + "₫",
-                        "https://images.unsplash.com/photo-1559592481-74418d7cd362?auto=format&fit=crop&w=600&q=80",
+                        "https://images.unsplash.com/photo-1585672909477-94d50e820cf0?auto=format&fit=crop&w=600&q=80",
                         "DAD"
                 ),
                 new RecommendationDTO(

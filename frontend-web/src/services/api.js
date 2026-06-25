@@ -1,5 +1,19 @@
 import axios from 'axios';
 
+// Import local image assets for mock data fallback
+import destDanang from '../assets/dest-danang.jpg';
+import destPhuquoc from '../assets/dest-phuquoc.jpg';
+import dealNhatrang from '../assets/deal-nhatrang.jpg';
+import comboSapa from '../assets/combo-sapa.jpg';
+import destHalong from '../assets/dest-halong.jpg';
+import dealHagiang from '../assets/deal-hagiang.jpg';
+import comboHoian from '../assets/combo-hoian.jpg';
+import comboQuynhon from '../assets/combo-quynhon.jpg';
+import comboDalat from '../assets/combo-dalat.jpg';
+import comboCondao from '../assets/combo-condao.jpg';
+import comboVungtau from '../assets/combo-vungtau.jpg';
+import comboMuine from '../assets/combo-muine.jpg';
+
 const API_BASE_URL = '/api';
 
 export const api = axios.create({
@@ -102,7 +116,7 @@ const mockCombos = [
     region: 'Miền Trung',
     description: 'Tuyệt tác nghỉ dưỡng bên vịnh Bán đảo Sơn Trà hoang sơ, tận hưởng dịch vụ đẳng cấp thế giới cùng bãi biển riêng tư tuyệt đẹp.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1559592481-74418d7cd362?auto=format&fit=crop&w=600&q=80'
+    image: destDanang
   },
   {
     id: 2,
@@ -113,7 +127,7 @@ const mockCombos = [
     region: 'Miền Nam',
     description: 'Tuyệt tác thiết kế mang cảm hứng học đường cổ điển bên Bãi Khem cát trắng mịn, trải nghiệm ẩm thực đỉnh cao và hồ bơi vỏ sò độc đáo.',
     duration: '4 ngày 3 đêm',
-    image: 'https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=600&q=80'
+    image: destPhuquoc
   },
   {
     id: 3,
@@ -124,7 +138,7 @@ const mockCombos = [
     region: 'Miền Trung',
     description: 'Thư giãn bên hồ bơi vô cực nước biển tự nhiên rộng lớn cùng bãi tắm cát trắng riêng tư yên bình giữa vịnh Nha Trang lộng gió.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1588668214407-6eb95270273e?auto=format&fit=crop&w=600&q=80'
+    image: dealNhatrang
   },
   {
     id: 4,
@@ -135,7 +149,7 @@ const mockCombos = [
     region: 'Miền Bắc',
     description: 'Trải nghiệm nét lãng mạn phong cách Pháp hòa quyện nét văn hóa Tây Bắc độc đáo giữa thị trấn mờ sương đẹp như tranh vẽ.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?auto=format&fit=crop&w=600&q=80'
+    image: comboSapa
   },
   {
     id: 5,
@@ -146,7 +160,7 @@ const mockCombos = [
     region: 'Miền Bắc',
     description: 'Hành trình di sản kỳ diệu lênh đênh giữa vịnh biển kỳ vĩ, ngắm hoàng hôn buông xuống từ cabin ban công riêng cao cấp.',
     duration: '2 ngày 1 đêm',
-    image: 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=600&q=80'
+    image: destHalong
   },
   {
     id: 6,
@@ -157,18 +171,18 @@ const mockCombos = [
     region: 'Miền Bắc',
     description: 'Chinh phục cung đường đèo hiểm trở, ngắm mùa hoa tam giác mạch rực rỡ và ẩn mình tại resort sinh thái đẳng cấp biệt lập.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=600&q=80'
+    image: dealHagiang
   },
   {
     id: 7,
-    title: 'Hội An Hoài Niệm Phố Cổ 3N2Đ',
+    title: 'Hội An Hoài Niệm Phổ Cổ 3N2Đ',
     location: 'Hội An',
     hotelName: 'Anantara Hoi An Resort',
     price: 4500000,
     region: 'Miền Trung',
     description: 'Lưu trú bên dòng sông Hoài thơ mộng, thả đèn hoa đăng lung linh và len lỏi qua từng con hẻm rêu phong nhuộm màu thời gian.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80'
+    image: comboHoian
   },
   {
     id: 8,
@@ -179,7 +193,7 @@ const mockCombos = [
     region: 'Miền Trung',
     description: 'Bờ biển nguyên sơ cát vàng mịn màng bao quanh bởi những mỏm đá tuyệt tác, tận hưởng hồ bơi riêng biệt độc bản xa hoa.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1610444583731-9e1e2d4400cc?auto=format&fit=crop&w=600&q=80'
+    image: comboQuynhon
   },
   {
     id: 9,
@@ -190,7 +204,7 @@ const mockCombos = [
     region: 'Miền Trung',
     description: 'Ẩn mình dưới những tán thông ngút ngàn, biệt thự kiến trúc Pháp cổ kính mở ra không gian lãng mạn ấm áp giữa cao nguyên.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1589136777351-fdc9c9c8c480?auto=format&fit=crop&w=600&q=80'
+    image: comboDalat
   },
   {
     id: 10,
@@ -201,7 +215,7 @@ const mockCombos = [
     region: 'Miền Nam',
     description: 'Thiên đường bảo tồn thiên nhiên biển đảo đỉnh cao, biệt thự gỗ sang trọng ven biển lộng gió mang lại sự thư thái tuyệt hảo.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=600&q=80'
+    image: comboCondao
   },
   {
     id: 11,
@@ -212,7 +226,7 @@ const mockCombos = [
     region: 'Miền Nam',
     description: 'Trải nghiệm không gian sòng bài, sân golf chuẩn quốc tế ven bãi biển Hồ Tràm hoang sơ cách TP.HCM chỉ hơn 2 giờ di chuyển.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=600&q=80'
+    image: comboVungtau
   },
   {
     id: 12,
@@ -223,7 +237,7 @@ const mockCombos = [
     region: 'Miền Nam',
     description: 'Những rặng dừa xanh đung đưa trước gió bên bờ biển êm đềm, khám phá đồi cát bay trứ danh và thưởng ngoạn hoàng hôn tuyệt mỹ.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=600&q=80'
+    image: comboMuine
   }
 ];
 

@@ -8,6 +8,12 @@
  * @author Senior Frontend Engineer
  */
 
+// Import local image assets
+import dealHagiang from '../assets/deal-hagiang.jpg';
+import destPhuquoc from '../assets/dest-phuquoc.jpg';
+import dealNhatrang from '../assets/deal-nhatrang.jpg';
+import dealSondoong from '../assets/deal-sondoong.jpg';
+
 export const DEALS_DATA = [
   {
     id: 'deal-hg-01',
@@ -15,7 +21,7 @@ export const DEALS_DATA = [
     title: 'HÀ GIANG HÙNG VĨ',
     subTitle: 'Khám phá vẻ đẹp hoang sơ của cao nguyên đá và mùa hoa tam giác mạch.',
     discountPercentage: 35,
-    image: 'https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=800&q=80',
+    image: dealHagiang,
     primaryColor: '#8D6E63', 
     ctaLink: '/booking?to=HaGiang',
     status: 'hot',
@@ -30,7 +36,7 @@ export const DEALS_DATA = [
     title: 'ĐẢO NGỌC PHÚ QUỐC',
     subTitle: 'Trải nghiệm kỳ nghỉ thiên đường trọn gói: Chuyến bay & Resort ven biển.',
     discountPercentage: 50,
-    image: 'https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=800&q=80',
+    image: destPhuquoc,
     primaryColor: '#00ACC1', 
     ctaLink: '/combos/phuquoc',
     status: 'exclusive',
@@ -45,7 +51,7 @@ export const DEALS_DATA = [
     title: 'NHA TRANG BIỂN HẸN',
     subTitle: 'Tận hưởng bãi biển xanh ngắt với dải cát trắng mịn màng tại vịnh biển đẹp nhất Việt Nam.',
     discountPercentage: 25,
-    image: 'https://images.unsplash.com/photo-1588668214407-6eb95270273e?auto=format&fit=crop&w=800&q=80',
+    image: dealNhatrang,
     primaryColor: '#00A693', 
     ctaLink: '/hotels?city=NhaTrang',
     status: 'popular',
@@ -60,7 +66,7 @@ export const DEALS_DATA = [
     title: 'SƠN ĐOÒNG BÍ ẨN',
     subTitle: 'Khám phá hang động Sơn Đoòng - hang động tự nhiên lớn nhất thế giới ngay tại Việt Nam.',
     discountPercentage: 40,
-    image: 'https://images.unsplash.com/photo-1541014741259-df529411b96a?auto=format&fit=crop&w=800&q=80',
+    image: dealSondoong,
     primaryColor: '#F2994A', 
     ctaLink: '/booking?to=DongHoi',
     status: 'limited',

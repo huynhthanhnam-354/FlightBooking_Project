@@ -16,6 +16,30 @@ if (typeof window !== 'undefined' && !window.global) {
   window.global = window;
 }
 
+// Import local image assets
+import destDanang from '../assets/dest-danang.jpg';
+import destPhuquoc from '../assets/dest-phuquoc.jpg';
+import dealNhatrang from '../assets/deal-nhatrang.jpg';
+import comboSapa from '../assets/combo-sapa.jpg';
+import destHalong from '../assets/dest-halong.jpg';
+import dealHagiang from '../assets/deal-hagiang.jpg';
+import comboHoian from '../assets/combo-hoian.jpg';
+import comboQuynhon from '../assets/combo-quynhon.jpg';
+import comboDalat from '../assets/combo-dalat.jpg';
+import comboCondao from '../assets/combo-condao.jpg';
+import comboVungtau from '../assets/combo-vungtau.jpg';
+import comboMuine from '../assets/combo-muine.jpg';
+import hotelRoom1 from '../assets/hotel-room-1.jpg';
+import hotelRoom2 from '../assets/hotel-room-2.jpg';
+import hotelRoom3 from '../assets/hotel-room-3.jpg';
+import event1 from '../assets/event-1.jpg';
+import event2 from '../assets/event-2.jpg';
+import event3 from '../assets/event-3.jpg';
+import resort1 from '../assets/resort-1.jpg';
+import resort2 from '../assets/resort-2.jpg';
+import resort3 from '../assets/resort-3.jpg';
+
+
 const mockData = [
   {
     id: 1,
@@ -26,7 +50,7 @@ const mockData = [
     region: 'Miền Trung',
     description: 'Tuyệt tác nghỉ dưỡng bên vịnh Bán đảo Sơn Trà hoang sơ, tận hưởng dịch vụ đẳng cấp thế giới cùng bãi biển riêng tư tuyệt đẹp.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1559592481-74418d7cd362?auto=format&fit=crop&w=600&q=80',
+    image: destDanang,
     popularity: 95,
     discount: 20,
     aiRecommendation: 'best_price',
@@ -41,7 +65,7 @@ const mockData = [
     region: 'Miền Nam',
     description: 'Tuyệt tác thiết kế mang cảm hứng học đường cổ điển bên Bãi Khem cát trắng mịn, trải nghiệm ẩm thực đỉnh cao và hồ bơi vỏ sò độc đáo.',
     duration: '4 ngày 3 đêm',
-    image: 'https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=600&q=80',
+    image: destPhuquoc,
     popularity: 98,
     discount: 15,
     aiRecommendation: 'price_up',
@@ -56,7 +80,7 @@ const mockData = [
     region: 'Miền Trung',
     description: 'Thư giãn bên hồ bơi vô cực nước biển tự nhiên rộng lớn cùng bãi tắm cát trắng riêng tư yên bình giữa vịnh Nha Trang lộng gió.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1588668214407-6eb95270273e?auto=format&fit=crop&w=600&q=80',
+    image: dealNhatrang,
     popularity: 88,
     discount: 10,
     availableSlots: 8
@@ -70,7 +94,7 @@ const mockData = [
     region: 'Miền Bắc',
     description: 'Trải nghiệm nét lãng mạn phong cách Pháp hòa quyện nét văn hóa Tây Bắc độc đáo giữa thị trấn mờ sương đẹp như tranh vẽ.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?auto=format&fit=crop&w=600&q=80',
+    image: comboSapa,
     popularity: 92,
     discount: 25,
     aiRecommendation: 'best_price',
@@ -85,7 +109,7 @@ const mockData = [
     region: 'Miền Bắc',
     description: 'Hành trình di sản kỳ diệu lênh đênh giữa vịnh biển kỳ vĩ, ngắm hoàng hôn buông xuống từ cabin ban công riêng cao cấp.',
     duration: '2 ngày 1 đêm',
-    image: 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=600&q=80',
+    image: destHalong,
     popularity: 87,
     discount: 18,
     availableSlots: 6
@@ -99,7 +123,7 @@ const mockData = [
     region: 'Miền Bắc',
     description: 'Chinh phục cung đường đèo hiểm trở, ngắm mùa hoa tam giác mạch rực rỡ và ẩn mình tại resort sinh thái đẳng cấp biệt lập.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=600&q=80',
+    image: dealHagiang,
     popularity: 89,
     discount: 12,
     availableSlots: 4
@@ -113,7 +137,7 @@ const mockData = [
     region: 'Miền Trung',
     description: 'Lưu trú bên dòng sông Hoài thơ mộng, thả đèn hoa đăng lung linh và len lỏi qua từng con hẻm rêu phong nhuộm màu thời gian.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80',
+    image: comboHoian,
     popularity: 91,
     discount: 30,
     aiRecommendation: 'best_price',
@@ -128,7 +152,7 @@ const mockData = [
     region: 'Miền Trung',
     description: 'Bờ biển nguyên sơ cát vàng mịn màng bao quanh bởi những mỏm đá tuyệt tác, tận hưởng hồ bơi riêng biệt độc bản xa hoa.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1610444583731-9e1e2d4400cc?auto=format&fit=crop&w=600&q=80',
+    image: comboQuynhon,
     popularity: 84,
     discount: 14,
     availableSlots: 7
@@ -142,7 +166,7 @@ const mockData = [
     region: 'Miền Trung',
     description: 'Ẩn mình dưới những tán thông ngút ngàn, biệt thự kiến trúc Pháp cổ kính mở ra không gian lãng mạn ấm áp giữa cao nguyên.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1589136777351-fdc9c9c8c480?auto=format&fit=crop&w=600&q=80',
+    image: comboDalat,
     popularity: 93,
     discount: 22,
     aiRecommendation: 'price_up',
@@ -157,7 +181,7 @@ const mockData = [
     region: 'Miền Nam',
     description: 'Thiên đường bảo tồn thiên nhiên biển đảo đỉnh cao, biệt thự gỗ sang trọng ven biển lộng gió mang lại sự thái tuyệt hảo.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=600&q=80',
+    image: comboCondao,
     popularity: 96,
     discount: 8,
     availableSlots: 5
@@ -171,7 +195,7 @@ const mockData = [
     region: 'Miền Nam',
     description: 'Trải nghiệm không gian sòng bài, sân golf chuẩn quốc tế ven bãi biển Hồ Tràm hoang sơ cách TP.HCM chỉ hơn 2 giờ di chuyển.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=600&q=80',
+    image: comboVungtau,
     popularity: 82,
     discount: 16,
     availableSlots: 9
@@ -185,7 +209,7 @@ const mockData = [
     region: 'Miền Nam',
     description: 'Những rặng dừa xanh đung đưa trước gió bên bờ biển êm đềm, khám phá đồi cát bay trứ danh và thưởng ngoạn hoàng hôn tuyệt mỹ.',
     duration: '3 ngày 2 đêm',
-    image: 'https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=600&q=80',
+    image: comboMuine,
     popularity: 86,
     discount: 21,
     availableSlots: 4
@@ -289,132 +313,142 @@ const enrichMockWithHotelProfile = (item) => {
   // Mapping specific Unsplash images for all 12 locations to ensure correct images are displayed
   const locationImageMapping = {
     "đà nẵng": [
-      "https://images.unsplash.com/photo-1559592481-74418d7cd362?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1563492065561-831135efded3?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1568402102990-bc541580b59f?auto=format&fit=crop&w=800&q=80"
+      destDanang,
+      resort1,
+      resort2
+    ],
+    "da nang": [
+      destDanang,
+      resort1,
+      resort2
     ],
     "phú quốc": [
-      "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80"
+      destPhuquoc,
+      resort2,
+      resort3
+    ],
+    "phu quoc": [
+      destPhuquoc,
+      resort2,
+      resort3
     ],
     "nha trang": [
-      "https://images.unsplash.com/photo-1588668214407-6eb95270273e?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1552074284-5e88ef1aef18?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=800&q=80"
+      dealNhatrang,
+      resort1,
+      resort3
     ],
     "sa pa": [
-      "https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?auto=format&fit=crop&w=800&q=80"
+      comboSapa,
+      resort2,
+      resort1
     ],
     "sapa": [
-      "https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?auto=format&fit=crop&w=800&q=80"
+      comboSapa,
+      resort2,
+      resort1
     ],
     "hạ long": [
-      "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1552074284-5e88ef1aef18?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=800&q=80"
+      destHalong,
+      resort3,
+      resort1
     ],
     "ha long": [
-      "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1552074284-5e88ef1aef18?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=800&q=80"
+      destHalong,
+      resort3,
+      resort1
     ],
     "hà giang": [
-      "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1627664819818-e147d6221422?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1608976781255-a27076d54238?auto=format&fit=crop&w=800&q=80"
+      dealHagiang,
+      resort2,
+      resort3
     ],
     "ha giang": [
-      "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1627664819818-e147d6221422?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1608976781255-a27076d54238?auto=format&fit=crop&w=800&q=80"
+      dealHagiang,
+      resort2,
+      resort3
     ],
     "hội an": [
-      "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1610444583731-9e1e2d4400cc?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1599708149870-22e70ee649c0?auto=format&fit=crop&w=800&q=80"
+      comboHoian,
+      resort1,
+      resort2
     ],
     "hoi an": [
-      "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1610444583731-9e1e2d4400cc?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1599708149870-22e70ee649c0?auto=format&fit=crop&w=800&q=80"
+      comboHoian,
+      resort1,
+      resort2
     ],
     "quy nhơn": [
-      "https://images.unsplash.com/photo-1610444583731-9e1e2d4400cc?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1589136777351-fdc9c9c8c480?auto=format&fit=crop&w=800&q=80"
+      comboQuynhon,
+      resort3,
+      resort2
     ],
     "quy nhon": [
-      "https://images.unsplash.com/photo-1610444583731-9e1e2d4400cc?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1589136777351-fdc9c9c8c480?auto=format&fit=crop&w=800&q=80"
+      comboQuynhon,
+      resort3,
+      resort2
     ],
     "đà lạt": [
-      "https://images.unsplash.com/photo-1589136777351-fdc9c9c8c480?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=800&q=80"
+      comboDalat,
+      resort1,
+      resort3
     ],
     "da lat": [
-      "https://images.unsplash.com/photo-1589136777351-fdc9c9c8c480?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=800&q=80"
+      comboDalat,
+      resort1,
+      resort3
     ],
     "côn đảo": [
-      "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1540206395-68808572332f?auto=format&fit=crop&w=800&q=80"
+      comboCondao,
+      resort2,
+      resort1
     ],
     "con dao": [
-      "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1540206395-68808572332f?auto=format&fit=crop&w=800&q=80"
+      comboCondao,
+      resort2,
+      resort1
     ],
     "vũng tàu": [
-      "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"
+      comboVungtau,
+      resort3,
+      resort1
     ],
     "vung tau": [
-      "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"
+      comboVungtau,
+      resort3,
+      resort1
     ],
     "hồ tràm": [
-      "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"
+      comboVungtau,
+      resort3,
+      resort1
     ],
     "ho tram": [
-      "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"
+      comboVungtau,
+      resort3,
+      resort1
     ],
     "mũi né": [
-      "https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=800&q=80"
+      comboMuine,
+      resort1,
+      resort2
     ],
     "mui ne": [
-      "https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=800&q=80"
+      comboMuine,
+      resort1,
+      resort2
     ]
   };
 
   const matchedImages = locationImageMapping[locationNormalized] || [
     item.image,
-    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1540206395-68808572332f?auto=format&fit=crop&w=800&q=80"
+    resort1,
+    resort2
   ];
 
   const destinationImages = [
     item.image || matchedImages[0],
-    matchedImages[1] || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
-    matchedImages[2] || "https://images.unsplash.com/photo-1540206395-68808572332f?auto=format&fit=crop&w=800&q=80"
+    matchedImages[1] || resort1,
+    matchedImages[2] || resort2
   ];
 
   // Helper to generate event information matching the destination
@@ -425,14 +459,14 @@ const enrichMockWithHotelProfile = (item) => {
         {
           title: "Lễ hội pháo hoa quốc tế Đà Nẵng (DIFF)",
           date: "Tháng 6 - Tháng 7 hàng năm",
-          description: "Lễ hội trình diễn pháo hoa đỉnh cao quy tụ nhiều đội thi quốc tế, thắp sáng bầu trời đêm sông Hàn rực rỡ sắc màu.",
-          image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=600&q=80"
+          description: "Lễ hội trình diễn pháo hoa đỉnh cao quy tụ many đội thi quốc tế, thắp sáng bầu trời đêm sông Hàn rực rỡ sắc màu.",
+          image: event1
         },
         {
           title: "Trình diễn phun Lửa & Nước tại Cầu Rồng",
           date: "21:00 tối thứ Bảy, Chủ nhật hàng tuần",
           description: "Chiêm ngưỡng biểu tượng Cầu Rồng độc đáo phun lửa và phun mưa đầy nghệ thuật thu hút hàng ngàn du khách.",
-          image: "https://images.unsplash.com/photo-1563492065561-831135efded3?auto=format&fit=crop&w=600&q=80"
+          image: event2
         }
       ];
     } else if (loc.includes("phú quốc")) {
@@ -441,13 +475,13 @@ const enrichMockWithHotelProfile = (item) => {
           title: "Lễ hội Hoàng hôn Phú Quốc",
           date: "Hàng ngày từ 16:30 - 18:30",
           description: "Tận hưởng khoảnh khắc hoàng hôn đỏ rực buông xuống biển Tây tại các bãi biển đẹp nhất hòn đảo, kết hợp nhạc sống acoustic.",
-          image: "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?auto=format&fit=crop&w=600&q=80"
+          image: event2
         },
         {
           title: "Trải nghiệm Chợ đêm Phú Quốc & Ẩm thực biển",
           date: "Hàng tối từ 18:00 - 23:00",
           description: "Khám phá thế giới ẩm thực phong phú với các món hải sản tươi sống đặc trưng của đảo Ngọc như nhum nướng, gỏi cá trích.",
-          image: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=600&q=80"
+          image: event3
         }
       ];
     } else if (loc.includes("nha trang")) {
@@ -456,13 +490,13 @@ const enrichMockWithHotelProfile = (item) => {
           title: "Festival Biển Nha Trang",
           date: "Tháng 6 hai năm một lần",
           description: "Lễ hội du lịch biển lớn nhất Khánh Hòa với chuỗi hoạt động triển lãm di sản văn hóa, biểu diễn nghệ thuật và thể thao bãi biển sôi động.",
-          image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80"
+          image: event1
         },
         {
           title: "Hành hương Tháp Bà Ponagar lịch sử",
           date: "Tháng 3 âm lịch hàng năm",
           description: "Lễ hội tôn vinh Thiên Y Thánh Mẫu Ana tại ngôi đền Chăm cổ kính độc đáo nghìn năm tuổi uy nghiêm hướng ra cửa biển Nha Trang.",
-          image: "https://images.unsplash.com/photo-1552074284-5e88ef1aef18?auto=format&fit=crop&w=600&q=80"
+          image: event2
         }
       ];
     } else if (loc.includes("sapa") || loc.includes("sa pa")) {
@@ -471,13 +505,13 @@ const enrichMockWithHotelProfile = (item) => {
           title: "Lễ hội hoa ban và hoa hồng Fansipan",
           date: "Tháng 4 - Tháng 6 hàng năm",
           description: "Triển lãm thung lũng hoa hồng rộng lớn bậc nhất Tây Bắc kết hợp với các chương trình vũ điệu trên mây vô cùng ảo diệu.",
-          image: "https://images.unsplash.com/photo-1526218626217-dc65a29bb444?auto=format&fit=crop&w=600&q=80"
+          image: event1
         },
         {
           title: "Chợ tình Sa Pa văn hoá độc đáo",
           date: "Tối thứ Bảy hàng tuần",
           description: "Điểm hẹn giao duyên văn nghệ truyền thống của nam thanh nữ tú người Mông, Dao đỏ trong tiếng khèn lá mộc mạc réo rắt.",
-          image: "https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?auto=format&fit=crop&w=600&q=80"
+          image: event3
         }
       ];
     } else if (loc.includes("hạ long") || loc.includes("ha long")) {
@@ -486,13 +520,13 @@ const enrichMockWithHotelProfile = (item) => {
           title: "Carnival Hạ Long rực rỡ sắc màu",
           date: "Tháng 4 - 5 dịp lễ 30/4",
           description: "Lễ hội biểu diễn nghệ thuật quy mô lớn trên đường phố và bãi biển với vũ đoàn chuyên nghiệp trong nước và quốc tế.",
-          image: "https://images.unsplash.com/photo-1472653431158-6364773b2a56?auto=format&fit=crop&w=600&q=80"
+          image: event1
         },
         {
           title: "Khám phá Vịnh Di sản bằng Kayak tự do",
           date: "Hàng ngày",
           description: "Trải nghiệm luồn lách qua các hang luồn, ngắm nhìn cận cảnh các hòn đảo đá vôi kỳ vĩ và những rặng san hô tự nhiên tuyệt đẹp.",
-          image: "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=600&q=80"
+          image: event2
         }
       ];
     } else if (loc.includes("hà giang") || loc.includes("ha giang")) {
@@ -501,13 +535,13 @@ const enrichMockWithHotelProfile = (item) => {
           title: "Lễ hội hoa tam giác mạch Hà Giang",
           date: "Tháng 10 - Tháng 11 hàng năm",
           description: "Tận hưởng không gian thung lũng đá tai mèo nở rộ sắc hoa tam giác mạch hồng phấn dịu dàng, tổ chức các cuộc thi cồng chiêng, khèn Mông.",
-          image: "https://images.unsplash.com/photo-1627664819818-e147d6221422?auto=format&fit=crop&w=600&q=80"
+          image: event1
         },
         {
           title: "Phiên chợ lùi Đồng Văn cổ kính",
           date: "Cuối tuần so le các ngày",
           description: "Nơi giao lưu văn hóa, trao đổi nông thổ sản của đồng bào các dân tộc thiểu số và thưởng thức bát thắng cố nóng hổi.",
-          image: "https://images.unsplash.com/photo-1526218626217-dc65a29bb444?auto=format&fit=crop&w=600&q=80"
+          image: event3
         }
       ];
     } else if (loc.includes("hội an") || loc.includes("hoi an")) {
@@ -516,13 +550,13 @@ const enrichMockWithHotelProfile = (item) => {
           title: "Đêm rằm phố cổ Hội An huyền ảo",
           date: "Ngày 14 âm lịch hàng tháng",
           description: "Tất cả các ngôi nhà cổ tắt điện, treo đèn lồng lung linh và thả đèn hoa đăng lãng mạn bên dòng sông Hoài thơ mộng.",
-          image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80"
+          image: event2
         },
         {
           title: "Show diễn thực cảnh Ký ức Hội An hoành tráng",
           date: "Tối hàng ngày từ 20:00 - 21:00",
           description: "Show thực cảnh đẹp nhất thế giới tái hiện câu chuyện lịch sử thương cảng Faifo sầm uất với hơn 500 diễn viên trên sân khấu nước hiện đại.",
-          image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80"
+          image: event1
         }
       ];
     } else if (loc.includes("quy nhơn") || loc.includes("quy nhon")) {
@@ -531,13 +565,13 @@ const enrichMockWithHotelProfile = (item) => {
           title: "Giải đua thuyền buồm quốc tế Quy Nhơn",
           date: "Tháng 8 hàng năm",
           description: "Cuộc thi thuyền buồm thể thao đẳng cấp diễn ra tại bãi biển Quy Nhơn đón luồng gió mát rượi đặc trưng cực kỳ sôi động.",
-          image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80"
+          image: event1
         },
         {
           title: "Ngắm bình minh độc bản tại Eo Gió",
           date: "Hàng ngày lúc 5:00 - 6:30",
           description: "Đón những tia nắng đầu tiên của ngày mới tại địa điểm ngắm bình minh đẹp nhất Việt Nam với vách núi ôm trọn biển xanh kỳ vĩ.",
-          image: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=600&q=80"
+          image: event2
         }
       ];
     } else if (loc.includes("đà lạt") || loc.includes("da lat")) {
@@ -546,13 +580,13 @@ const enrichMockWithHotelProfile = (item) => {
           title: "Festival Hoa Đà Lạt rực rỡ sắc màu",
           date: "Tháng 12 hai năm một lần",
           description: "Lễ hội trưng bày nghệ thuật sắp đặt hoa tươi quy mô lớn xung quanh hồ Xuân Hương và các công viên trung tâm thành phố ngàn hoa.",
-          image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=600&q=80"
+          image: event1
         },
         {
           title: "Nhạc hội mây lang thang giữa sương mù",
           date: "Thứ Sáu, Thứ Bảy hàng tuần",
           description: "Các buổi hòa nhạc live acoustic trên đỉnh đồi lộng gió, đón chiều hoàng hôn lãng mạn hòa trong làn sương mây mờ ảo.",
-          image: "https://images.unsplash.com/photo-1589136777351-fdc9c9c8c480?auto=format&fit=crop&w=600&q=80"
+          image: event2
         }
       ];
     } else if (loc.includes("côn đảo") || loc.includes("con dao")) {
@@ -561,13 +595,13 @@ const enrichMockWithHotelProfile = (item) => {
           title: "Lễ hội Thả Rùa về biển tự nhiên",
           date: "Tháng 7 - Tháng 9 hàng năm",
           description: "Tham gia cùng các nhân viên kiểm lâm bảo tồn thiên nhiên biển đảo, thả các chú rùa con mới nở chập chững bò ra biển khơi xanh ngắt.",
-          image: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=600&q=80"
+          image: event2
         },
         {
           title: "Viếng nghĩa trang Hàng Dương linh thiêng",
           date: "23:00 hàng đêm",
           description: "Hoạt động tâm linh trang nghiêm, thắp hương viếng mộ nữ anh hùng Võ Thị Sáu và các chiến sĩ cách mạng dưới bóng những cây dương cổ thụ.",
-          image: "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=600&q=80"
+          image: event2
         }
       ];
     } else if (loc.includes("vũng tàu") || loc.includes("vung tau") || loc.includes("hồ tràm") || loc.includes("ho tram")) {
@@ -576,13 +610,13 @@ const enrichMockWithHotelProfile = (item) => {
           title: "Lễ hội diều nghệ thuật Vũng Tàu",
           date: "Dịp lễ 30/4 hàng năm",
           description: "Trình diễn diều khổng lồ quy tụ các nghệ nhân trong nước và quốc tế tạo nên bức tranh bầu trời biển sặc sỡ, sống động.",
-          image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80"
+          image: event2
         },
         {
           title: "Thưởng thức ẩm thực ốc đêm hải sản",
           date: "Hàng tối",
           description: "Trải nghiệm thế giới ốc đêm vô cùng phong phú tại các khu chợ ẩm thực Vũng Tàu với các hương vị ốc len xào dừa, hàu nướng mỡ hành.",
-          image: "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=600&q=80"
+          image: event3
         }
       ];
     } else if (loc.includes("mũi né") || loc.includes("mui ne")) {
@@ -591,13 +625,13 @@ const enrichMockWithHotelProfile = (item) => {
           title: "Lễ hội trượt cát đồi cát bay Mũi Né",
           date: "Hàng ngày lúc 15:30 - 18:00",
           description: "Trải nghiệm chinh phục đồi cát bay trứ danh bằng máng trượt nhựa và ghi lại các khoảnh khắc chụp ảnh nghệ thuật tuyệt đẹp.",
-          image: "https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=600&q=80"
+          image: event2
         },
         {
           title: "Giải lướt ván diều quốc tế Mũi Né",
           date: "Tháng 2 hàng năm",
           description: "Giải đấu mạo hiểm lướt ván diều thế giới quy tụ các vận động viên tài ba nhờ bãi biển Mũi Né nổi tiếng lộng gió lý tưởng.",
-          image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80"
+          image: event2
         }
       ];
     }
@@ -608,13 +642,13 @@ const enrichMockWithHotelProfile = (item) => {
         title: `Lễ hội Văn hóa & Ẩm thực tại ${locName}`,
         date: "Tháng 6 - Tháng 8 hàng năm",
         description: `Sự kiện lễ hội đặc sắc giới thiệu tinh hoa ẩm thực, âm nhạc đường phố và các hoạt động trình diễn văn nghệ truyền thống tại ${locName}.`,
-        image: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=600&q=80"
+        image: event1
       },
       {
         title: `Khám phá thắng cảnh nổi tiếng ${locName}`,
         date: "Hàng ngày",
         description: `Hành trình dạo quanh các địa danh check-in nổi bật tại ${locName}, tìm hiểu lịch sử địa phương cùng hướng dẫn viên bản địa.`,
-        image: "https://images.unsplash.com/photo-1582236968032-de067f9be6d5?auto=format&fit=crop&w=600&q=80"
+        image: event2
       }
     ];
   };
@@ -630,7 +664,7 @@ const enrichMockWithHotelProfile = (item) => {
       maxGuests: '2 Người lớn & 1 Trẻ em',
       priceDiff: 0,
       description: 'Không gian ấm cúng, thiết kế trang nhã với ban công hướng ra khu vườn nhiệt đới xanh ngát.',
-      image: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=600&q=80'
+      image: hotelRoom1
     },
     {
       key: 'deluxe',
@@ -640,7 +674,7 @@ const enrichMockWithHotelProfile = (item) => {
       maxGuests: '2 Người lớn & 2 Trẻ em',
       priceDiff: 750000,
       description: 'Tầm nhìn ngoạn mục hướng ra đại dương lộng gió, trang bị bồn tắm nằm cao cấp thư giãn.',
-      image: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80'
+      image: hotelRoom2
     },
     {
       key: 'suite',
@@ -650,7 +684,7 @@ const enrichMockWithHotelProfile = (item) => {
       maxGuests: '3 Người lớn & 2 Trẻ em',
       priceDiff: 2000000,
       description: 'Căn hộ tổng thống thu nhỏ với phòng khách riêng biệt, quầy bar mini và lối đi riêng ra bãi tắm.',
-      image: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=600&q=80'
+      image: hotelRoom3
     }
   ];
 
@@ -1025,7 +1059,7 @@ export default function ComboList() {
                   src={item.image} 
                   alt={item.title} 
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                  onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=800&q=80' }}
+                  onError={(e) => { e.target.src = resort1 }}
                 />
                 
                 {/* AI Recommendation Weather Badge */}

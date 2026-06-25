@@ -5,13 +5,20 @@ import AIDestinationExplorer from '../components/AIDestinationExplorer'
 import SpecialDeals from '../components/SpecialDeals'
 import api from '../services/api'
 
+// Import local image assets
+import heroBg from '../assets/hero-bg.jpg'
+import destHalong from '../assets/dest-halong.jpg'
+import destDanang from '../assets/dest-danang.jpg'
+import destHanoi from '../assets/dest-hanoi.jpg'
+import destPhuquoc from '../assets/dest-phuquoc.jpg'
+
 const FALLBACK_DESTINATIONS = [
   {
     id: 1,
     name: 'Vịnh Hạ Long',
     description: 'Khám phá kỳ quan thiên nhiên thế giới',
     price: '1.290.000₫',
-    image: 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=600&q=80',
+    image: destHalong,
     destinationCode: 'HAN'
   },
   {
@@ -19,7 +26,7 @@ const FALLBACK_DESTINATIONS = [
     name: 'Đà Nẵng',
     description: 'Thành phố của những cây cầu',
     price: '890.000₫',
-    image: 'https://images.unsplash.com/photo-1559592481-74418d7cd362?auto=format&fit=crop&w=600&q=80',
+    image: destDanang,
     destinationCode: 'DAD'
   },
   {
@@ -27,7 +34,7 @@ const FALLBACK_DESTINATIONS = [
     name: 'Hà Nội',
     description: 'Nét đẹp nghìn năm văn hiến',
     price: '1.050.000₫',
-    image: 'https://images.unsplash.com/photo-1555661530-68c8e98db4e6?auto=format&fit=crop&w=600&q=80',
+    image: destHanoi,
     destinationCode: 'HAN'
   },
   {
@@ -35,13 +42,13 @@ const FALLBACK_DESTINATIONS = [
     name: 'Phú Quốc',
     description: 'Thiên đường đảo ngọc',
     price: '1.450.000₫',
-    image: 'https://images.unsplash.com/photo-1542332213-31f87348057f?auto=format&fit=crop&w=600&q=80',
+    image: destPhuquoc,
     destinationCode: 'PQC'
   }
 ]
 
 function HomePage() {
-  const heroImage = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80'
+  const heroImage = heroBg
   const [searchContext, setSearchContext] = useState(null)
   const [initialSearch, setInitialSearch] = useState(null)
   const [recommendations, setRecommendations] = useState([])
@@ -50,7 +57,16 @@ function HomePage() {
     const fetchRecommendations = async () => {
       try {
         const res = await api.get('/v1/recommendations')
-        setRecommendations(res.data || [])
+        const mappedData = (res.data || []).map(dest => {
+          const name = (dest.name || "").toLowerCase();
+          let image = dest.image;
+          if (name.includes("hạ long") || name.includes("ha long")) image = destHalong;
+          else if (name.includes("đà nẵng") || name.includes("da nang")) image = destDanang;
+          else if (name.includes("hà nội") || name.includes("ha noi")) image = destHanoi;
+          else if (name.includes("phú quốc") || name.includes("phu quoc")) image = destPhuquoc;
+          return { ...dest, image };
+        });
+        setRecommendations(mappedData)
       } catch (err) {
         console.error("Fetch recommendations error, using fallbacks:", err)
         setRecommendations(FALLBACK_DESTINATIONS)
